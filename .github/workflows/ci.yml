@@ -1,0 +1,50 @@
+name: styio-ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - agent-dev
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout styio-spio
+        uses: actions/checkout@v5
+        with:
+          path: styio-spio
+
+      - name: Checkout styio-nightly sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-nightly
+          path: styio-nightly
+
+      - name: Checkout styio-view sibling repository
+        uses: actions/checkout@v5
+        with:
+          repository: Unka-Malloc/styio-view
+          path: styio-view
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            clang-18 \
+            lld-18 \
+            python3
+
+      - name: Docs gate
+        working-directory: styio-spio
+        run: ./scripts/docs-gate.sh
+
+      - name: Checkpoint health
+        working-directory: styio-spio
+        run: ./scripts/checkpoint-health.sh --build-dir /home/runner/work/_temp/spio-build

@@ -63,6 +63,14 @@ Required JSON fields:
   - strict semver `x.y.z`
 - `channel`
   - required non-empty string
+- `active_integration_phase`
+  - required string describing the active published integration phase
+- `supported_contract_versions`
+  - required object describing published contract-version lines
+- `supported_adapter_modes`
+  - required array describing published adapter routes
+- `feature_flags`
+  - required object describing published feature toggles
 - `supported_contracts`
   - required object
 - `supported_contracts.compile_plan`
@@ -111,6 +119,9 @@ Required behavior when the plan is invalid or unsupported:
 - exit non-zero
 - emit stable diagnostics through stderr and, when possible, through the diagnostics output declared in the plan
 - reject unsupported plan versions explicitly instead of silently guessing behavior
+- `check`
+  - remains a compile-plan intent that the compiler must either support explicitly or reject explicitly
+- invalid plan and CLI-conflict failures should remain machine-readable
 
 ## 3. Compile-Plan Consumer Contract
 

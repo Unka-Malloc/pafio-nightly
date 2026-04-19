@@ -2,7 +2,7 @@
 
 **Purpose:** `spio` is the standalone package manager and project workflow tool for Styio. It is designed to remain movable as a self-contained subtree and later as an independent repository.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-19
 
 ## Scope
 
@@ -56,6 +56,16 @@ Before moving this subtree into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, `
 
 Those documents are the migration knowledge pack for working against `styio` without creating hidden source-level dependencies.
 
+## Developer Entry Points
+
+Start repo bootstrap and common build/test commands from [docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md).
+
+统一 docs/process 与交付入口分别为：
+
+- `./scripts/docs-gate.sh`
+- `./scripts/checkpoint-health.sh`
+- `./scripts/delivery-gate.sh --mode checkpoint`
+
 ## Planning Entry Points
 
 For the full implementation and migration plan, start with:
@@ -68,5 +78,6 @@ For the full implementation and migration plan, start with:
 Recommended preflight before moving this subtree:
 
 ```text
+./scripts/bootstrap-dev-env.sh
 ./scripts/preflight-readiness-check.py --styio-bin /absolute/path/to/styio
 ```

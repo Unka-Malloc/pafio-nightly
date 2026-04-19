@@ -124,12 +124,41 @@ This is the package-manager-side self-description endpoint. It reports:
 - bootstrap status
 - supported manifest and lockfile versions
 - supported machine contract versions
+- `supported_contracts.project_graph` reports `[1]`
+- `supported_contracts.toolchain_state` reports `[1]`
+- `supported_contracts.workflow_success_payloads` reports `[1]`
 
 Phase-2 rule:
 
 - `supported_contracts.compile_plan` must remain an empty list until `styio` publishes a real compile-plan consumer and the compatibility matrix allows that phase
 - owning `contracts/compile-plan/` schema files does not by itself authorize advertising active compile-plan support
 - local `spio build --dry-run`, `spio run --dry-run`, and `spio test --dry-run` plan emission also do not authorize advertising active compile-plan support
+
+### 3.1 `spio project-graph --json`
+
+- `spio project-graph --json` publishes `project_graph v1`
+- `project_graph v1` includes at least `packages`, `dependencies`, `targets`, `toolchain`, `managed_toolchains`, `lock_state`, `vendor_state`, `notes`, `package_distribution`, and `source_state`
+
+### 3.2 `spio tool status --json`
+
+- `spio tool status --json` publishes `toolchain_state v1`
+- `project_pin`
+- `current_compiler`
+- `managed_toolchains`
+
+### 3.3 `spio --json build/run/test`
+
+- `workflow_success_payloads v1`
+- `receipt.json`
+- `diagnostics.jsonl` path
+- captured stdout/stderr
+
+### 3.4 Supporting JSON Success Commands
+
+- spio --json fetch --manifest-path path/to/spio.toml ...
+- spio --json tool install --styio-bin /path/to/styio
+- supporting internal commands invoked through `spio --json fetch/vendor/pack/publish/tool install/tool use/tool pin`
+- must also return one stable JSON success object on stdout
 
 ## 4. Exit Codes
 
