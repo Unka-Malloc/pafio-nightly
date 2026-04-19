@@ -16,7 +16,7 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - checkpoint health gate
 - delivery gate
 - native configure/build/test entrypoint
-- Debian/Ubuntu dev environment bootstrap
+- Debian 13 / compatible Debian/Ubuntu dev environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
 - extractability self-check
 - contract fixture validation
 - black-box integration runner setup

@@ -20,12 +20,24 @@ From the repository root:
 
 That installs the native C++20 and Python tooling used by the repository on Debian/Ubuntu.
 
+## Standardized Baseline
+
+`styio-spio` and `styio-nightly` share the same standardized native baseline:
+
+1. Development host standard: Debian `13` (`trixie`).
+2. Compiler toolchain standard: LLVM / Clang / LLD `18.1.x` via the `clang-18` package line.
+3. CMake / CTest standard: `3.31.6`.
+4. Validation Python standard: `3.13.5`.
+5. Repository compatibility floor: CMake `3.20+` and C++20.
+6. CI mirror: GitHub Actions on `ubuntu-24.04`, plus Python `3.13.5` and `cmake==3.31.6` installed before validation steps.
+
 ## Required Toolchains
 
 1. A C++20 compiler.
-2. CMake and Ninja or another supported generator.
-3. Python 3 for preflight and verification scripts.
-4. An external `styio` executable only when exercising compatibility and non-dry-run workflow handoff.
+2. LLVM / Clang / LLD `18.1.x` on the standardized host toolchain, even though `spio` consumes `styio` through process boundaries rather than linking LLVM directly.
+3. CMake / CTest `3.31.6` for the standardized local and CI toolchain.
+4. Python `3.13.5` for preflight and verification scripts in the standardized validation pipeline.
+5. An external `styio` executable only when exercising compatibility and non-dry-run workflow handoff.
 
 ## Typical Build And Test Commands
 

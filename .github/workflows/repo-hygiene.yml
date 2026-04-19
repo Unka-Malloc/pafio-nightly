@@ -10,8 +10,10 @@ permissions:
 
 jobs:
   hygiene:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      STYIO_PYTHON_VERSION: "3.13.5"
 
     steps:
       - name: Checkout styio-spio
@@ -35,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ env.STYIO_PYTHON_VERSION }}
 
       - name: Check tracked tree
         working-directory: styio-spio
