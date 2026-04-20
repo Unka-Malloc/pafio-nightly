@@ -1,5 +1,6 @@
 #include "SpioCLI/CLI.hpp"
 
+#include "SpioCloud/Execution.hpp"
 #include "SpioCompat/Compat.hpp"
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
@@ -111,11 +112,60 @@ json BuildMachineInfoPayload()
       {"supported_lockfiles", json::array({1})},
       {"supported_contracts", {
                                  {"compile_plan", json::array()},
+                                 {"project_graph", json::array({1})},
+                                 {"toolchain_state", json::array({1})},
+                                 {"workflow_success_payloads", json::array({1})},
+                                 {"cloud_execution_policy", json::array({1})},
+                                 {"worker_pool_keys", json::array({1})},
                              }},
       {"notes", json::array({
                     "native c++ phase-3 minimal resolver core",
                     "compile-plan schema is owned but not yet active",
+                    "cloud control-plane execution-policy baseline is active as a local machine contract",
                 })},
+  };
+}
+
+json BuildWorkerPoolKeyPayload(const spio::WorkerPoolKey &key)
+{
+  return {
+      {"platform", key.platform},
+      {"architecture", key.architecture},
+      {"execution_lane", key.execution_lane},
+      {"worker_trust_tier", key.worker_trust_tier},
+      {"toolchain_mode", key.toolchain_mode},
+      {"channel", key.channel},
+      {"build_mode", key.build_mode},
+      {"compiler_fingerprint", key.compiler_fingerprint},
+      {"base_image_revision", key.base_image_revision},
+  };
+}
+
+json BuildCloudPolicyPayload(const spio::CloudExecutionPolicy &policy)
+{
+  return {
+      {"contract_version", 1},
+      {"risk_class", policy.risk_class},
+      {"requested_execution_lane", policy.requested_execution_lane},
+      {"execution_lane", policy.execution_lane},
+      {"worker_trust_tier", policy.worker_trust_tier},
+      {"requested_security_profile", policy.requested_security_profile},
+      {"security_profile", policy.security_profile},
+      {"fallback_applied", policy.fallback_applied},
+      {"platform_protection_priority", policy.platform_protection_priority},
+      {"tenant_isolation_priority", policy.tenant_isolation_priority},
+      {"network_egress_default_deny", policy.network_egress_default_deny},
+      {"requires_container_sandbox", policy.requires_container_sandbox},
+      {"routing_reason", policy.routing_reason},
+      {"cache_policy", {
+                           {"shared_toolchain_read_only", policy.cache_policy.shared_toolchain_read_only},
+                           {"shared_source_read_only", policy.cache_policy.shared_source_read_only},
+                           {"shared_registry_read_only", policy.cache_policy.shared_registry_read_only},
+                           {"worker_local_reuse", policy.cache_policy.worker_local_reuse},
+                           {"shared_cache_promotion_eligible", policy.cache_policy.shared_cache_promotion_eligible},
+                           {"promotion_policy", policy.cache_policy.promotion_policy},
+                       }},
+      {"worker_pool_key", BuildWorkerPoolKeyPayload(policy.worker_pool_key)},
   };
 }
 
@@ -171,11 +221,15 @@ int PrintGlobalHelp()
       << "  spio [--help] [--version] [--json] <command> [command-args...]\n\n"
       << "commands:\n"
       << "  machine-info [--json]\n"
+      << "  cloud status [--json] [--manifest-path <path>]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
       << "  use <binary|build> [--manifest-path <path>]\n"
       << "  set channel [as] <stable|nightly> [--manifest-path <path>]\n"
       << "  set build [as] <minimal> [--manifest-path <path>]\n"
+      << "  set risk [as] <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]\n"
+      << "  set lane [as] <isolated|warm-shared> [--manifest-path <path>]\n"
+      << "  set security [as] <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]\n"
       << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
@@ -200,6 +254,10 @@ int PrintCommandUsage(std::string_view command)
   {
     std::cout << "usage: spio machine-info [--json]\n";
   }
+  else if (command == "cloud")
+  {
+    std::cout << "usage: spio cloud status [--json] [--manifest-path <path>]\n";
+  }
   else if (command == "new")
   {
     std::cout << "usage: spio new <package-name> [directory] [--lib|--bin]\n";
@@ -217,6 +275,9 @@ int PrintCommandUsage(std::string_view command)
     std::cout << "usage:\n";
     std::cout << "  spio set channel as <stable|nightly> [--manifest-path <path>]\n";
     std::cout << "  spio set build as <minimal> [--manifest-path <path>]\n";
+    std::cout << "  spio set risk as <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]\n";
+    std::cout << "  spio set lane as <isolated|warm-shared> [--manifest-path <path>]\n";
+    std::cout << "  spio set security as <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]\n";
   }
   else if (command == "check")
   {
@@ -706,6 +767,7 @@ int HandleUse(const std::vector<std::string> &args, bool as_json)
         .manifest_path = manifest_path,
         .mode = mode,
     });
+    const spio::CloudExecutionPolicy cloud_policy = spio::ResolveCloudExecutionPolicy(state);
     json payload = {
         {"command", "use"},
         {"message", "set project toolchain mode to " + state.mode},
@@ -714,6 +776,10 @@ int HandleUse(const std::vector<std::string> &args, bool as_json)
         {"mode", state.mode},
         {"channel", state.channel},
         {"build_mode", state.build_mode},
+        {"risk_class", state.risk_class},
+        {"execution_lane", state.preferred_execution_lane},
+        {"security_profile", state.security_profile},
+        {"cloud", BuildCloudPolicyPayload(cloud_policy)},
     };
     if (state.source_revision.has_value())
     {
@@ -781,14 +847,27 @@ int HandleSet(const std::vector<std::string> &args, bool as_json)
   {
     update.build_mode = value;
   }
+  else if (subject == "risk")
+  {
+    update.risk_class = value;
+  }
+  else if (subject == "lane")
+  {
+    update.preferred_execution_lane = value;
+  }
+  else if (subject == "security")
+  {
+    update.security_profile = value;
+  }
   else
   {
-    return EmitError({"UsageError", spio::kExitUsage, "set supports only 'channel' or 'build'", "set"}, as_json);
+    return EmitError({"UsageError", spio::kExitUsage, "set supports only 'channel', 'build', 'risk', 'lane', or 'security'", "set"}, as_json);
   }
 
   try
   {
     const spio::ProjectToolchainState state = spio::UpdateProjectToolchainState(update);
+    const spio::CloudExecutionPolicy cloud_policy = spio::ResolveCloudExecutionPolicy(state);
     json payload = {
         {"command", "set"},
         {"message", "updated project " + subject + " to " + value},
@@ -797,6 +876,10 @@ int HandleSet(const std::vector<std::string> &args, bool as_json)
         {"mode", state.mode},
         {"channel", state.channel},
         {"build_mode", state.build_mode},
+        {"risk_class", state.risk_class},
+        {"execution_lane", state.preferred_execution_lane},
+        {"security_profile", state.security_profile},
+        {"cloud", BuildCloudPolicyPayload(cloud_policy)},
     };
     if (state.source_revision.has_value())
     {
@@ -812,6 +895,89 @@ int HandleSet(const std::vector<std::string> &args, bool as_json)
   {
     return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "set"}, as_json);
   }
+}
+
+int HandleCloudStatus(const std::vector<std::string> &args, bool as_json)
+{
+  if (!as_json)
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "cloud status currently requires --json", "cloud status"}, as_json);
+  }
+
+  fs::path manifest_path = "spio.toml";
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", spio::kExitUsage, "--manifest-path requires a value", "cloud status"}, as_json);
+      }
+      manifest_path = args[index];
+    }
+    else
+    {
+      return EmitError({"UsageError", spio::kExitUsage, "unexpected argument for cloud status: " + args[index], "cloud status"}, as_json);
+    }
+  }
+
+  try
+  {
+    (void) spio::LoadManifest(manifest_path);
+    const spio::ProjectToolchainState state = spio::LoadProjectToolchainState(manifest_path);
+    const spio::CloudExecutionPolicy cloud_policy = spio::ResolveCloudExecutionPolicy(state);
+    return EmitSuccess(
+        {
+            {"command", "cloud status"},
+            {"message", "resolved cloud execution policy for " + state.manifest_path.string()},
+            {"manifest_path", state.manifest_path.string()},
+            {"toolchain_state_path", state.state_path.string()},
+            {"toolchain_mode", state.mode},
+            {"channel", state.channel},
+            {"build_mode", state.build_mode},
+            {"risk_class", state.risk_class},
+            {"preferred_execution_lane", state.preferred_execution_lane},
+            {"security_profile", state.security_profile},
+            {"supported_execution_lanes", json::array({"isolated", "warm-shared"})},
+            {"supported_risk_classes", json::array({"trusted-internal", "partner-controlled", "untrusted-user"})},
+            {"supported_security_profiles", json::array({"sandbox-default", "partner-restricted", "trusted-warm"})},
+            {"cloud", BuildCloudPolicyPayload(cloud_policy)},
+        },
+        as_json);
+  }
+  catch (const spio::ValidationError &err)
+  {
+    return EmitError({"ManifestError", spio::kExitManifest, err.what(), "cloud status"}, as_json);
+  }
+  catch (const spio::ToolError &err)
+  {
+    return EmitError({"ToolError", spio::kExitToolInstall, err.what(), "cloud status"}, as_json);
+  }
+}
+
+int HandleCloud(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("cloud");
+  }
+  if (args.empty())
+  {
+    return EmitError({"UsageError", spio::kExitUsage, "cloud requires a subcommand", "cloud"}, as_json);
+  }
+
+  const std::string subcommand = NormalizeSetKeyword(args.front());
+  std::vector<std::string> tail(args.begin() + 1, args.end());
+  if (subcommand == "status")
+  {
+    if (tail.size() == 1 && tail.front() == "--help")
+    {
+      return PrintCommandUsage("cloud");
+    }
+    return HandleCloudStatus(tail, as_json);
+  }
+
+  return EmitError({"UsageError", spio::kExitUsage, "cloud supports only the 'status' subcommand", "cloud"}, as_json);
 }
 
 int HandleCheck(const std::vector<std::string> &args, bool as_json)
@@ -1114,6 +1280,7 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
   {
     return EmitError({"UsageError", spio::kExitUsage, "build currently supports only the 'minimal' mode", std::string(command_name)}, as_json);
   }
+  const spio::CloudExecutionPolicy cloud_policy = spio::ResolveCloudExecutionPolicy(toolchain_state);
 
   const bool has_source_options =
       source_flags.assume_yes || !source_flags.allow_fetch || source_flags.non_interactive ||
@@ -1309,6 +1476,7 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
             {"intent", request.intent},
             {"locked", workflow_flags.locked},
             {"offline", workflow_flags.offline},
+            {"cloud", BuildCloudPolicyPayload(cloud_policy)},
         },
         as_json);
   }
@@ -1372,6 +1540,7 @@ int HandlePlanCommand(std::string_view command_name, std::string_view intent, bo
           {"intent", request.intent},
           {"locked", workflow_flags.locked},
           {"offline", workflow_flags.offline},
+          {"cloud", BuildCloudPolicyPayload(cloud_policy)},
           {"styio", compatibility_payload},
       },
       as_json);
@@ -2669,6 +2838,10 @@ int RunCli(const std::vector<std::string> &argv)
     }
     std::cout << BuildMachineInfoPayload().dump() << '\n';
     return kExitSuccess;
+  }
+  if (command == "cloud")
+  {
+    return HandleCloud(args, global_json);
   }
   if (command == "new")
   {

@@ -25,7 +25,7 @@ gtest_discover_tests(spio_native_tests DISCOVERY_TIMEOUT 30)
 
 add_test(
   NAME spio_cli_machine_info_json
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" machine-info --json | grep -q '\"implementation_language\":\"c++\"'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"cloud_execution_policy\":\\[1\\]'"
 )
 
 add_test(
@@ -90,7 +90,12 @@ add_test(
 
 add_test(
   NAME spio_cli_set_help
-  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" set --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio set channel as <stable\\|nightly> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set build as <minimal> \\[--manifest-path <path>\\]$'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" set --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio set channel as <stable\\|nightly> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set build as <minimal> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set risk as <trusted-internal\\|partner-controlled\\|untrusted-user> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set lane as <isolated\\|warm-shared> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set security as <sandbox-default\\|partner-restricted\\|trusted-warm> \\[--manifest-path <path>\\]$'"
+)
+
+add_test(
+  NAME spio_cli_cloud_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" cloud --help | grep -q '^usage: spio cloud status \\[--json\\] \\[--manifest-path <path>\\]$'"
 )
 
 add_test(

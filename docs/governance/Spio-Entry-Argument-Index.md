@@ -46,11 +46,15 @@ spio [--help] [--version] [--json] <command> [command-args...]
 ### Implemented Native Commands
 
 - `spio machine-info [--json]`
+- `spio cloud status --json [--manifest-path <path>]`
 - `spio new <package-name> [directory] [--lib|--bin]`
 - `spio init [--name <package-name>] [--lib|--bin]`
 - `spio use <binary|build> [--manifest-path <path>]`
 - `spio set channel [as] <stable|nightly> [--manifest-path <path>]`
 - `spio set build [as] <minimal> [--manifest-path <path>]`
+- `spio set risk [as] <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]`
+- `spio set lane [as] <isolated|warm-shared> [--manifest-path <path>]`
+- `spio set security [as] <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]`
 - `spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]`
 - `spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]`
 - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
@@ -83,6 +87,34 @@ Rules:
 - output is machine-readable JSON in the current native core
 - `--json` is accepted as the explicit compatibility spelling
 - no other command-specific arguments are valid
+
+### `cloud status`
+
+Canonical form:
+
+```text
+spio cloud status --json [--manifest-path <path>]
+```
+
+Arguments:
+
+- `status`
+  - required subcommand
+  - prints the resolved local cloud execution policy
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state
+  - defaults to `spio.toml`
+
+Behavior summary:
+
+- validates the selected manifest
+- loads or initializes adjacent `spio-toolchain.lock`
+- resolves local cloud policy from project-local state
+- reports both persisted preferences and resolved execution policy
 
 ### `new`
 
@@ -164,6 +196,9 @@ Canonical forms:
 ```text
 spio set channel as <stable|nightly> [--manifest-path <path>]
 spio set build as <minimal> [--manifest-path <path>]
+spio set risk as <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]
+spio set lane as <isolated|warm-shared> [--manifest-path <path>]
+spio set security as <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]
 ```
 
 Compatibility forms accepted by the parser:
@@ -171,6 +206,9 @@ Compatibility forms accepted by the parser:
 ```text
 spio set channel <stable|nightly> [--manifest-path <path>]
 spio set build <minimal> [--manifest-path <path>]
+spio set risk <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]
+spio set lane <isolated|warm-shared> [--manifest-path <path>]
+spio set security <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]
 ```
 
 Arguments:
@@ -179,6 +217,12 @@ Arguments:
   - selects the project-local release channel
 - `build`
   - selects the project-local build mode
+- `risk`
+  - selects the project-local cloud risk class
+- `lane`
+  - selects the project-local preferred execution lane
+- `security`
+  - selects the project-local security profile
 - `as`
   - optional for parsing compatibility
   - official docs, help output, and diagnostics keep the `as` spelling
@@ -186,6 +230,12 @@ Arguments:
   - valid values for `channel`
 - `<minimal>`
   - the only currently supported build mode
+- `<trusted-internal|partner-controlled|untrusted-user>`
+  - valid values for `risk`
+- `<isolated|warm-shared>`
+  - valid values for `lane`
+- `<sandbox-default|partner-restricted|trusted-warm>`
+  - valid values for `security`
 - `--manifest-path <path>`
   - optional
   - selected project manifest used to locate the project-local toolchain state
@@ -197,6 +247,9 @@ Behavior summary:
 - writes or refreshes `<selected-manifest-dir>/spio-toolchain.lock`
 - `spio set channel as ...` updates the selected project release channel for both `binary` and `build` mode
 - `spio set build as minimal` persists the current build mode default used by bare `spio build`
+- `spio set risk as ...` persists the project-local cloud risk class
+- `spio set lane as ...` persists the preferred execution lane
+- `spio set security as ...` persists the project-local security profile
 - does not modify the adjacent `spio.lock`
 
 ### `check`

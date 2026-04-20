@@ -33,6 +33,10 @@ std::string RenderToolchainState(const spio::ProjectToolchainState &state)
   content += "mode = \"" + state.mode + "\"\n";
   content += "channel = \"" + state.channel + "\"\n";
   content += "build = \"" + state.build_mode + "\"\n";
+  content += "\n[cloud]\n";
+  content += "risk = \"" + state.risk_class + "\"\n";
+  content += "lane = \"" + state.preferred_execution_lane + "\"\n";
+  content += "security = \"" + state.security_profile + "\"\n";
   if (state.source_revision.has_value())
   {
     content += "\n[source]\n";
@@ -105,6 +109,22 @@ ProjectToolchainState LoadProjectToolchainState(const fs::path &manifest_path)
     state.build_mode = value->get();
   }
 
+  if (const toml::table *cloud_table = doc["cloud"].as_table(); cloud_table != nullptr)
+  {
+    if (const auto value = cloud_table->get_as<std::string>("risk"); value != nullptr && !value->get().empty())
+    {
+      state.risk_class = value->get();
+    }
+    if (const auto value = cloud_table->get_as<std::string>("lane"); value != nullptr && !value->get().empty())
+    {
+      state.preferred_execution_lane = value->get();
+    }
+    if (const auto value = cloud_table->get_as<std::string>("security"); value != nullptr && !value->get().empty())
+    {
+      state.security_profile = value->get();
+    }
+  }
+
   if (const toml::table *source_table = doc["source"].as_table(); source_table != nullptr)
   {
     if (const auto value = source_table->get_as<std::string>("revision"); value != nullptr && !value->get().empty())
@@ -116,6 +136,9 @@ ProjectToolchainState LoadProjectToolchainState(const fs::path &manifest_path)
   RequireAllowedValue(state.mode, {"binary", "build"}, "toolchain mode");
   RequireAllowedValue(state.channel, {"stable", "nightly"}, "toolchain channel");
   RequireAllowedValue(state.build_mode, {"minimal"}, "build mode");
+  RequireAllowedValue(state.risk_class, {"trusted-internal", "partner-controlled", "untrusted-user"}, "cloud risk class");
+  RequireAllowedValue(state.preferred_execution_lane, {"isolated", "warm-shared"}, "cloud execution lane");
+  RequireAllowedValue(state.security_profile, {"sandbox-default", "partner-restricted", "trusted-warm"}, "cloud security profile");
   return state;
 }
 
@@ -139,6 +162,18 @@ ProjectToolchainState UpdateProjectToolchainState(const ToolchainStateUpdate &up
   {
     state.build_mode = *update.build_mode;
   }
+  if (update.risk_class.has_value())
+  {
+    state.risk_class = *update.risk_class;
+  }
+  if (update.preferred_execution_lane.has_value())
+  {
+    state.preferred_execution_lane = *update.preferred_execution_lane;
+  }
+  if (update.security_profile.has_value())
+  {
+    state.security_profile = *update.security_profile;
+  }
   if (update.source_revision.has_value())
   {
     state.source_revision = update.source_revision;
@@ -147,6 +182,9 @@ ProjectToolchainState UpdateProjectToolchainState(const ToolchainStateUpdate &up
   RequireAllowedValue(state.mode, {"binary", "build"}, "toolchain mode");
   RequireAllowedValue(state.channel, {"stable", "nightly"}, "toolchain channel");
   RequireAllowedValue(state.build_mode, {"minimal"}, "build mode");
+  RequireAllowedValue(state.risk_class, {"trusted-internal", "partner-controlled", "untrusted-user"}, "cloud risk class");
+  RequireAllowedValue(state.preferred_execution_lane, {"isolated", "warm-shared"}, "cloud execution lane");
+  RequireAllowedValue(state.security_profile, {"sandbox-default", "partner-restricted", "trusted-warm"}, "cloud security profile");
 
   WriteTextFile(state.state_path, RenderToolchainState(state));
   state.state_file_exists = true;

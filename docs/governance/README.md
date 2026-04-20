@@ -2,12 +2,13 @@
 
 **Purpose:** Hold normative `spio` rules. These files define stable contracts, policy, and compatibility constraints.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Scope
 
 - version decoupling rules
 - CLI contract
+- cloud execution policy contract
 - entrypoint and argument index
 - manifest and lockfile conventions
 - registry repository contract

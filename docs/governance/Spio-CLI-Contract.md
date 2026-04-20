@@ -14,6 +14,7 @@ The intended public command set is:
 
 - `spio new`
 - `spio init`
+- `spio cloud`
 - `spio use`
 - `spio set`
 - `spio add`
@@ -96,6 +97,10 @@ spio use build --manifest-path path/to/spio.toml
 spio set channel as stable --manifest-path path/to/spio.toml
 spio set channel as nightly --manifest-path path/to/spio.toml
 spio set build as minimal --manifest-path path/to/spio.toml
+spio set risk as trusted-internal --manifest-path path/to/spio.toml
+spio set lane as warm-shared --manifest-path path/to/spio.toml
+spio set security as trusted-warm --manifest-path path/to/spio.toml
+spio cloud status --json --manifest-path path/to/spio.toml
 ```
 
 Local compile-plan emission is also part of the active command surface:
@@ -139,6 +144,8 @@ This is the package-manager-side self-description endpoint. It reports:
 - `supported_contracts.project_graph` reports `[1]`
 - `supported_contracts.toolchain_state` reports `[1]`
 - `supported_contracts.workflow_success_payloads` reports `[1]`
+- `supported_contracts.cloud_execution_policy` reports `[1]`
+- `supported_contracts.worker_pool_keys` reports `[1]`
 
 Phase-2 rule:
 
@@ -164,8 +171,25 @@ Phase-2 rule:
 - `receipt.json`
 - `diagnostics.jsonl` path
 - captured stdout/stderr
+- resolved `cloud_execution_policy v1`
 
-### 3.4 Supporting JSON Success Commands
+### 3.4 `spio cloud status --json`
+
+- `spio cloud status --json` publishes `cloud_execution_policy v1`
+- project-local persisted values include:
+  - `toolchain_mode`
+  - `channel`
+  - `build_mode`
+  - `risk_class`
+  - `preferred_execution_lane`
+  - `security_profile`
+- resolved values include:
+  - `execution_lane`
+  - `worker_trust_tier`
+  - `cache_policy`
+  - `worker_pool_key`
+
+### 3.5 Supporting JSON Success Commands
 
 - spio --json fetch --manifest-path path/to/spio.toml ...
 - spio --json tool install --styio-bin /path/to/styio
@@ -284,6 +308,10 @@ Optional keys:
 - `spio use <binary|build>` writes a project-local `spio-toolchain.lock` beside the selected manifest
 - `spio set channel as <stable|nightly>` updates the project-local release channel in `spio-toolchain.lock`
 - `spio set build as minimal` updates the project-local build mode in `spio-toolchain.lock`
+- `spio set risk as <trusted-internal|partner-controlled|untrusted-user>` updates the project-local cloud risk class in `spio-toolchain.lock`
+- `spio set lane as <isolated|warm-shared>` updates the project-local preferred execution lane in `spio-toolchain.lock`
+- `spio set security as <sandbox-default|partner-restricted|trusted-warm>` updates the project-local security profile in `spio-toolchain.lock`
+- `spio cloud status --json` resolves the active cloud execution policy from project-local state without requiring a published external compiler
 - `spio check` and `spio build`, `spio run`, or `spio test` in `binary` mode resolve compilers in this order:
   - explicit `--styio-bin <path>`
   - `SPIO_STYIO_BIN`
@@ -307,6 +335,11 @@ Optional keys:
 - in `binary` mode, non-dry-run `spio test` follows the same published compile-plan gate as `spio build`
 - in `build` mode, non-dry-run `spio build`, `spio run`, and `spio test` use the locally built compiler path produced from the selected or fetched source tree
 - source-build mode bypasses the published binary compatibility matrix and instead uses the locally built compiler revision recorded in `spio-toolchain.lock`
+- the current native baseline resolves cloud execution policy locally:
+  - `untrusted-user` always resolves to `isolated`
+  - `partner-controlled` currently resolves to `isolated` even if `warm-shared` is preferred
+  - `trusted-internal` may keep `warm-shared`
+- workflow success payloads for `spio build`, `spio run`, and `spio test` must include the resolved cloud policy object so later remote execution can reuse the same semantics
 - compile-plan generation currently supports only explicit `lib`, `bin`, and `test` targets
 - compile-plan generation may reject graphs that are otherwise resolvable when compile-plan v1 cannot represent them, such as cyclic graphs or mixed toolchain tuples
 

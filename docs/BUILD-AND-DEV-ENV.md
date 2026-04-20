@@ -64,7 +64,17 @@ Select a project toolchain mode and defaults:
 ./scripts/spio set channel as stable --manifest-path path/to/spio.toml
 ./scripts/spio set channel as nightly --manifest-path path/to/spio.toml
 ./scripts/spio set build as minimal --manifest-path path/to/spio.toml
+./scripts/spio set risk as trusted-internal --manifest-path path/to/spio.toml
+./scripts/spio set lane as warm-shared --manifest-path path/to/spio.toml
+./scripts/spio set security as trusted-warm --manifest-path path/to/spio.toml
+./scripts/spio cloud status --json --manifest-path path/to/spio.toml
 ```
+
+Cloud execution notes:
+
+1. The tracked native core currently exposes a local cloud-execution contract baseline rather than a remote scheduler.
+2. `risk`, `lane`, and `security` are persisted in `spio-toolchain.lock`.
+3. The resolved `cloud` policy may downgrade a preferred lane; for example, `untrusted-user` always resolves to `isolated`.
 
 Run the project build flow:
 

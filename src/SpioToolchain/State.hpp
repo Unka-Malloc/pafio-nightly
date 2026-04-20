@@ -15,6 +15,9 @@ struct ProjectToolchainState
   std::string mode = "binary";
   std::string channel = "stable";
   std::string build_mode = "minimal";
+  std::string risk_class = "untrusted-user";
+  std::string preferred_execution_lane = "isolated";
+  std::string security_profile = "sandbox-default";
   std::optional<std::string> source_revision;
 };
 
@@ -24,6 +27,9 @@ struct ToolchainStateUpdate
   std::optional<std::string> mode;
   std::optional<std::string> channel;
   std::optional<std::string> build_mode;
+  std::optional<std::string> risk_class;
+  std::optional<std::string> preferred_execution_lane;
+  std::optional<std::string> security_profile;
   std::optional<std::string> source_revision;
 };
 

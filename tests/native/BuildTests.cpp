@@ -377,6 +377,8 @@ TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
   EXPECT_EQ(payload.at("mode").get<std::string>(), "dry-run");
   EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
+  EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "isolated");
+  EXPECT_EQ(payload.at("cloud").at("worker_pool_key").at("toolchain_mode").get<std::string>(), "build");
 }
 
 TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
@@ -436,10 +438,80 @@ TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
+  EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "isolated");
   EXPECT_EQ(payload.at("styio").at("mode").get<std::string>(), "build");
   EXPECT_EQ(payload.at("styio").at("source_root").get<std::string>(), CanonicalAbsolutePath(root / "styio-source").string());
   EXPECT_TRUE(fs::exists(payload.at("styio").at("compiler_binary").get<std::string>()));
   EXPECT_NE(ReadFile(root / "project/spio-toolchain.lock").find("[source]"), std::string::npos);
+}
+
+TEST(BuildCliTests, DryRunBuildReportsWarmSharedCloudPolicyForTrustedInternalProjects)
+{
+  const fs::path root = MakeTempDir("build-dry-run-warm-shared-cloud");
+  WriteFile(
+      root / "spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
+
+  ASSERT_EQ(
+      spio::RunCli({
+          "set",
+          "risk",
+          "as",
+          "trusted-internal",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+  ASSERT_EQ(
+      spio::RunCli({
+          "set",
+          "lane",
+          "as",
+          "warm-shared",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+  ASSERT_EQ(
+      spio::RunCli({
+          "set",
+          "security",
+          "as",
+          "trusted-warm",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "build",
+      "minimal",
+      "--manifest-path",
+      (root / "spio.toml").string(),
+      "--dry-run",
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "warm-shared");
+  EXPECT_EQ(payload.at("cloud").at("security_profile").get<std::string>(), "trusted-warm");
+  EXPECT_EQ(payload.at("cloud").at("worker_pool_key").at("execution_lane").get<std::string>(), "warm-shared");
 }
 
 TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)

@@ -1,5 +1,6 @@
 set(SPIO_CORE_SOURCES
     SpioCLI/CLI.cpp
+    SpioCloud/Execution.cpp
     SpioCompat/Compat.cpp
     SpioCore/Paths.cpp
     SpioCore/Sha256.cpp

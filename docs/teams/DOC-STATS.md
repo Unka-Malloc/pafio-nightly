@@ -16,11 +16,11 @@
 | Team | Document | Word count | Character count |
 |------|----------|------------|-----------------|
 | Coordination | [COORDINATION-RUNBOOK.md](./COORDINATION-RUNBOOK.md) | 871 | 3,560 |
-| Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 448 | 1,924 |
+| Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 466 | 2,016 |
 | Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | 293 | 1,387 |
-| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 395 | 1,803 |
-| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 496 | 1,911 |
-| **Total** | Team runbooks only | **2,503** | **10,585** |
+| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 418 | 1,930 |
+| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 514 | 1,978 |
+| **Total** | Team runbooks only | **2,562** | **10,871** |
 
 ## Support File Size
 
