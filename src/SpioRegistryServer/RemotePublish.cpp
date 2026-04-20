@@ -3,7 +3,6 @@
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Sha256.hpp"
 
-#include <array>
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
@@ -17,110 +16,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-struct HttpResponse
-{
-  int status_code = 0;
-  std::string body;
-};
-
-ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::PublishError("failed to create pipes for remote registry publish");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::PublishError("failed to fork curl for remote registry publish");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execvp(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](const int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else
-  {
-    result.exit_code = 1;
-  }
-  return result;
-}
-
-std::string TrimTrailingNewline(std::string text)
-{
-  while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
-  {
-    text.pop_back();
-  }
-  return text;
-}
 
 std::string CurrentUtcTimestamp()
 {
@@ -188,9 +88,7 @@ fs::path MakeTempPath(std::string_view suffix)
 {
   static uint64_t counter = 0;
   ++counter;
-  return fs::temp_directory_path() /
-         ("spio-http-registry-" + std::to_string(static_cast<long long>(getpid())) + "-" + std::to_string(counter) +
-          std::string(suffix));
+  return fs::temp_directory_path() / ("spio-http-registry-" + std::to_string(counter) + std::string(suffix));
 }
 
 void WriteFileAtomically(const fs::path &path, std::string_view content, const std::string &context)
@@ -217,80 +115,21 @@ void WriteFileAtomically(const fs::path &path, std::string_view content, const s
   }
 }
 
-HttpResponse PerformHttpRequest(
+spio::RegistryHttpResponse PerformHttpRequest(
+    const spio::RegistryHttpTransport &transport,
     const std::string &method,
     const std::string &url,
     const std::vector<std::string> &request_headers,
     const std::optional<fs::path> &upload_path = std::nullopt,
     const std::optional<std::string> &content_type = std::nullopt)
 {
-  const fs::path body_path = MakeTempPath(".body");
-  std::vector<std::string> args{
-      "-sS",
-      "-L",
-      "-o",
-      body_path.string(),
-      "-w",
-      "%{http_code}",
-  };
-  if (method == "HEAD")
-  {
-    args.push_back("-I");
-  }
-  else
-  {
-    args.push_back("-X");
-    args.push_back(method);
-  }
-  if (content_type.has_value())
-  {
-    args.push_back("-H");
-    args.push_back("Content-Type: " + *content_type);
-  }
-  for (const std::string &header : request_headers)
-  {
-    args.push_back("-H");
-    args.push_back(header);
-  }
-  if (upload_path.has_value())
-  {
-    args.push_back("--upload-file");
-    args.push_back(upload_path->string());
-  }
-  args.push_back(url);
-
-  const ChildProcessResult result = RunChildProcess("curl", args);
-  std::string body;
-  if (fs::exists(body_path))
-  {
-    std::ifstream in(body_path, std::ios::binary);
-    std::ostringstream buffer;
-    buffer << in.rdbuf();
-    body = buffer.str();
-    fs::remove(body_path);
-  }
-
-  if (result.exit_code != 0)
-  {
-    throw spio::PublishError("curl failed for remote registry request: " + method + " " + url + ": " +
-                             TrimTrailingNewline(result.stderr_text));
-  }
-
-  const std::string status_text = TrimTrailingNewline(result.stdout_text);
-  int status_code = 0;
-  try
-  {
-    status_code = std::stoi(status_text);
-  }
-  catch (const std::exception &)
-  {
-    throw spio::PublishError("curl did not report a valid HTTP status for remote registry request: " + method + " " + url);
-  }
-
-  return {
-      .status_code = status_code,
-      .body = std::move(body),
-  };
+  return transport.Perform({
+      .method = method,
+      .url = url,
+      .request_headers = request_headers,
+      .upload_path = upload_path,
+      .content_type = content_type,
+  });
 }
 
 std::string BuildUrl(const std::string &registry_root, const std::string &relative_path)
@@ -344,10 +183,13 @@ json BuildVersionEntry(
   };
 }
 
-void EnsureRemoteRegistryMarker(const std::string &registry_root, const std::vector<std::string> &request_headers)
+void EnsureRemoteRegistryMarker(
+    const spio::RegistryHttpTransport &transport,
+    const std::string &registry_root,
+    const std::vector<std::string> &request_headers)
 {
   const std::string marker_url = BuildUrl(registry_root, "spio-registry.json");
-  const HttpResponse response = PerformHttpRequest("GET", marker_url, request_headers);
+  const spio::RegistryHttpResponse response = PerformHttpRequest(transport, "GET", marker_url, request_headers);
   if (response.status_code == 200)
   {
     ValidateMarker(ParseJsonObject(response.body, "remote registry marker"), "remote registry marker");
@@ -370,11 +212,12 @@ void EnsureRemoteRegistryMarker(const std::string &registry_root, const std::vec
           "\n",
       "remote registry marker");
 
-  const HttpResponse put_response = PerformHttpRequest("PUT", marker_url, request_headers, marker_file, "application/json");
+  const spio::RegistryHttpResponse put_response =
+      PerformHttpRequest(transport, "PUT", marker_url, request_headers, marker_file, "application/json");
   fs::remove(marker_file);
   if (put_response.status_code == 409)
   {
-    const HttpResponse retry_response = PerformHttpRequest("GET", marker_url, request_headers);
+    const spio::RegistryHttpResponse retry_response = PerformHttpRequest(transport, "GET", marker_url, request_headers);
     if (retry_response.status_code == 200)
     {
       ValidateMarker(ParseJsonObject(retry_response.body, "remote registry marker"), "remote registry marker");
@@ -389,9 +232,12 @@ void EnsureRemoteRegistryMarker(const std::string &registry_root, const std::vec
   }
 }
 
-bool RemoteObjectExists(const std::string &url, const std::vector<std::string> &request_headers)
+bool RemoteObjectExists(
+    const spio::RegistryHttpTransport &transport,
+    const std::string &url,
+    const std::vector<std::string> &request_headers)
 {
-  const HttpResponse response = PerformHttpRequest("HEAD", url, request_headers);
+  const spio::RegistryHttpResponse response = PerformHttpRequest(transport, "HEAD", url, request_headers);
   if (response.status_code == 200)
   {
     return true;
@@ -405,6 +251,7 @@ bool RemoteObjectExists(const std::string &url, const std::vector<std::string> &
 }
 
 void UploadRemoteFile(
+    const spio::RegistryHttpTransport &transport,
     const std::string &url,
     const std::vector<std::string> &request_headers,
     const fs::path &source_path,
@@ -413,7 +260,8 @@ void UploadRemoteFile(
     const std::optional<std::string> &duplicate_message = std::nullopt,
     const bool allow_conflict = false)
 {
-  const HttpResponse response = PerformHttpRequest("PUT", url, request_headers, source_path, content_type);
+  const spio::RegistryHttpResponse response =
+      PerformHttpRequest(transport, "PUT", url, request_headers, source_path, content_type);
   if (response.status_code == 409 && allow_conflict)
   {
     return;
@@ -434,7 +282,9 @@ void UploadRemoteFile(
 namespace spio
 {
 
-HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest &request)
+HttpRegistryPublishResult PublishToHttpRegistry(
+    const HttpRegistryPublishRequest &request,
+    const RegistryHttpTransport &transport)
 {
   const std::string registry_root = NormalizeRegistryRoot(request.registry_root);
   if (!IsHttpRegistryRoot(registry_root))
@@ -443,7 +293,7 @@ HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest
   }
 
   const PublishResult candidate = PreparePublishCandidate(request.publish_request);
-  EnsureRemoteRegistryMarker(registry_root, request.request_headers);
+  EnsureRemoteRegistryMarker(transport, registry_root, request.request_headers);
 
   const std::string archive_sha256 = spio::Sha256File(candidate.archive_path);
   const std::string blob_relative_path = BlobRelativePath(archive_sha256);
@@ -459,15 +309,16 @@ HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest
     throw PublishError("failed to inspect archive size for remote registry publish: " + candidate.archive_path.string());
   }
 
-  if (RemoteObjectExists(entry_url, request.request_headers))
+  if (RemoteObjectExists(transport, entry_url, request.request_headers))
   {
     throw PublishError("package version is already published in the target remote registry: " + candidate.package_name + "@" +
                        candidate.package_version);
   }
 
-  if (!RemoteObjectExists(blob_url, request.request_headers))
+  if (!RemoteObjectExists(transport, blob_url, request.request_headers))
   {
     UploadRemoteFile(
+        transport,
         blob_url,
         request.request_headers,
         candidate.archive_path,
@@ -483,6 +334,7 @@ HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest
       BuildVersionEntry(candidate, blob_relative_path, archive_sha256, archive_size_bytes, published_at_utc).dump(2) + "\n",
       "remote registry entry");
   UploadRemoteFile(
+      transport,
       entry_url,
       request.request_headers,
       entry_file,
@@ -502,6 +354,11 @@ HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest
       .archive_size_bytes = archive_size_bytes,
       .published_at_utc = published_at_utc,
   };
+}
+
+HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest &request)
+{
+  return PublishToHttpRegistry(request, DefaultRegistryHttpTransport());
 }
 
 }  // namespace spio

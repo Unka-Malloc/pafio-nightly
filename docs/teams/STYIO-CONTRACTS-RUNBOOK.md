@@ -19,7 +19,7 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 ## Daily Workflow
 
 1. Treat published compiler interaction as a machine contract, not an internal source dependency.
-2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, and cloud execution-policy semantics.
+2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, and cloud execution-policy semantics, and keep machine-readable graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
 3. Keep handoff docs and interface gates aligned in the same checkpoint.
 4. Use `--styio-bin` health legs when validating the published binary path.
 

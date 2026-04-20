@@ -1,6 +1,7 @@
 #include "SpioCLI/CLI.hpp"
 #include "SpioCore/Errors.hpp"
 #include "SpioPublish/Publish.hpp"
+#include "SpioRegistryServer/Publish.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -16,6 +17,48 @@ using json = nlohmann::json;
 
 namespace
 {
+
+class ScriptedRegistryHttpTransport final : public spio::RegistryHttpTransport
+{
+public:
+  struct Step
+  {
+    std::string method;
+    int status_code = 0;
+    std::string body;
+  };
+
+  explicit ScriptedRegistryHttpTransport(std::vector<Step> steps)
+      : steps_(std::move(steps))
+  {
+  }
+
+  spio::RegistryHttpResponse Perform(const spio::RegistryHttpRequest &request) const override
+  {
+    requests_.push_back(request);
+    if (cursor_ >= steps_.size())
+    {
+      ADD_FAILURE() << "unexpected transport call: " << request.method << " " << request.url;
+      return {};
+    }
+    const Step &step = steps_[cursor_++];
+    EXPECT_EQ(request.method, step.method);
+    return {
+        .status_code = step.status_code,
+        .body = step.body,
+    };
+  }
+
+  const std::vector<spio::RegistryHttpRequest> &requests() const
+  {
+    return requests_;
+  }
+
+private:
+  std::vector<Step> steps_;
+  mutable size_t cursor_ = 0;
+  mutable std::vector<spio::RegistryHttpRequest> requests_;
+};
 
 fs::path MakeTempDir(const std::string &label)
 {
@@ -306,6 +349,57 @@ TEST(PublishCliTests, PublishesToFilesystemRegistry)
   EXPECT_EQ(entry.at("sha256").get<std::string>(), payload.at("sha256").get<std::string>());
   EXPECT_EQ(entry.at("dependencies").size(), 0U);
   EXPECT_EQ(entry.at("dev_dependencies").size(), 0U);
+}
+
+TEST(PublishTransportTests, RemotePublishUsesInjectedHttpTransport)
+{
+  const fs::path root = MakeTempDir("publish-http-transport");
+  WriteFile(
+      root / "spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+
+  ScriptedRegistryHttpTransport transport({
+      {"GET", 404, ""},
+      {"PUT", 201, ""},
+      {"HEAD", 404, ""},
+      {"HEAD", 404, ""},
+      {"PUT", 201, ""},
+      {"PUT", 201, ""},
+  });
+
+  const spio::HttpRegistryPublishResult result = spio::PublishToHttpRegistry(
+      {
+          .publish_request =
+              {
+                  .manifest_path = root / "spio.toml",
+              },
+          .registry_root = "https://registry.example.test",
+          .request_headers = {"X-Test: 1"},
+      },
+      transport);
+
+  EXPECT_EQ(result.candidate.package_name, "acme/app");
+  ASSERT_EQ(transport.requests().size(), 6U);
+  EXPECT_EQ(transport.requests()[0].url, "https://registry.example.test/spio-registry.json");
+  EXPECT_EQ(transport.requests()[1].method, "PUT");
+  EXPECT_TRUE(transport.requests()[1].upload_path.has_value());
+  EXPECT_EQ(transport.requests()[2].method, "HEAD");
+  EXPECT_EQ(transport.requests()[3].method, "HEAD");
+  EXPECT_EQ(transport.requests()[4].content_type.value_or(""), "application/x-tar");
+  EXPECT_EQ(transport.requests()[5].content_type.value_or(""), "application/json");
 }
 
 TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)

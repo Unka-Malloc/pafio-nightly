@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` registry and publish maintainers covering registry docs, publish/fetch flows, and promotion tooling.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Mission
 
@@ -16,9 +16,10 @@ Own registry transport and publish/promotion behavior without redefining core wo
 
 ## Daily Workflow
 
-1. Keep registry transport and promotion behavior documented in `docs/registry/`.
+1. Keep registry transport, promotion behavior, and the `RegistryHttpTransport` boundary documented in `docs/registry/`.
 2. Keep acceptance commands discoverable from the verification matrix and checkpoint health docs.
 3. Coordinate with Core / Workflow when publish/fetch behavior changes user-facing workflow outcomes.
+4. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `SpioCore::Process`.
 
 ## Change Classes
 

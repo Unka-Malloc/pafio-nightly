@@ -67,7 +67,10 @@ Select a project toolchain mode and defaults:
 ./scripts/spio set risk as trusted-internal --manifest-path path/to/spio.toml
 ./scripts/spio set lane as warm-shared --manifest-path path/to/spio.toml
 ./scripts/spio set security as trusted-warm --manifest-path path/to/spio.toml
+./scripts/spio project-graph --json --manifest-path path/to/spio.toml
 ./scripts/spio cloud status --json --manifest-path path/to/spio.toml
+./scripts/spio cloud plan --json build minimal --manifest-path path/to/spio.toml
+./scripts/spio tool status --json --manifest-path path/to/spio.toml
 ```
 
 Cloud execution notes:
@@ -75,6 +78,7 @@ Cloud execution notes:
 1. The tracked native core currently exposes a local cloud-execution contract baseline rather than a remote scheduler.
 2. `risk`, `lane`, and `security` are persisted in `spio-toolchain.lock`.
 3. The resolved `cloud` policy may downgrade a preferred lane; for example, `untrusted-user` always resolves to `isolated`.
+4. `spio cloud plan --json ...` renders the normalized request body shape that a future `POST /v1/build-jobs` control-plane endpoint must continue to accept.
 
 Run the project build flow:
 

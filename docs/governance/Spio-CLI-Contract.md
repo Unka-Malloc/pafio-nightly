@@ -14,6 +14,7 @@ The intended public command set is:
 
 - `spio new`
 - `spio init`
+- `spio project-graph`
 - `spio cloud`
 - `spio use`
 - `spio set`
@@ -30,6 +31,7 @@ The intended public command set is:
 - `spio pack`
 - `spio publish`
 - `spio tool install`
+- `spio tool status`
 - `spio tool use`
 - `spio tool pin`
 
@@ -52,6 +54,12 @@ Resolver-backed dependency tree rendering is part of the active command surface:
 
 ```text
 spio tree --manifest-path path/to/spio.toml
+```
+
+Resolver-backed project graph introspection is also part of the active command surface:
+
+```text
+spio project-graph --json --manifest-path path/to/spio.toml
 ```
 
 Project-local vendored snapshot materialization is also part of the active command surface:
@@ -85,6 +93,7 @@ Managed local compiler installation is also part of the active command surface:
 
 ```text
 spio tool install --styio-bin /path/to/styio
+spio tool status --json --manifest-path path/to/spio.toml
 spio tool use --version 0.0.5 --channel stable
 spio tool pin --version 0.0.5 --channel stable --manifest-path path/to/spio.toml
 ```
@@ -101,6 +110,7 @@ spio set risk as trusted-internal --manifest-path path/to/spio.toml
 spio set lane as warm-shared --manifest-path path/to/spio.toml
 spio set security as trusted-warm --manifest-path path/to/spio.toml
 spio cloud status --json --manifest-path path/to/spio.toml
+spio cloud plan --json build minimal --manifest-path path/to/spio.toml
 ```
 
 Local compile-plan emission is also part of the active command surface:
@@ -142,6 +152,7 @@ This is the package-manager-side self-description endpoint. It reports:
 - supported manifest and lockfile versions
 - supported machine contract versions
 - `supported_contracts.project_graph` reports `[1]`
+- `supported_contracts.build_job_request` reports `[1]`
 - `supported_contracts.toolchain_state` reports `[1]`
 - `supported_contracts.workflow_success_payloads` reports `[1]`
 - `supported_contracts.cloud_execution_policy` reports `[1]`
@@ -189,7 +200,20 @@ Phase-2 rule:
   - `cache_policy`
   - `worker_pool_key`
 
-### 3.5 Supporting JSON Success Commands
+### 3.5 `spio cloud plan --json`
+
+- `spio cloud plan --json` publishes `build_job_request v1`
+- the payload freezes the normalized request body shape for a future `POST /v1/build-jobs`
+- the request includes:
+  - `action`
+  - `toolchain`
+  - `profile`
+  - `workflow`
+  - `target`
+  - `source`
+  - resolved `cloud` policy
+
+### 3.6 Supporting JSON Success Commands
 
 - spio --json fetch --manifest-path path/to/spio.toml ...
 - spio --json tool install --styio-bin /path/to/styio

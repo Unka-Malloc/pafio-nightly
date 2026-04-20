@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SpioPublish/Publish.hpp"
+#include "SpioRegistryServer/HttpTransport.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -48,6 +49,9 @@ struct HttpRegistryPublishResult
 };
 
 RegistryPublishResult PublishToFilesystemRegistry(const RegistryPublishRequest &request);
+HttpRegistryPublishResult PublishToHttpRegistry(
+    const HttpRegistryPublishRequest &request,
+    const RegistryHttpTransport &transport);
 HttpRegistryPublishResult PublishToHttpRegistry(const HttpRegistryPublishRequest &request);
 
 }  // namespace spio

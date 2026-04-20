@@ -1,7 +1,16 @@
 set(SPIO_CORE_SOURCES
+    SpioApp/CloudApp.cpp
+    SpioApp/PackageApp.cpp
+    SpioApp/ToolApp.cpp
+    SpioApp/WorkflowApp.cpp
     SpioCLI/CLI.cpp
+    SpioCLI/MachineInfoContract.cpp
+    SpioCLI/Support.cpp
+    SpioCloud/Contract.cpp
     SpioCloud/Execution.cpp
+    SpioCloud/Job.cpp
     SpioCompat/Compat.cpp
+    SpioCore/Process.cpp
     SpioCore/Paths.cpp
     SpioCore/Sha256.cpp
     SpioManifest/Lockfile.cpp
@@ -11,9 +20,12 @@ set(SPIO_CORE_SOURCES
     SpioPublish/Publish.cpp
     SpioRegistryClient/Client.cpp
     SpioRegistryServer/FilesystemPublish.cpp
+    SpioRegistryServer/HttpTransport.cpp
     SpioRegistryServer/RemotePublish.cpp
+    SpioResolve/ProjectGraphContract.cpp
     SpioResolve/Resolver.cpp
     SpioSecurity/RegistrySecurity.cpp
+    SpioTool/Contract.cpp
     SpioTool/Install.cpp
     SpioToolchain/SourceBuild.cpp
     SpioToolchain/State.cpp

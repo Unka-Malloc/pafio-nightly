@@ -2,10 +2,10 @@
 
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 #include "SpioCore/Sha256.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
 
-#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -16,105 +16,11 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
-
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-ChildProcessResult RunChildProcess(const std::string &binary, const std::vector<std::string> &args)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::CacheError("failed to create pipes for registry process execution");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::CacheError("failed to fork registry process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execvp(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](const int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status))
-  {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else
-  {
-    result.exit_code = 1;
-  }
-  return result;
-}
-
-std::string TrimTrailingNewline(std::string text)
-{
-  while (!text.empty() && (text.back() == '\n' || text.back() == '\r'))
-  {
-    text.pop_back();
-  }
-  return text;
-}
 
 std::string NormalizeRegistryRoot(std::string value)
 {
@@ -282,12 +188,16 @@ std::string FetchUrlToString(const std::string &url, const std::vector<std::stri
     args.push_back(header);
   }
   args.push_back(url);
-  const ChildProcessResult result = RunChildProcess("curl", args);
+  const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+      .program = "curl",
+      .args = args,
+      .error_context = "registry process",
+  });
   if (result.exit_code != 0)
   {
     throw spio::FetchError(
         "failed to fetch registry url '" + url + "': " +
-        TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+        spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
   }
   return result.stdout_text;
 }
@@ -305,14 +215,18 @@ void FetchUrlToFile(const std::string &url, const fs::path &path, const std::vec
   args.push_back("-o");
   args.push_back(temp_path.string());
   args.push_back(url);
-  const ChildProcessResult result = RunChildProcess("curl", args);
+  const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+      .program = "curl",
+      .args = args,
+      .error_context = "registry process",
+  });
   if (result.exit_code != 0)
   {
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     throw spio::FetchError(
         "failed to download registry blob '" + url + "': " +
-        TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+        spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
   }
   std::error_code ec;
   fs::rename(temp_path, path, ec);
@@ -512,12 +426,16 @@ fs::path EnsureCheckout(const fs::path &spio_home, const RegistryEntry &entry)
   fs::create_directories(checkout_root);
 
   const fs::path blob_cache_path = BlobCachePath(spio_home, entry.sha256);
-  const ChildProcessResult extract = RunChildProcess("tar", {"-xf", blob_cache_path.string(), "-C", checkout_root.string()});
+  const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
+      .program = "tar",
+      .args = {"-xf", blob_cache_path.string(), "-C", checkout_root.string()},
+      .error_context = "registry process",
+  });
   if (extract.exit_code != 0)
   {
     throw spio::CacheError(
         "failed to extract registry blob '" + blob_cache_path.string() + "': " +
-        TrimTrailingNewline(extract.stderr_text.empty() ? extract.stdout_text : extract.stderr_text));
+        spio::TrimTrailingNewline(extract.stderr_text.empty() ? extract.stdout_text : extract.stderr_text));
   }
   const fs::path snapshot_root = DetectSnapshotRoot(checkout_root);
 

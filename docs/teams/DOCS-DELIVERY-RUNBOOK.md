@@ -27,7 +27,7 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 2. Regenerate `INDEX.md` files after docs-tree changes.
 3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
 4. Keep the shared `styio-spio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
-5. Keep the official command grammar consistent across docs: `spio use <mode>`, `spio set <subject> as <value>`, and `spio cloud status --json`.
+5. Keep the official command grammar consistent across docs: `spio use <mode>`, `spio set <subject> as <value>`, `spio project-graph --json`, `spio cloud status --json`, `spio cloud plan --json`, and `spio tool status --json`.
 
 ## Change Classes
 

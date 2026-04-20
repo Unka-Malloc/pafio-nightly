@@ -11,6 +11,7 @@ This document owns:
 - cloud execution policy terminology used by the native CLI
 - the project-local cloud preference fields recorded in `spio-toolchain.lock`
 - the JSON shape exposed through `spio cloud status --json`
+- the JSON shape exposed through `spio cloud plan --json`
 - the machine-readable cloud policy payload embedded in workflow success JSON
 - the worker-pool key dimensions that future remote execution must preserve
 
@@ -32,9 +33,15 @@ What is implemented today:
 - project-local persistence of cloud execution preferences in `spio-toolchain.lock`
 - deterministic policy resolution from toolchain mode, channel, build mode, risk class, preferred execution lane, and security profile
 - machine-readable introspection through `spio machine-info --json` and `spio cloud status --json`
+- machine-readable build-job request rendering through `spio cloud plan --json`
 - workflow success payloads that surface the resolved cloud execution policy
 
 The purpose of this baseline is to freeze the terminology and policy surface before remote execution is introduced.
+
+Implementation rules for the open-source native core:
+
+- `CloudBuildJobRequest` is created only through the domain factory that validates workflow invariants.
+- `spio cloud plan --json` and future workflow success payloads must serialize cloud policy and build-job payloads through shared contract serializers, not ad-hoc CLI JSON builders.
 
 ## Terms
 
@@ -112,6 +119,7 @@ The self-description endpoint must advertise:
 
 - `supported_contracts.cloud_execution_policy = [1]`
 - `supported_contracts.worker_pool_keys = [1]`
+- `supported_contracts.build_job_request = [1]`
 
 This only indicates that the local native core understands the cloud policy contract. It does **not** imply that a remote scheduler or distributed worker system is active.
 
@@ -137,6 +145,27 @@ This command must report at least:
 - `supported_security_profiles`
 - resolved `cloud` policy object
 
+### `spio cloud plan --json`
+
+Canonical form:
+
+```text
+spio cloud plan --json <build|run|test> ...
+```
+
+This command must report at least:
+
+- `command = "cloud plan"`
+- a top-level `job_request`
+- `job_request.schema_version = 1`
+- `job_request.api_path = "/v1/build-jobs"`
+- `job_request.action`
+- `job_request.toolchain`
+- `job_request.workflow`
+- `job_request.target`
+- `job_request.source`
+- resolved `job_request.cloud`
+
 ## Resolved Cloud Policy
 
 The resolved `cloud` object must include:
@@ -152,13 +181,16 @@ The resolved `cloud` object must include:
 
 `cache_policy` currently reports:
 
-- `shared_layers_read_only`
+- `shared_toolchain_read_only`
+- `shared_source_read_only`
+- `shared_registry_read_only`
 - `worker_local_reuse`
 - `shared_cache_promotion_eligible`
+- `promotion_policy`
 
 Normative baseline:
 
-- shared layers are always read-only
+- shared toolchain, source, and registry cache mounts are always read-only
 - worker-local reuse is allowed only for `warm-shared`
 - shared-cache promotion eligibility is currently true only for `trusted-internal`
 
@@ -167,7 +199,7 @@ Normative baseline:
 The worker-pool key dimensions are:
 
 - `platform`
-- `arch`
+- `architecture`
 - `toolchain_mode`
 - `channel`
 - `build_mode`

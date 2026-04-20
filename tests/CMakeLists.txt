@@ -10,13 +10,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 add_executable(spio_native_tests
-  native/BuildTests.cpp
+  native/BuildCloudTests.cpp
+  native/BuildPlanTests.cpp
+  native/BuildWorkflowCliTests.cpp
   native/LockTests.cpp
   native/ManifestTests.cpp
   native/PackTests.cpp
+  native/ProcessTests.cpp
   native/PublishTests.cpp
+  native/RunAndTestCliTests.cpp
   native/SecurityTests.cpp
-  native/ToolTests.cpp
+  native/ToolInstallTests.cpp
+  native/ToolPinTests.cpp
+  native/ToolchainStateTests.cpp
+  native/ToolStatusTests.cpp
   native/VendorTests.cpp
 )
 target_link_libraries(spio_native_tests PRIVATE spio_core GTest::gtest_main)
@@ -25,7 +32,7 @@ gtest_discover_tests(spio_native_tests DISCOVERY_TIMEOUT 30)
 
 add_test(
   NAME spio_cli_machine_info_json
-  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"cloud_execution_policy\":\\[1\\]'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"cloud_execution_policy\":\\[1\\]' && printf '%s\n' \"$out\" | grep -q '\"build_job_request\":\\[1\\]'"
 )
 
 add_test(
@@ -41,6 +48,11 @@ add_test(
 add_test(
   NAME spio_cli_machine_info_rejects_unknown_flag
   COMMAND bash -c "out_file=\$(mktemp) && err_file=\$(mktemp) && trap 'rm -f \"\$out_file\" \"\$err_file\"' EXIT && ! \"$<TARGET_FILE:spio>\" machine-info --bogus >\"\$out_file\" 2>\"\$err_file\" && grep -q 'machine-info accepts only --json' \"\$err_file\""
+)
+
+add_test(
+  NAME spio_cli_project_graph_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" project-graph --help | grep -q '^usage: spio project-graph --json \\[--manifest-path <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
 )
 
 add_test(
@@ -95,7 +107,7 @@ add_test(
 
 add_test(
   NAME spio_cli_cloud_help
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" cloud --help | grep -q '^usage: spio cloud status \\[--json\\] \\[--manifest-path <path>\\]$'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" cloud --help\n) && printf '%s\n' \"$out\" | grep -q '^usage: spio cloud <status|plan> ...$' && printf '%s\n' \"$out\" | grep -q '^  spio cloud status \\[--json\\] \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio cloud plan --json <build|run|test> \\[minimal\\] \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>|--lib|--test <name>\\] \\[--profile <dev|release>\\] \\[--source-root <path>\\] \\[--source-rev <rev>\\] \\[--yes|--no-fetch|--non-interactive\\] \\[--locked|--offline|--frozen\\]$'"
 )
 
 add_test(
@@ -115,7 +127,7 @@ add_test(
 
 add_test(
   NAME spio_cli_tool_install_help
-  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" tool --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio tool install --styio-bin <path>$' && printf '%s\n' \"$out\" | grep -q '^  spio tool use --version <compiler-version> \\[--channel <channel>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool pin (--version <compiler-version> \\[--channel <channel>\\] | --clear) \\[--manifest-path <path>\\]$'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" tool --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio tool install --styio-bin <path>$' && printf '%s\n' \"$out\" | grep -q '^  spio tool status --json \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool use --version <compiler-version> \\[--channel <channel>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool pin (--version <compiler-version> \\[--channel <channel>\\] | --clear) \\[--manifest-path <path>\\]$'"
 )
 
 add_test(

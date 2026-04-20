@@ -2,8 +2,8 @@
 
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 
-#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -13,21 +13,12 @@
 #include <string>
 #include <vector>
 
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 namespace fs = std::filesystem;
 
 namespace
 {
-
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
 
 uint64_t Fnv1a64(const std::string &text)
 {
@@ -68,76 +59,6 @@ std::string Slugify(const std::string &text)
   slug += "-";
   slug += Hex64(Fnv1a64(text));
   return slug;
-}
-
-ChildProcessResult RunChildProcess(const std::string &program, const std::vector<std::string> &args, const std::optional<fs::path> &workdir = std::nullopt)
-{
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0)
-  {
-    throw spio::ToolError("failed to create pipes for source-toolchain process");
-  }
-
-  const pid_t child = fork();
-  if (child < 0)
-  {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw spio::ToolError("failed to fork source-toolchain process");
-  }
-
-  if (child == 0)
-  {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    if (workdir.has_value() && chdir(workdir->c_str()) != 0)
-    {
-      _exit(127);
-    }
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(program.c_str()));
-    for (const std::string &arg : args)
-    {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-    execvp(program.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](int fd) {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0)
-    {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  result.exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-  return result;
 }
 
 std::string Trim(std::string text)
@@ -228,7 +149,12 @@ std::string TryResolveGitRevision(const fs::path &source_root)
   {
     return {};
   }
-  const ChildProcessResult result = RunChildProcess("git", {"rev-parse", "HEAD"}, source_root);
+  const spio::ProcessResult result = spio::RunProcess<spio::ToolError>({
+      .program = "git",
+      .args = {"rev-parse", "HEAD"},
+      .working_directory = source_root,
+      .error_context = "source-toolchain process",
+  });
   if (result.exit_code != 0)
   {
     return {};
@@ -238,7 +164,12 @@ std::string TryResolveGitRevision(const fs::path &source_root)
 
 void RunChecked(const std::string &program, const std::vector<std::string> &args, const std::optional<fs::path> &workdir, const std::string &label)
 {
-  const ChildProcessResult result = RunChildProcess(program, args, workdir);
+  const spio::ProcessResult result = spio::RunProcess<spio::ToolError>({
+      .program = program,
+      .args = args,
+      .working_directory = workdir,
+      .error_context = "source-toolchain process",
+  });
   if (result.exit_code != 0)
   {
     const std::string detail = Trim(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);

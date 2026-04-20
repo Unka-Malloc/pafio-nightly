@@ -73,7 +73,10 @@ Project-local workflow mode selection now uses:
 - `./scripts/spio set risk as trusted-internal|partner-controlled|untrusted-user`
 - `./scripts/spio set lane as isolated|warm-shared`
 - `./scripts/spio set security as sandbox-default|partner-restricted|trusted-warm`
+- `./scripts/spio project-graph --json`
 - `./scripts/spio cloud status --json`
+- `./scripts/spio cloud plan --json build minimal`
+- `./scripts/spio tool status --json`
 - `./scripts/spio build minimal`
 
 统一 docs/process 与交付入口分别为：

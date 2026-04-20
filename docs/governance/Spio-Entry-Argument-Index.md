@@ -46,7 +46,9 @@ spio [--help] [--version] [--json] <command> [command-args...]
 ### Implemented Native Commands
 
 - `spio machine-info [--json]`
+- `spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]`
 - `spio cloud status --json [--manifest-path <path>]`
+- `spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
 - `spio new <package-name> [directory] [--lib|--bin]`
 - `spio init [--name <package-name>] [--lib|--bin]`
 - `spio use <binary|build> [--manifest-path <path>]`
@@ -68,6 +70,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio pack [--manifest-path <path>] [--package <package-name>] [--output <path>]`
 - `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]`
 - `spio tool install --styio-bin <path>`
+- `spio tool status --json [--manifest-path <path>]`
 - `spio tool use --version <compiler-version> [--channel <channel>]`
 - `spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]`
 
@@ -87,6 +90,40 @@ Rules:
 - output is machine-readable JSON in the current native core
 - `--json` is accepted as the explicit compatibility spelling
 - no other command-specific arguments are valid
+
+### `project-graph`
+
+Canonical form:
+
+```text
+spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - path to the manifest file
+  - defaults to `spio.toml`
+- `--locked`
+  - optional
+  - requires the adjacent `spio.lock` to match the active graph
+- `--offline`
+  - optional
+  - forbids network fetches and uses only local cache or vendored snapshots
+- `--frozen`
+  - optional
+  - shorthand for `--locked` plus `--offline`
+
+Behavior summary:
+
+- validates the selected manifest
+- resolves the active `single-version-v1` graph
+- reports packages, dependency edges, targets, toolchain state, managed toolchains, lock state, vendor state, source state, and package distribution
+- embeds the resolved local cloud execution policy alongside the project-local toolchain state
 
 ### `cloud status`
 
@@ -115,6 +152,70 @@ Behavior summary:
 - loads or initializes adjacent `spio-toolchain.lock`
 - resolves local cloud policy from project-local state
 - reports both persisted preferences and resolved execution policy
+
+### `cloud plan`
+
+Canonical form:
+
+```text
+spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `plan`
+  - required subcommand
+  - renders a normalized control-plane job request
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `<build|run|test>`
+  - required action
+  - selects the workflow intent encoded in the job request
+- `[minimal]`
+  - optional build-mode selector
+  - only valid when the action is `build`
+- `--manifest-path <path>`
+  - optional
+  - defaults to `spio.toml`
+- `--package <package-name>`
+  - optional
+- `--bin <name>`
+  - optional
+  - valid for `build` and `run`
+- `--lib`
+  - optional
+  - valid only for `build`
+- `--test <name>`
+  - optional
+  - valid only for `test`
+- `--profile <dev|release>`
+  - optional
+- `--source-root <path>`
+  - optional
+  - valid only when the project uses `spio use build`
+- `--source-rev <rev>`
+  - optional
+  - valid only when the project uses `spio use build`
+- `--yes`
+  - optional
+- `--no-fetch`
+  - optional
+- `--non-interactive`
+  - optional
+- `--locked`
+  - optional
+- `--offline`
+  - optional
+- `--frozen`
+  - optional
+
+Behavior summary:
+
+- validates and normalizes the same target-selection grammar used by local `build/run/test`
+- resolves the project-local toolchain state and local cloud-execution policy
+- emits the frozen `build_job_request v1` request body for future `POST /v1/build-jobs`
+- does not execute the build and does not contact a remote scheduler
 
 ### `new`
 
@@ -877,6 +978,32 @@ Behavior summary:
   - `SPIO_STYIO_BIN`
   - nearest project-local `spio-toolchain.toml`
   - managed current compiler
+
+### `tool status`
+
+Canonical surface:
+
+```text
+spio tool status --json [--manifest-path <path>]
+```
+
+Arguments:
+
+- `--json`
+  - required in the current native core
+  - machine-readable success output is the only supported form
+- `--manifest-path <path>`
+  - optional
+  - selected project manifest used to locate the project-local toolchain state and pin
+  - defaults to omitting project-local state from the result
+
+Behavior summary:
+
+- reports `SPIO_HOME`
+- reports the active managed current compiler when present
+- reports all installed managed toolchains under `SPIO_HOME/tools/styio/`
+- reports the nearest project-local `spio-toolchain.toml` pin when a manifest path is supplied
+- reports the project-local `spio-toolchain.lock` state and resolved cloud policy when a manifest path is supplied
 
 ### `tool use`
 

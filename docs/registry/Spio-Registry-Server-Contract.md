@@ -2,7 +2,7 @@
 
 **Purpose:** Define the server-side write and origin behavior for registry publication without mixing it with client fetch/cache rules.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-20
 
 ## 1. Scope
 
@@ -13,6 +13,7 @@ This document owns:
 - write-root versus read-root separation rules
 - the public write-side security hook boundary only at the level of interface
 - immutable object expectations for marker, blob, and version-entry paths
+- the native write-side transport abstraction boundary
 
 Shared repository layout remains owned by [../governance/Spio-Registry-Repository-Contract.md](../governance/Spio-Registry-Repository-Contract.md).
 
@@ -44,6 +45,13 @@ Expected behavior:
 - `GET` serves the marker, entries, and blobs
 - `HEAD` lets the client check whether immutable objects already exist
 - `PUT` creates missing immutable objects at canonical paths
+
+Implementation boundary:
+
+- the tracked native core now routes remote publish through a `RegistryHttpTransport` interface
+- the default open-source implementation still uses a `curl`-backed transport
+- later async/userver-integrated or test transports must preserve the same immutable object semantics
+- callers must not couple publish orchestration directly to `fork/exec curl`
 
 The public command surface reserves these remote write-side security hooks:
 
