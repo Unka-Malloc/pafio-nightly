@@ -2,13 +2,14 @@
 
 **Purpose:** Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Who This Is For
 
 1. Contributors bringing up `spio` on a fresh Debian/Ubuntu VM or container.
 2. Contributors who need the common native build, test, and preflight commands.
-3. Contributors validating `spio` against an external `styio` binary through the public machine contract.
+3. Contributors switching projects between published binary mode and source-build mode.
+4. Contributors validating `spio` against a published external `styio` binary through the public machine contract.
 
 ## Fresh Machine Bootstrap
 
@@ -37,7 +38,8 @@ That installs the native C++20 and Python tooling used by the repository on Debi
 2. LLVM / Clang / LLD `18.1.x` on the standardized host toolchain, even though `spio` consumes `styio` through process boundaries rather than linking LLVM directly.
 3. CMake / CTest `3.31.6` for the standardized local and CI toolchain.
 4. Python `3.13.5` for preflight and verification scripts in the standardized validation pipeline.
-5. An external `styio` executable only when exercising compatibility and non-dry-run workflow handoff.
+5. A published external `styio` executable only when exercising compatibility and binary-mode non-dry-run workflow handoff.
+6. `git` when using source-build mode so `spio` can fetch the official `styio` source tree on demand.
 
 ## Typical Build And Test Commands
 
@@ -54,6 +56,36 @@ cmake --build build
 ctest --test-dir build
 ```
 
+Select a project toolchain mode and defaults:
+
+```bash
+./scripts/spio use binary --manifest-path path/to/spio.toml
+./scripts/spio use build --manifest-path path/to/spio.toml
+./scripts/spio set channel as stable --manifest-path path/to/spio.toml
+./scripts/spio set channel as nightly --manifest-path path/to/spio.toml
+./scripts/spio set build as minimal --manifest-path path/to/spio.toml
+```
+
+Run the project build flow:
+
+```bash
+./scripts/spio build minimal --manifest-path path/to/spio.toml --dry-run
+./scripts/spio run --manifest-path path/to/spio.toml --dry-run
+./scripts/spio test --manifest-path path/to/spio.toml --dry-run
+```
+
+Source-build mode may fetch the official `styio` source tree when needed:
+
+```bash
+./scripts/spio use build --manifest-path path/to/spio.toml
+./scripts/spio build minimal --manifest-path path/to/spio.toml --yes
+```
+
+The default source-build origin is `https://github.com/eBioRing/Styio.git`, and the project channel selects the matching source branch:
+
+1. `stable` -> `stable`
+2. `nightly` -> `nightly`
+
 Run repository-native verification:
 
 ```bash
@@ -61,17 +93,24 @@ Run repository-native verification:
 ./scripts/delivery-gate.sh --mode checkpoint --skip-health
 ```
 
-Run preflight against an external compiler:
+Run binary-mode preflight against a published external compiler:
 
 ```bash
 ./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
+```
+
+Run source-build mode without a published external compiler:
+
+```bash
+./scripts/spio use build --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml
+./scripts/spio build minimal --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml --yes
 ```
 
 ## Subsystem-Specific Follow-Ups
 
 1. Planning and migration roadmap: [planning/Spio-Master-Plan.md](./planning/Spio-Master-Plan.md)
 2. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
-3. External compiler requirements: [styio/Styio-External-Interface-Requirement-Spec.md](./styio/Styio-External-Interface-Requirement-Spec.md)
+3. Published external compiler requirements for `binary` mode: [styio/Styio-External-Interface-Requirement-Spec.md](./styio/Styio-External-Interface-Requirement-Spec.md)
 4. Script inventory: [../scripts/README.md](../scripts/README.md)
 
 ## Related Docs

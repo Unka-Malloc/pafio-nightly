@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the command surface, exit code ranges, and machine-readable output rules for the `spio` bootstrap phase so later implementations can evolve behind a stable interface.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-20
 
 ## 1. Command Surface
 
@@ -14,6 +14,8 @@ The intended public command set is:
 
 - `spio new`
 - `spio init`
+- `spio use`
+- `spio set`
 - `spio add`
 - `spio remove`
 - `spio fetch`
@@ -32,7 +34,7 @@ The intended public command set is:
 
 The bootstrap implementation may expose stubs for recognized commands before the full behavior exists.
 
-During the bootstrap phase, `spio check` is the first command allowed to talk to an external compiler, and only for handshake/compatibility validation:
+During the bootstrap phase, `spio check` is the first command allowed to talk to a published external compiler, and only for handshake/compatibility validation:
 
 ```text
 spio check --manifest-path path/to/spio.toml --styio-bin /path/to/styio
@@ -86,10 +88,20 @@ spio tool use --version 0.0.5 --channel stable
 spio tool pin --version 0.0.5 --channel stable --manifest-path path/to/spio.toml
 ```
 
+Project-local toolchain state selection is also part of the active command surface:
+
+```text
+spio use binary --manifest-path path/to/spio.toml
+spio use build --manifest-path path/to/spio.toml
+spio set channel as stable --manifest-path path/to/spio.toml
+spio set channel as nightly --manifest-path path/to/spio.toml
+spio set build as minimal --manifest-path path/to/spio.toml
+```
+
 Local compile-plan emission is also part of the active command surface:
 
 ```text
-spio build --manifest-path path/to/spio.toml --dry-run
+spio build minimal --manifest-path path/to/spio.toml --dry-run
 spio run --manifest-path path/to/spio.toml --dry-run
 spio test --manifest-path path/to/spio.toml --dry-run
 ```
@@ -208,6 +220,7 @@ Optional keys:
 - `spio check` always validates `spio.toml`
 - `spio check` validates the active resolver graph after manifest parsing succeeds
 - `spio check` validates adjacent `spio.lock` when present
+- project-local `spio-toolchain.lock` stores the selected workflow mode, release channel, and build mode
 - `spio check` treats a parse-valid but content-stale adjacent `spio.lock` as a lock failure
 - phase-2 native `check` validates `toolchain`, target tables, dependency source-kind rules, and workspace membership rules
 - resolver-backed `check` may use `SPIO_HOME` for pinned git source cache state
@@ -268,22 +281,32 @@ Optional keys:
 - `spio tool use` must re-validate the selected managed compiler through `styio --machine-info=json` plus the published compatibility matrix before promoting it to current
 - `spio tool pin` writes a project-local toolchain pin file beside the selected manifest
 - project-local toolchain pin discovery searches upward from the selected manifest directory for `spio-toolchain.toml`
-- `spio check`, `spio build`, `spio run`, and `spio test` resolve compilers in this order:
+- `spio use <binary|build>` writes a project-local `spio-toolchain.lock` beside the selected manifest
+- `spio set channel as <stable|nightly>` updates the project-local release channel in `spio-toolchain.lock`
+- `spio set build as minimal` updates the project-local build mode in `spio-toolchain.lock`
+- `spio check` and `spio build`, `spio run`, or `spio test` in `binary` mode resolve compilers in this order:
   - explicit `--styio-bin <path>`
   - `SPIO_STYIO_BIN`
   - nearest project-local `spio-toolchain.toml`
   - managed current compiler under `SPIO_HOME/tools/styio/current/bin/styio`
 - a discovered project-local toolchain pin is authoritative and must fail if the pinned managed compiler is missing
-- `spio build --dry-run` resolves the active graph and writes a local `compile-plan v1` to `.spio/build/<cache-key>/plan.json`
+- `spio build minimal --dry-run` resolves the active graph and writes a local `compile-plan v1` to `.spio/build/<cache-key>/plan.json`
 - `spio build --dry-run` must not require compiler probing
+- `spio build minimal` uses the selected project toolchain mode:
+  - `binary` continues through published compiler discovery and compatibility gating
+  - `build` resolves or fetches the official `styio` source tree from `https://github.com/eBioRing/Styio.git`, maps `stable` and `nightly` to the same-named source branches, builds a local compiler under `SPIO_HOME/toolchains/source/`, and then runs the compile-plan through that source-built compiler
+- `spio build` accepts `minimal` as the only current build mode; bare `spio build` normalizes to the same mode through project defaults
+- `spio build`, `spio run`, and `spio test` accept `--source-root`, `--source-rev`, `--yes`, `--no-fetch`, and `--non-interactive` when the selected project mode is `build`
 - `spio run --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "run"` to `.spio/build/<cache-key>/plan.json`
 - `spio run` only supports explicit binary targets in the current native core
 - `spio test --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "test"` to `.spio/build/<cache-key>/plan.json`
 - `spio test` only supports explicit manifest `[[test]]` targets in the current native core
-- non-dry-run `spio build` requires a resolved compiler from explicit `--styio-bin <path>`, `SPIO_STYIO_BIN`, a project toolchain pin, or the managed current compiler
-- non-dry-run `spio build` may call `styio --compile-plan <path>` only when the published compatibility matrix enables compile-plan v1 for the current phase
-- non-dry-run `spio run` follows the same published compile-plan gate as `spio build`
-- non-dry-run `spio test` follows the same published compile-plan gate as `spio build`
+- in `binary` mode, non-dry-run `spio build` requires a resolved compiler from explicit `--styio-bin <path>`, `SPIO_STYIO_BIN`, a project toolchain pin, or the managed current compiler
+- in `binary` mode, non-dry-run `spio build` may call `styio --compile-plan <path>` only when the published compatibility matrix enables compile-plan v1 for the current phase
+- in `binary` mode, non-dry-run `spio run` follows the same published compile-plan gate as `spio build`
+- in `binary` mode, non-dry-run `spio test` follows the same published compile-plan gate as `spio build`
+- in `build` mode, non-dry-run `spio build`, `spio run`, and `spio test` use the locally built compiler path produced from the selected or fetched source tree
+- source-build mode bypasses the published binary compatibility matrix and instead uses the locally built compiler revision recorded in `spio-toolchain.lock`
 - compile-plan generation currently supports only explicit `lib`, `bin`, and `test` targets
 - compile-plan generation may reject graphs that are otherwise resolvable when compile-plan v1 cannot represent them, such as cyclic graphs or mixed toolchain tuples
 

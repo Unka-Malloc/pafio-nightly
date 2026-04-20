@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Mission
 
@@ -27,6 +27,7 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 2. Regenerate `INDEX.md` files after docs-tree changes.
 3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
 4. Keep the shared `styio-spio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
+5. Keep the official command grammar consistent across docs: `spio use <mode>` and `spio set <subject> as <value>`.
 
 ## Change Classes
 

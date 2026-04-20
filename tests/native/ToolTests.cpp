@@ -480,3 +480,63 @@ TEST(ToolPinTests, CheckFailsWhenPinnedManagedCompilerIsMissing)
   const json payload = json::parse(stderr_text);
   EXPECT_EQ(payload.at("category").get<std::string>(), "ToolError");
 }
+
+TEST(ToolchainStateTests, UseBuildWritesProjectToolchainState)
+{
+  const fs::path root = MakeTempDir("toolchain-state-use-build");
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "use",
+      "build",
+      "--manifest-path",
+      manifest_path.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("mode").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("channel").get<std::string>(), "stable");
+  EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
+
+  const std::string state_text = ReadFile(root / "project/spio-toolchain.lock");
+  EXPECT_NE(state_text.find("mode = \"build\""), std::string::npos);
+  EXPECT_NE(state_text.find("channel = \"stable\""), std::string::npos);
+  EXPECT_NE(state_text.find("build = \"minimal\""), std::string::npos);
+}
+
+TEST(ToolchainStateTests, SetChannelSupportsCanonicalAndCompactSyntax)
+{
+  const fs::path root = MakeTempDir("toolchain-state-set-channel");
+  const fs::path manifest_path = root / "project/spio.toml";
+  WriteSingleBinManifest(manifest_path);
+
+  EXPECT_EQ(
+      spio::RunCli({
+          "set",
+          "channel",
+          "as",
+          "nightly",
+          "--manifest-path",
+          manifest_path.string(),
+      }),
+      spio::kExitSuccess);
+
+  EXPECT_EQ(
+      spio::RunCli({
+          "set",
+          "build",
+          "minimal",
+          "--manifest-path",
+          manifest_path.string(),
+      }),
+      spio::kExitSuccess);
+
+  const std::string state_text = ReadFile(root / "project/spio-toolchain.lock");
+  EXPECT_NE(state_text.find("channel = \"nightly\""), std::string::npos);
+  EXPECT_NE(state_text.find("build = \"minimal\""), std::string::npos);
+}

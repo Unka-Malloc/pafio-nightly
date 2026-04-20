@@ -88,6 +88,33 @@ void WriteExecutable(const fs::path &path, const std::string &content)
       fs::perm_options::add);
 }
 
+void WriteFakeSourceToolchain(const fs::path &root)
+{
+  WriteFile(
+      root / "CMakeLists.txt",
+      "cmake_minimum_required(VERSION 3.20)\n"
+      "project(fake_styio LANGUAGES NONE)\n"
+      "file(MAKE_DIRECTORY \"${CMAKE_BINARY_DIR}/bin\")\n"
+      "configure_file(\"${CMAKE_SOURCE_DIR}/styio.sh.in\" \"${CMAKE_BINARY_DIR}/bin/styio\" @ONLY NEWLINE_STYLE UNIX)\n"
+      "file(CHMOD \"${CMAKE_BINARY_DIR}/bin/styio\" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)\n"
+      "add_custom_target(styio ALL DEPENDS \"${CMAKE_BINARY_DIR}/bin/styio\")\n");
+  WriteFile(
+      root / "styio.sh.in",
+      "#!/bin/sh\n"
+      "if [ \"$1\" = \"--compile-plan\" ]; then\n"
+      "  python3 - \"$2\" <<'PY'\n"
+      "import json, os, sys\n"
+      "plan = json.load(open(sys.argv[1], 'r', encoding='utf-8'))\n"
+      "for key in ('build_root', 'artifact_dir', 'diag_dir'):\n"
+      "    os.makedirs(plan['outputs'][key], exist_ok=True)\n"
+      "print('fake source toolchain executed compile-plan')\n"
+      "PY\n"
+      "  exit 0\n"
+      "fi\n"
+      "echo unexpected invocation >&2\n"
+      "exit 64\n");
+}
+
 }  // namespace
 
 TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
@@ -303,6 +330,116 @@ TEST(BuildCliTests, NonDryRunBuildIsBlockedByPublishedCompatibilityPhase)
       fake_styio.string(),
   });
   EXPECT_EQ(exit_code, spio::kExitContract);
+}
+
+TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
+{
+  const fs::path root = MakeTempDir("build-minimal-dry-run-state");
+  WriteFile(
+      root / "spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
+
+  ASSERT_EQ(
+      spio::RunCli({
+          "use",
+          "build",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "build",
+      "minimal",
+      "--manifest-path",
+      (root / "spio.toml").string(),
+      "--dry-run",
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("mode").get<std::string>(), "dry-run");
+  EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
+}
+
+TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
+{
+  const fs::path root = MakeTempDir("build-mode-local-source-root");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  WriteFile(
+      root / "project/spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "project/src/main.styio", ">_(\"app\")\n");
+  WriteFakeSourceToolchain(root / "styio-source");
+
+  ASSERT_EQ(
+      spio::RunCli({
+          "use",
+          "build",
+          "--manifest-path",
+          (root / "project/spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+  ASSERT_EQ(
+      spio::RunCli({
+          "set",
+          "channel",
+          "as",
+          "nightly",
+          "--manifest-path",
+          (root / "project/spio.toml").string(),
+      }),
+      spio::kExitSuccess);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "build",
+      "minimal",
+      "--manifest-path",
+      (root / "project/spio.toml").string(),
+      "--source-root",
+      (root / "styio-source").string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
+  EXPECT_EQ(payload.at("styio").at("mode").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("styio").at("source_root").get<std::string>(), CanonicalAbsolutePath(root / "styio-source").string());
+  EXPECT_TRUE(fs::exists(payload.at("styio").at("compiler_binary").get<std::string>()));
+  EXPECT_NE(ReadFile(root / "project/spio-toolchain.lock").find("[source]"), std::string::npos);
 }
 
 TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)

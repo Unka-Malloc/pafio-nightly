@@ -2,19 +2,22 @@
 
 **Purpose:** `spio` is the standalone package manager and project workflow tool for Styio. It is designed to remain movable as a self-contained subtree and later as an independent repository.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Scope
 
 - `spio` manages package manifests, lockfiles, dependency resolution, cache layout, build orchestration, and project-level commands.
 - `spio` does not parse Styio source semantics on its own.
-- `spio` talks to the Styio compiler through a versioned machine contract and a process boundary.
+- `spio` supports two project toolchain modes:
+  - `binary`: published compiler path through a versioned machine contract and a process boundary
+  - `build`: source-build path through an official `styio` source checkout and local compiler build cache
 
 ## Independence Rules
 
 - `spio` must not include or link against `styio` implementation headers or libraries.
 - `spio` must not depend on files under `../src`, `../tests`, or any other compiler-internal path.
-- `spio` may depend on an external `styio` executable only through `SPIO_STYIO_BIN`.
+- `spio` may depend on a published external `styio` executable only through the documented binary-mode discovery path such as `--styio-bin` or `SPIO_STYIO_BIN`.
+- `spio` source-build mode may fetch the official `styio` source tree from `https://github.com/eBioRing/Styio.git`, using the `stable` and `nightly` branches as the channel roots, through the documented source-build contract and cache layout.
 - `spio/contracts/` is the source of truth for package-manager-side machine contracts.
 
 ## Tree
@@ -59,6 +62,15 @@ Those documents are the migration knowledge pack for working against `styio` wit
 ## Developer Entry Points
 
 Start repo bootstrap and common build/test commands from [docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md).
+
+Project-local workflow mode selection now uses:
+
+- `./scripts/spio use binary`
+- `./scripts/spio use build`
+- `./scripts/spio set channel as stable`
+- `./scripts/spio set channel as nightly`
+- `./scripts/spio set build as minimal`
+- `./scripts/spio build minimal`
 
 统一 docs/process 与交付入口分别为：
 

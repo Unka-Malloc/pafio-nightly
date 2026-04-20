@@ -70,7 +70,7 @@ add_test(
 
 add_test(
   NAME spio_cli_build_help
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" build --help | grep -q '^usage: spio build \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" build --help | grep -q '^usage: spio build \\[minimal\\] \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--source-root <path>\\] \\[--source-rev <rev>\\] \\[--yes\\|--no-fetch\\|--non-interactive\\] \\[--locked\\|--offline\\|--frozen\\]$'"
 )
 
 add_test(
@@ -81,6 +81,16 @@ add_test(
 add_test(
   NAME spio_cli_test_help
   COMMAND bash -c "\"$<TARGET_FILE:spio>\" test --help | grep -q '^usage: spio test \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--test <name>\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+)
+
+add_test(
+  NAME spio_cli_use_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" use --help | grep -q '^usage: spio use <binary\\|build> \\[--manifest-path <path>\\]$'"
+)
+
+add_test(
+  NAME spio_cli_set_help
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" set --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio set channel as <stable\\|nightly> \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio set build as <minimal> \\[--manifest-path <path>\\]$'"
 )
 
 add_test(

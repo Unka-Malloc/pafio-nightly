@@ -2,7 +2,7 @@
 
 **Purpose:** Define the repository-wide build/test health entrypoint for `spio` so CI and checkpoint delivery can call one script instead of wiring native checks inline.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-04-20
 
 ## Command
 
@@ -12,7 +12,7 @@ Default checkpoint health:
 ./scripts/checkpoint-health.sh
 ```
 
-Checkpoint health against an external compiler:
+Checkpoint health against a published external compiler:
 
 ```bash
 ./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
@@ -22,6 +22,6 @@ Checkpoint health against an external compiler:
 
 1. `native-check.sh`
 2. `extractability-check.sh`
-3. optional compatibility and interface probing through `preflight-readiness-check.py` when `--styio-bin` is provided
+3. optional published-binary compatibility and interface probing through `preflight-readiness-check.py` when `--styio-bin` is provided
 
-The repository keeps its native CMake/CTest tooling, but callers should continue to use this outer health entrypoint.
+The repository keeps its native CMake/CTest tooling, but callers should continue to use this outer health entrypoint. Source-build mode is exercised through the public `spio use build` and `spio build minimal` command path rather than a separate checkpoint-health flag.

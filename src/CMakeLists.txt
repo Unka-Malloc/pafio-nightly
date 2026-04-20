@@ -14,6 +14,8 @@ set(SPIO_CORE_SOURCES
     SpioResolve/Resolver.cpp
     SpioSecurity/RegistrySecurity.cpp
     SpioTool/Install.cpp
+    SpioToolchain/SourceBuild.cpp
+    SpioToolchain/State.cpp
     SpioTree/Render.cpp
     SpioVendor/Vendor.cpp
     SpioWorkflow/Dependencies.cpp
