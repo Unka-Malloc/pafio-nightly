@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the full delivery map for `spio` from bootstrap scaffold to split-ready package manager, while preserving strict decoupling from `styio`.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-21
 
 ## 1. Scope
 
@@ -14,6 +14,8 @@
 - cache and build-directory management
 - project-level workflow commands
 - compatibility checks against published `styio` builds
+- local source-build workflow against the official `styio` source origin
+- local cloud execution-policy and build-job-request contract baselines
 
 `spio` is not responsible for:
 
@@ -21,6 +23,7 @@
 - reimplementing the compiler
 - embedding `styio` internals
 - inventing unpublished language features
+- pretending the tracked open-source tree already ships the future remote control plane
 
 ## 2. Non-Negotiable Constraints
 
@@ -30,6 +33,25 @@
 - `spio` must not assume compile-plan support until `styio` publishes it.
 - source, cache, build output, test temp data, and integration fixtures must remain isolated.
 - `spio` implementation work after the bootstrap freeze should converge on a native `C++20` + `CMake` codebase, aligned with `styio`'s operational toolchain but not coupled to compiler internals.
+
+## 2.1 Current Delivery Snapshot
+
+This plan still owns the long-range phase map, but readers should not infer that phases `0-6` are all still equally incomplete.
+
+Current tracked baseline:
+
+- phases `0-3` are materially implemented in the native tree
+- local `build/run/test` dry-run workflow and source-build mode are implemented
+- local registry publish/fetch transport is implemented for filesystem roots and anonymous HTTP roots
+- project-local cloud execution policy, worker-pool-key, and build-job-request contracts are implemented
+
+Still explicitly partial:
+
+- published external compile-plan execution remains gated on the compiler side
+- the enterprise async remote control plane remains future work
+- auth, signatures, and stronger registry trust hardening remain future work
+
+For the current implementation-stage view, use [Spio-Stage-Review-and-Future-Features.md](./Spio-Stage-Review-and-Future-Features.md) alongside this plan.
 
 ## 3. Delivery Phases
 
@@ -122,6 +144,7 @@ Exit gate:
 Primary defect:
 
 - this phase depends on `styio` publishing a real consumer; `spio` must not guess ahead
+- local source-build and dry-run plan emission do not close this phase by themselves
 
 ### Phase 5. Build / Run / Test Workflow
 
@@ -140,6 +163,7 @@ Exit gate:
 Primary defect:
 
 - real usefulness appears only after compile-plan is accepted by published `styio`
+- the tracked native tree already implements dry-run workflow payloads and local source-build orchestration, but published binary-mode execution still depends on the compiler-side consumer
 
 ### Phase 6. Publish / Registry / Tool Install
 
@@ -162,6 +186,7 @@ Exit gate:
 Primary defect:
 
 - if introduced too early, registry work will consume time before local workflow is complete
+- local filesystem and anonymous HTTP registry transport are already live; remaining work is concentrated in auth, trust hardening, and higher-scale deployment models
 
 ## 4. Critical Path
 

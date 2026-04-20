@@ -282,6 +282,35 @@ TEST(CloudJobRequestTests, RejectsStyioBinaryOverrideWhenProjectUsesBuildMode)
   }
 }
 
+TEST(CloudJobRequestTests, RejectsUnsupportedBuildModeBeforeEmittingJobRequest)
+{
+  const spio::ProjectToolchainState state = {
+      .manifest_path = "spio.toml",
+      .state_path = "spio-toolchain.lock",
+      .state_file_exists = true,
+      .mode = "build",
+      .channel = "nightly",
+      .build_mode = "minimal",
+  };
+  const spio::BuildPlanRequest request = {
+      .manifest_path = "spio.toml",
+      .intent = "build",
+      .profile = "dev",
+      .build_mode = "maximal",
+  };
+  const spio::WorkflowInvocationOptions options;
+
+  try
+  {
+    (void) spio::BuildCloudBuildJobRequest("build", request, state, options, spio::ResolveCloudExecutionPolicy(state));
+    FAIL() << "expected ValidationError";
+  }
+  catch (const spio::ValidationError &error)
+  {
+    EXPECT_EQ(std::string(error.what()), "build currently supports only the 'minimal' mode");
+  }
+}
+
 TEST(CloudJobRequestTests, FactoryBuildsRequestUsingSharedCloudSerializer)
 {
   const fs::path root = MakeTempDir("cloud-job-request-factory");

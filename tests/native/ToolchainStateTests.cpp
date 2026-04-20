@@ -140,6 +140,13 @@ TEST(ToolchainStateTests, CloudStatusDefaultsToIsolatedExecutionForUntrustedProj
   EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "isolated");
   EXPECT_EQ(payload.at("cloud").at("security_profile").get<std::string>(), "sandbox-default");
   EXPECT_EQ(payload.at("cloud").at("worker_pool_key").at("execution_lane").get<std::string>(), "isolated");
+  EXPECT_EQ(payload.at("supported_execution_lanes"), json::array({"isolated", "warm-shared"}));
+  EXPECT_EQ(
+      payload.at("supported_risk_classes"),
+      json::array({"trusted-internal", "partner-controlled", "untrusted-user"}));
+  EXPECT_EQ(
+      payload.at("supported_security_profiles"),
+      json::array({"sandbox-default", "partner-restricted", "trusted-warm"}));
 }
 
 TEST(ToolchainStateTests, CloudStatusFallsBackFromWarmSharedForUntrustedProjects)

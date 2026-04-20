@@ -14,9 +14,10 @@ namespace fs = std::filesystem;
 namespace
 {
 
-void RequireAllowedValue(const std::string &value, const std::initializer_list<const char *> &allowed, const std::string &label)
+template <size_t N>
+void RequireAllowedValue(const std::string &value, const std::array<std::string_view, N> &allowed, const std::string &label)
 {
-  for (const char *candidate : allowed)
+  for (const std::string_view candidate : allowed)
   {
     if (value == candidate)
     {
@@ -133,12 +134,12 @@ ProjectToolchainState LoadProjectToolchainState(const fs::path &manifest_path)
     }
   }
 
-  RequireAllowedValue(state.mode, {"binary", "build"}, "toolchain mode");
-  RequireAllowedValue(state.channel, {"stable", "nightly"}, "toolchain channel");
-  RequireAllowedValue(state.build_mode, {"minimal"}, "build mode");
-  RequireAllowedValue(state.risk_class, {"trusted-internal", "partner-controlled", "untrusted-user"}, "cloud risk class");
-  RequireAllowedValue(state.preferred_execution_lane, {"isolated", "warm-shared"}, "cloud execution lane");
-  RequireAllowedValue(state.security_profile, {"sandbox-default", "partner-restricted", "trusted-warm"}, "cloud security profile");
+  RequireAllowedValue(state.mode, spio::kSupportedToolchainModes, "toolchain mode");
+  RequireAllowedValue(state.channel, spio::kSupportedChannels, "toolchain channel");
+  RequireAllowedValue(state.build_mode, spio::kSupportedBuildModes, "build mode");
+  RequireAllowedValue(state.risk_class, spio::kSupportedCloudRiskClasses, "cloud risk class");
+  RequireAllowedValue(state.preferred_execution_lane, spio::kSupportedCloudExecutionLanes, "cloud execution lane");
+  RequireAllowedValue(state.security_profile, spio::kSupportedCloudSecurityProfiles, "cloud security profile");
   return state;
 }
 
@@ -179,12 +180,12 @@ ProjectToolchainState UpdateProjectToolchainState(const ToolchainStateUpdate &up
     state.source_revision = update.source_revision;
   }
 
-  RequireAllowedValue(state.mode, {"binary", "build"}, "toolchain mode");
-  RequireAllowedValue(state.channel, {"stable", "nightly"}, "toolchain channel");
-  RequireAllowedValue(state.build_mode, {"minimal"}, "build mode");
-  RequireAllowedValue(state.risk_class, {"trusted-internal", "partner-controlled", "untrusted-user"}, "cloud risk class");
-  RequireAllowedValue(state.preferred_execution_lane, {"isolated", "warm-shared"}, "cloud execution lane");
-  RequireAllowedValue(state.security_profile, {"sandbox-default", "partner-restricted", "trusted-warm"}, "cloud security profile");
+  RequireAllowedValue(state.mode, spio::kSupportedToolchainModes, "toolchain mode");
+  RequireAllowedValue(state.channel, spio::kSupportedChannels, "toolchain channel");
+  RequireAllowedValue(state.build_mode, spio::kSupportedBuildModes, "build mode");
+  RequireAllowedValue(state.risk_class, spio::kSupportedCloudRiskClasses, "cloud risk class");
+  RequireAllowedValue(state.preferred_execution_lane, spio::kSupportedCloudExecutionLanes, "cloud execution lane");
+  RequireAllowedValue(state.security_profile, spio::kSupportedCloudSecurityProfiles, "cloud security profile");
 
   WriteTextFile(state.state_path, RenderToolchainState(state));
   state.state_file_exists = true;

@@ -5,6 +5,22 @@ using json = nlohmann::json;
 namespace spio
 {
 
+namespace
+{
+
+template <size_t N>
+json SerializeSupportedValues(const std::array<std::string_view, N> &values)
+{
+  json payload = json::array();
+  for (const std::string_view value : values)
+  {
+    payload.push_back(value);
+  }
+  return payload;
+}
+
+}  // namespace
+
 json SerializeSharedCachePolicy(const SharedCachePolicy &policy)
 {
   return {
@@ -85,9 +101,9 @@ json BuildCloudStatusPayload(const ProjectToolchainState &state, const CloudExec
       {"risk_class", state.risk_class},
       {"preferred_execution_lane", state.preferred_execution_lane},
       {"security_profile", state.security_profile},
-      {"supported_execution_lanes", json::array({"isolated", "warm-shared"})},
-      {"supported_risk_classes", json::array({"trusted-internal", "partner-controlled", "untrusted-user"})},
-      {"supported_security_profiles", json::array({"sandbox-default", "partner-restricted", "trusted-warm"})},
+      {"supported_execution_lanes", SerializeSupportedValues(kSupportedCloudExecutionLanes)},
+      {"supported_risk_classes", SerializeSupportedValues(kSupportedCloudRiskClasses)},
+      {"supported_security_profiles", SerializeSupportedValues(kSupportedCloudSecurityProfiles)},
       {"cloud", SerializeCloudExecutionPolicy(policy)},
   };
 }

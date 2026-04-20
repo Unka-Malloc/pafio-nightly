@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpioToolchain/Vocabulary.hpp"
+
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -12,12 +14,12 @@ struct ProjectToolchainState
   std::filesystem::path manifest_path;
   std::filesystem::path state_path;
   bool state_file_exists = false;
-  std::string mode = "binary";
-  std::string channel = "stable";
-  std::string build_mode = "minimal";
-  std::string risk_class = "untrusted-user";
-  std::string preferred_execution_lane = "isolated";
-  std::string security_profile = "sandbox-default";
+  std::string mode = std::string(kToolchainModeBinary);
+  std::string channel = std::string(kChannelStable);
+  std::string build_mode = std::string(kBuildModeMinimal);
+  std::string risk_class = std::string(kRiskClassUntrustedUser);
+  std::string preferred_execution_lane = std::string(kExecutionLaneIsolated);
+  std::string security_profile = std::string(kSecurityProfileSandboxDefault);
   std::optional<std::string> source_revision;
 };
 

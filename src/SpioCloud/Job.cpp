@@ -25,7 +25,7 @@ std::optional<std::string> ValidateWorkflowInvocationImpl(
   }
 
   const std::string effective_build_mode = request.build_mode.empty() ? toolchain_state.build_mode : request.build_mode;
-  if (effective_build_mode.empty() || effective_build_mode != "minimal")
+  if (effective_build_mode.empty() || !spio::IsSupportedBuildMode(effective_build_mode))
   {
     return "build currently supports only the 'minimal' mode";
   }
@@ -33,11 +33,11 @@ std::optional<std::string> ValidateWorkflowInvocationImpl(
   const bool has_source_options =
       options.assume_yes || !options.allow_fetch || options.non_interactive || options.source_root.has_value() ||
       options.source_revision.has_value();
-  if (toolchain_state.mode == "binary" && has_source_options)
+  if (toolchain_state.mode == spio::kToolchainModeBinary && has_source_options)
   {
     return "source-build options require 'spio use build'";
   }
-  if (toolchain_state.mode == "build" && options.styio_bin.has_value())
+  if (toolchain_state.mode == spio::kToolchainModeBuild && options.styio_bin.has_value())
   {
     return "--styio-bin is only valid when the project toolchain mode is 'binary'";
   }
@@ -106,7 +106,7 @@ CloudBuildJobRequest BuildCloudBuildJobRequest(
   job_request.manifest_path_ = request.manifest_path;
   job_request.toolchain_mode_ = toolchain_state.mode;
   job_request.channel_ = toolchain_state.channel;
-  job_request.build_mode_ = build_mode.empty() ? "minimal" : build_mode;
+  job_request.build_mode_ = build_mode.empty() ? std::string(spio::kBuildModeMinimal) : build_mode;
   job_request.profile_ = request.profile;
   job_request.locked_ = options.locked;
   job_request.offline_ = options.offline;

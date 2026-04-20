@@ -3,6 +3,7 @@
 #include "SpioCore/Paths.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioToolchain/State.hpp"
+#include "SpioToolchain/Vocabulary.hpp"
 
 #include <algorithm>
 #include <array>
@@ -433,7 +434,7 @@ std::optional<CommandError> ParsePlanInvocation(
   if (command_name == "build" && !args.empty() && !args.front().starts_with("--"))
   {
     parsed.request.build_mode = NormalizeSetKeyword(args.front());
-    if (parsed.request.build_mode != "minimal")
+    if (!IsSupportedBuildMode(parsed.request.build_mode))
     {
       return CommandError{"UsageError", kExitUsage, "build currently supports only the 'minimal' mode", std::string(command_name)};
     }

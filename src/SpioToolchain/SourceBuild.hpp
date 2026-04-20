@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpioToolchain/Vocabulary.hpp"
+
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -10,8 +12,8 @@ namespace spio
 struct SourceBuildRequest
 {
   std::filesystem::path manifest_path = "spio.toml";
-  std::string channel = "stable";
-  std::string build_mode = "minimal";
+  std::string channel = std::string(kChannelStable);
+  std::string build_mode = std::string(kBuildModeMinimal);
   std::optional<std::filesystem::path> explicit_source_root;
   std::optional<std::string> source_revision;
   bool allow_fetch = true;

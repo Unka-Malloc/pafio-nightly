@@ -2,20 +2,21 @@
 
 **Purpose:** Break the `spio` implementation into independent task lines that can be assigned, implemented, and verified in parallel.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-21
 
 ## Workstream A. Repository Independence
 
 Ownership boundary:
 
-- `spio/README.md`
-- `spio/docs/*`
-- `spio/scripts/*`
-- `spio/tests/*`
+- `README.md`
+- `docs/*`
+- `scripts/*`
+- `tests/*`
+- repository-local extraction and copy tooling
 
 TODOs:
 
-- keep every `spio`-owned contract, test, and helper under `spio/`
+- keep every `spio`-owned contract, test, and helper under the repository root without hidden compiler-side dependencies
 - prevent direct imports from `styio/src` and `styio/tests`
 - maintain a clean extraction path to `/Users/unka/DevSpace/Unka-Malloc/styio-spio`
 - keep migration instructions current as the subtree evolves
@@ -40,10 +41,10 @@ Defect:
 
 Ownership boundary:
 
-- `spio/contracts/compat/*`
-- `spio/src/spio_bootstrap/compat.py`
-- `spio/docs/governance/Spio-Version-Decoupling-Constraints.md`
-- `spio/docs/styio/Styio-Public-Interface-Roadmap.md`
+- `contracts/compat/*`
+- `src/SpioCompat/*`
+- `docs/governance/Spio-Version-Decoupling-Constraints.md`
+- `docs/styio/Styio-Public-Interface-Roadmap.md`
 
 TODOs:
 
@@ -75,11 +76,11 @@ Defect:
 
 Ownership boundary:
 
-- `spio/src/spio_bootstrap/validation.py`
-- future manifest/lock serializer modules
-- `spio/tests/unit/fixtures/manifests/*`
-- `spio/tests/unit/fixtures/locks/*`
-- `spio/docs/governance/Spio-Manifest-and-Lock-Conventions.md`
+- `src/SpioManifest/*`
+- `src/SpioWorkflow/*`
+- `tests/unit/fixtures/manifests/*`
+- `tests/unit/fixtures/locks/*`
+- `docs/governance/Spio-Manifest-and-Lock-Conventions.md`
 
 TODOs:
 
@@ -112,8 +113,10 @@ Defect:
 
 Ownership boundary:
 
-- future resolver modules under `spio/src`
-- future cache modules under `spio/src`
+- `src/SpioResolve/*`
+- `src/SpioCore/Paths.*`
+- `src/SpioVendor/*`
+- `src/SpioRegistryClient/*`
 - resolver fixtures and integration fixtures
 
 TODOs:
@@ -145,18 +148,20 @@ Defect:
 
 Ownership boundary:
 
-- `spio/src/spio_bootstrap/cli.py`
-- future command modules
-- `spio/docs/governance/Spio-CLI-Contract.md`
+- `src/SpioCLI/*`
+- `src/SpioApp/*`
+- `src/SpioCloud/*`
+- `docs/governance/Spio-CLI-Contract.md`
+- `docs/governance/Spio-Cloud-Control-Plane-Contract.md`
 
 TODOs:
 
 - keep `new`, `init`, and `check` stable
-- migrate the authoritative CLI path to a native `C++20` implementation built with `CMake`
 - grow `add`, `remove`, `fetch`, `lock`, `tree`
 - preserve exit code contracts
 - preserve machine-readable error shapes
-- avoid filesystem side effects before compatibility and manifest checks pass
+- keep command routing thin while domain validation, payload serialization, and process execution stay outside the CLI router
+- keep project-local toolchain mode, channel, build mode, and cloud preference grammar aligned across CLI help, docs, and machine-readable payloads
 
 Blocks:
 
@@ -172,14 +177,15 @@ Gate:
 
 Defect:
 
-- bootstrap CLI will remain partially stubbed until resolver and compiler integration are available
+- some commands still lead future phases rather than fully closed remote execution behavior
 
 ## Workstream F. Compile-Plan and External Compiler Integration
 
 Ownership boundary:
 
-- `spio/contracts/compile-plan/*`
-- future plan generator modules
+- `contracts/compile-plan/*`
+- `src/SpioPlan/*`
+- `src/SpioToolchain/*`
 - black-box integration fixtures
 
 TODOs:
@@ -189,6 +195,7 @@ TODOs:
 - negotiate plan support against published `styio`
 - generate plan files only after compatibility checks pass
 - never bypass process boundary integration
+- keep local source-build mode and published binary-mode compiler execution distinct in docs and contracts
 
 Blocks:
 
@@ -213,11 +220,12 @@ Defect:
 
 Ownership boundary:
 
-- `spio/tests/README.md`
-- `spio/tests/unit/*`
-- `spio/tests/integration/*`
-- `spio/scripts/bootstrap-check.py`
-- future verification scripts
+- `tests/README.md`
+- `tests/unit/*`
+- `tests/integration/*`
+- `tests/native/*`
+- `scripts/bootstrap-check.py`
+- verification scripts and gate entrypoints
 
 TODOs:
 

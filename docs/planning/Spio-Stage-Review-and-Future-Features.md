@@ -2,7 +2,7 @@
 
 **Purpose:** Summarize the current implemented `spio` surface, capture the durable lessons from the implementation path so far, and rank the next high-value features using mature package-manager patterns as reference points.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-21
 
 ## 1. Scope and Ownership
 
@@ -26,11 +26,11 @@ Those remain owned by governance and ADR documents.
 
 ## 2. Stage Snapshot
 
-As of 2026-04-12, the authoritative implementation path is the native `C++20` + `CMake` core recorded in [ADR-0002](../adr/ADR-0002-native-cpp20-cmake-phase2-core.md). The project is no longer only a bootstrap scaffold: it has a real manifest core, a real resolver, a real local packaging path, and a managed local compiler lifecycle.
+As of 2026-04-21, the authoritative implementation path is the native `C++20` + `CMake` core recorded in [ADR-0002](../adr/ADR-0002-native-cpp20-cmake-phase2-core.md). The project is no longer only a bootstrap scaffold: it has a real manifest core, a real resolver, a real local packaging path, a managed local compiler lifecycle, a local source-build workflow mode, and a local cloud-execution contract baseline.
 
 Current local validation status:
 
-- native test suite: `95/95` passing
+- native test suite: `139/139` passing
 - native workflow verification: passing
 - extractability verification: passing
 - styio handoff spec and black-box gate: present
@@ -187,6 +187,27 @@ Owner documents:
 - [ADR-0013](../adr/ADR-0013-phase4-run-dry-run-and-test-gap.md)
 - [ADR-0014](../adr/ADR-0014-phase4-test-dry-run-with-explicit-test-targets.md)
 
+### 3.6.1 Source-Build Mode and Local Toolchain State
+
+Implemented:
+
+- project-local `binary` and `build` workflow modes through `spio-toolchain.lock`
+- project-local `stable` and `nightly` channels
+- project-local `build_mode = minimal`
+- local source-build checkout and compiler build cache rooted in the official `https://github.com/eBioRing/Styio.git` source origin
+
+Important boundary:
+
+- `build` mode is implemented as a local source-build path
+- it does not imply that the published external binary-mode compile-plan consumer is already live
+- it also does not imply that a remote build farm or distributed execution service exists
+
+Owner documents:
+
+- [Spio-CLI-Contract.md](../governance/Spio-CLI-Contract.md)
+- [Spio-Cloud-Control-Plane-Contract.md](../governance/Spio-Cloud-Control-Plane-Contract.md)
+- [Spio-Version-Decoupling-Constraints.md](../governance/Spio-Version-Decoupling-Constraints.md)
+
 ### 3.7 Packaging and Publish Preflight
 
 Implemented:
@@ -239,19 +260,43 @@ Owner documents:
 - [ADR-0018](../adr/ADR-0018-phase6-managed-styio-version-switching.md)
 - [ADR-0020](../adr/ADR-0020-phase6-project-local-managed-styio-pinning.md)
 
+### 3.9 Local Cloud Execution Baseline
+
+Implemented:
+
+- project-local persistence of `risk`, `lane`, and `security` in `spio-toolchain.lock`
+- deterministic cloud policy resolution
+- `spio cloud status --json`
+- `spio cloud plan --json`
+- worker-pool-key and cache-policy reporting in machine-readable payloads
+
+Important boundary:
+
+- the tracked open-source tree currently publishes a local cloud contract baseline only
+- it does **not** yet implement the future remote async control plane, queue, worker manager, or warm-pool scheduler
+
+Owner documents:
+
+- [Spio-Cloud-Control-Plane-Contract.md](../governance/Spio-Cloud-Control-Plane-Contract.md)
+- [Spio-CLI-Contract.md](../governance/Spio-CLI-Contract.md)
+
 ## 4. What Is Still Partial or Blocked
 
 The project is not feature-empty anymore, but three important boundaries remain explicit:
 
 1. Real compiler execution is not yet live.
-   - `build`, `run`, and `test` only guarantee `--dry-run` today.
+   - published external binary-mode `build`, `run`, and `test` only guarantee `--dry-run` today.
    - non-dry-run execution remains gated on a published `styio --compile-plan <path>` consumer and compatible handshake.
+   - local source-build mode exists, but it is not a substitute for published compiler-side compile-plan support.
 2. Registry work is only partially live.
    - local/filesystem and anonymous remote HTTP publish transport now exist
    - registry dependency resolution and fetch are live through static `file://`, `http://`, and `https://` repository roots
    - auth, signatures, and stronger trust-policy hardening are still not implemented
 3. The resolver is still phase-3 conservative.
    - `single-version-v1` is a deliberate constraint, not a full semver/feature solver.
+4. Cloud execution is still local-contract-only.
+   - `cloud status` and `cloud plan` freeze terminology and request shape.
+   - they do not yet submit remote jobs or talk to a queue or worker pool.
 
 These are the correct current boundaries. None of them should be hidden behind optimistic wording.
 

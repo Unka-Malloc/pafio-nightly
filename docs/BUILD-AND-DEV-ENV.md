@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs.
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-21
 
 ## Who This Is For
 
@@ -73,6 +73,8 @@ Select a project toolchain mode and defaults:
 ./scripts/spio tool status --json --manifest-path path/to/spio.toml
 ```
 
+`./scripts/spio` is the repository-local convenience wrapper. It ensures the native binary exists under `./build-codex/bin/spio` and then forwards the remaining arguments. Use the wrapper in developer-facing examples; use the explicit binary path when another tool or gate needs a concrete executable argument.
+
 Cloud execution notes:
 
 1. The tracked native core currently exposes a local cloud-execution contract baseline rather than a remote scheduler.
@@ -100,6 +102,12 @@ The default source-build origin is `https://github.com/eBioRing/Styio.git`, and 
 1. `stable` -> `stable`
 2. `nightly` -> `nightly`
 
+Current cloud-execution boundary:
+
+1. `spio cloud status --json` and `spio cloud plan --json` are implemented in the tracked native core today.
+2. Those commands freeze local execution-policy and future request-body shapes.
+3. They do **not** imply that the tracked open-source tree already ships a remote scheduler, queue, or worker pool.
+
 Run repository-native verification:
 
 ```bash
@@ -123,9 +131,11 @@ Run source-build mode without a published external compiler:
 ## Subsystem-Specific Follow-Ups
 
 1. Planning and migration roadmap: [planning/Spio-Master-Plan.md](./planning/Spio-Master-Plan.md)
-2. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
-3. Published external compiler requirements for `binary` mode: [styio/Styio-External-Interface-Requirement-Spec.md](./styio/Styio-External-Interface-Requirement-Spec.md)
-4. Script inventory: [../scripts/README.md](../scripts/README.md)
+2. Current implementation-stage snapshot and remaining gaps: [planning/Spio-Stage-Review-and-Future-Features.md](./planning/Spio-Stage-Review-and-Future-Features.md)
+3. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
+4. Published external compiler requirements for `binary` mode: [styio/Styio-External-Interface-Requirement-Spec.md](./styio/Styio-External-Interface-Requirement-Spec.md)
+5. Cloud execution policy contract: [governance/Spio-Cloud-Control-Plane-Contract.md](./governance/Spio-Cloud-Control-Plane-Contract.md)
+6. Script inventory: [../scripts/README.md](../scripts/README.md)
 
 ## Related Docs
 

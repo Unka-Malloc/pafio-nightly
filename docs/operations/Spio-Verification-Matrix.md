@@ -2,7 +2,7 @@
 
 **Purpose:** Define the named gates, required commands, and pass conditions that close each `spio` implementation stream.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-21
 
 ## Gate Matrix
 
@@ -15,7 +15,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/native-check.sh
+./scripts/native-check.sh
 ```
 
 Pass conditions:
@@ -38,8 +38,8 @@ Commands:
 
 ```text
 ./build-codex/bin/styio --machine-info=json
-./spio/scripts/spio --json check --manifest-path spio/tests/unit/fixtures/manifests/ok-single-package/spio.toml --styio-bin ./build-codex/bin/styio
-./spio/scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio
+./scripts/spio --json check --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml --styio-bin ./build-codex/bin/styio
+./scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio
 ./build-codex/bin/styio_test --gtest_filter=StyioDiagnostics.MachineInfoJsonReportsStableHandshakeFields
 ```
 
@@ -63,7 +63,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio --require-compile-plan
+./scripts/styio-interface-gate.py --styio-bin ./build-codex/bin/styio --require-compile-plan
 ```
 
 Pass conditions:
@@ -106,10 +106,10 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/native-check.sh
-./spio/scripts/spio --version
-./spio/scripts/spio machine-info --json
-./spio/scripts/spio --json build
+./scripts/native-check.sh
+./scripts/spio --version
+./scripts/spio machine-info --json
+./scripts/spio --json build
 ```
 
 Pass conditions:
@@ -131,7 +131,7 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-server-gate.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-server-gate.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
@@ -154,7 +154,7 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-split-origin-promotion.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-split-origin-promotion.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
@@ -178,7 +178,7 @@ Objective:
 Commands:
 
 ```text
-bash ./spio/tests/interop/registry-split-origin-http.sh ./spio/build-codex/bin/spio
+bash ./tests/interop/registry-split-origin-http.sh ./build-codex/bin/spio
 ```
 
 Pass conditions:
@@ -202,7 +202,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -225,7 +225,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -248,7 +248,7 @@ Objective:
 Commands:
 
 ```text
-implement under ./spio/tests-private/interop/
+implement under ./tests-private/interop/
 ```
 
 Pass conditions:
@@ -271,7 +271,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/extractability-check.sh
+./scripts/extractability-check.sh
 ```
 
 Pass conditions:
@@ -314,7 +314,7 @@ Objective:
 Commands:
 
 ```text
-./spio/scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
+./scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
 ```
 
 Pass conditions:

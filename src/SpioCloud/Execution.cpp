@@ -5,42 +5,30 @@
 namespace
 {
 
-bool IsAllowedCloudValue(const std::string &value, const std::initializer_list<const char *> &allowed)
-{
-  for (const char *candidate : allowed)
-  {
-    if (value == candidate)
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
 std::string DefaultSecurityProfile(const std::string &risk_class, const std::string &execution_lane)
 {
-  if (execution_lane == "warm-shared")
+  if (execution_lane == spio::kExecutionLaneWarmShared)
   {
-    return "trusted-warm";
+    return std::string(spio::kSecurityProfileTrustedWarm);
   }
-  if (risk_class == "partner-controlled")
+  if (risk_class == spio::kRiskClassPartnerControlled)
   {
-    return "partner-restricted";
+    return std::string(spio::kSecurityProfilePartnerRestricted);
   }
-  return "sandbox-default";
+  return std::string(spio::kSecurityProfileSandboxDefault);
 }
 
 std::string DefaultWorkerTrustTier(const std::string &risk_class, const std::string &execution_lane)
 {
-  if (execution_lane == "warm-shared")
+  if (execution_lane == spio::kExecutionLaneWarmShared)
   {
     return "internal-warm";
   }
-  if (risk_class == "trusted-internal")
+  if (risk_class == spio::kRiskClassTrustedInternal)
   {
     return "trusted-isolated";
   }
-  if (risk_class == "partner-controlled")
+  if (risk_class == spio::kRiskClassPartnerControlled)
   {
     return "partner-isolated";
   }
@@ -49,7 +37,7 @@ std::string DefaultWorkerTrustTier(const std::string &risk_class, const std::str
 
 std::string CompilerFingerprintForState(const spio::ProjectToolchainState &state)
 {
-  if (state.mode == "build")
+  if (state.mode == spio::kToolchainModeBuild)
   {
     return state.source_revision.value_or("source-revision-unset");
   }
@@ -105,35 +93,36 @@ CloudExecutionPolicy ResolveCloudExecutionPolicy(const ProjectToolchainState &st
   policy.requested_security_profile = state.security_profile;
   policy.security_profile = state.security_profile;
 
-  if (!IsAllowedCloudValue(policy.risk_class, {"trusted-internal", "partner-controlled", "untrusted-user"}))
+  if (!spio::IsSupportedCloudRiskClass(policy.risk_class))
   {
-    policy.risk_class = "untrusted-user";
+    policy.risk_class = std::string(spio::kRiskClassUntrustedUser);
     policy.fallback_applied = true;
     policy.routing_reason = "unknown risk class fell back to untrusted-user";
   }
 
-  if (!IsAllowedCloudValue(policy.execution_lane, {"isolated", "warm-shared"}))
+  if (!spio::IsSupportedCloudExecutionLane(policy.execution_lane))
   {
-    policy.execution_lane = "isolated";
+    policy.execution_lane = std::string(spio::kExecutionLaneIsolated);
     policy.fallback_applied = true;
     policy.routing_reason = "unknown execution lane fell back to isolated";
   }
 
-  if (policy.risk_class == "untrusted-user" && policy.execution_lane != "isolated")
+  if (policy.risk_class == spio::kRiskClassUntrustedUser && policy.execution_lane != spio::kExecutionLaneIsolated)
   {
-    policy.execution_lane = "isolated";
+    policy.execution_lane = std::string(spio::kExecutionLaneIsolated);
     policy.fallback_applied = true;
     policy.routing_reason = "untrusted-user jobs require isolated execution";
   }
-  else if (policy.risk_class == "partner-controlled" && policy.execution_lane == "warm-shared")
+  else if (policy.risk_class == spio::kRiskClassPartnerControlled &&
+           policy.execution_lane == spio::kExecutionLaneWarmShared)
   {
-    policy.execution_lane = "isolated";
+    policy.execution_lane = std::string(spio::kExecutionLaneIsolated);
     policy.fallback_applied = true;
     policy.routing_reason = "partner-controlled jobs require explicit allowlist before warm-shared execution";
   }
   else if (policy.routing_reason.empty())
   {
-    if (policy.execution_lane == "warm-shared")
+    if (policy.execution_lane == spio::kExecutionLaneWarmShared)
     {
       policy.routing_reason = "trusted internal workload is eligible for warm-shared execution";
     }
@@ -144,7 +133,7 @@ CloudExecutionPolicy ResolveCloudExecutionPolicy(const ProjectToolchainState &st
   }
 
   const std::string expected_security = DefaultSecurityProfile(policy.risk_class, policy.execution_lane);
-  if (!IsAllowedCloudValue(policy.security_profile, {"sandbox-default", "partner-restricted", "trusted-warm"}) ||
+  if (!spio::IsSupportedCloudSecurityProfile(policy.security_profile) ||
       policy.security_profile != expected_security)
   {
     policy.security_profile = expected_security;
@@ -152,8 +141,8 @@ CloudExecutionPolicy ResolveCloudExecutionPolicy(const ProjectToolchainState &st
   }
 
   policy.worker_trust_tier = DefaultWorkerTrustTier(policy.risk_class, policy.execution_lane);
-  policy.cache_policy.worker_local_reuse = policy.execution_lane == "warm-shared";
-  policy.cache_policy.shared_cache_promotion_eligible = policy.risk_class == "trusted-internal";
+  policy.cache_policy.worker_local_reuse = policy.execution_lane == spio::kExecutionLaneWarmShared;
+  policy.cache_policy.shared_cache_promotion_eligible = policy.risk_class == spio::kRiskClassTrustedInternal;
   policy.worker_pool_key = {
       .platform = DetectCloudPlatform(),
       .architecture = DetectCloudArchitecture(),

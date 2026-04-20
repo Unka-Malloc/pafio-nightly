@@ -2,7 +2,7 @@
 
 **Purpose:** `spio` is the standalone package manager and project workflow tool for Styio. It is designed to remain movable as a self-contained subtree and later as an independent repository.
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-21
 
 ## Scope
 
@@ -79,6 +79,14 @@ Project-local workflow mode selection now uses:
 - `./scripts/spio tool status --json`
 - `./scripts/spio build minimal`
 
+`./scripts/spio` is the repository-local convenience wrapper. It ensures the native binary exists under `./build-codex/bin/spio` and then forwards the remaining arguments. Use the wrapper in day-to-day developer docs; use the explicit binary path when a gate or external harness needs a concrete executable.
+
+Current source-build and cloud boundary:
+
+- `build` mode is implemented as a local source-build workflow rooted in the official `https://github.com/eBioRing/Styio.git` source tree.
+- `cloud status` and `cloud plan` are implemented as local machine-readable contract surfaces.
+- the tracked open-source tree does **not** yet ship the future remote async control plane, queue, or worker pools.
+
 统一 docs/process 与交付入口分别为：
 
 - `./scripts/docs-gate.sh`
@@ -90,6 +98,7 @@ Project-local workflow mode selection now uses:
 For the full implementation and migration plan, start with:
 
 - `docs/planning/Spio-Master-Plan.md`
+- `docs/planning/Spio-Stage-Review-and-Future-Features.md`
 - `docs/planning/Spio-Workstreams-and-TODOs.md`
 - `docs/operations/Spio-Verification-Matrix.md`
 - `docs/operations/Spio-Repo-Split-Runbook.md`

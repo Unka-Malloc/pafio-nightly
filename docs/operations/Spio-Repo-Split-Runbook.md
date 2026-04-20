@@ -2,7 +2,7 @@
 
 **Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-21
 
 ## 1. Preconditions
 
@@ -17,7 +17,7 @@ Before moving the subtree, confirm:
 Recommended combined preflight:
 
 ```text
-./spio/scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
+./scripts/preflight-readiness-check.py --styio-bin ./build-codex/bin/styio
 ```
 
 ## 2. Copy Procedure
@@ -25,7 +25,7 @@ Recommended combined preflight:
 Preferred command:
 
 ```text
-./spio/scripts/copy-to-external-repo.sh /Users/unka/DevSpace/Unka-Malloc/styio-spio
+./scripts/copy-to-external-repo.sh /Users/unka/DevSpace/Unka-Malloc/styio-spio
 ```
 
 This copies only the `spio` subtree and excludes:

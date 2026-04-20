@@ -3,6 +3,7 @@
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
 #include "SpioCore/Process.hpp"
+#include "SpioToolchain/Vocabulary.hpp"
 
 #include <cstdint>
 #include <cstdlib>
@@ -184,7 +185,7 @@ namespace spio
 
 SourceBuildResult EnsureSourceBuiltStyio(const SourceBuildRequest &request)
 {
-  if (request.build_mode != "minimal")
+  if (!IsSupportedBuildMode(request.build_mode))
   {
     throw ToolError("unsupported source build mode: " + request.build_mode);
   }
