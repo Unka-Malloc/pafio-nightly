@@ -2,7 +2,7 @@
 
 **Purpose:** Break the `spio` implementation into independent task lines that can be assigned, implemented, and verified in parallel.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-22
 
 ## Workstream A. Repository Independence
 
@@ -157,7 +157,7 @@ Ownership boundary:
 TODOs:
 
 - keep `new`, `init`, and `check` stable
-- grow `add`, `remove`, `fetch`, `lock`, `tree`
+- maintain resolver-backed `add`, `remove`, `fetch`, `lock`, and `tree`
 - preserve exit code contracts
 - preserve machine-readable error shapes
 - keep command routing thin while domain validation, payload serialization, and process execution stay outside the CLI router
@@ -291,3 +291,18 @@ Before declaring the planning stage complete, every workstream must have:
 - explicit TODOs
 - one named gate
 - at least one documented defect or limitation
+
+## 2026-04-22 Closure Snapshot
+
+### Closed (Verified by Current Test Evidence)
+
+- `spio_styio_interface_gate_handshake` + `spio_styio_interface_gate_compile_plan` are passing, confirming the baseline `styio` machine-info/compile-plan handoff test path (`ctest --test-dir /home/unka/styio-spio/build-codex --output-on-failure`).
+- Registry/control-plane and hosted API contract suites are passing in the same run (`spio_registry_*` and `spio_hosted_api_*` tests), which gives evidence that contract/interop lanes are stable.
+
+### Open / Not Yet Closed
+
+- **A, B, C, D, E, F, G, H** remain open for full stage closure unless the stream-specific TODO list is fully converted to verified acceptance items.
+- Current blockers remain:
+  - stream-level end-to-end behavior still exceeds test coverage of the current default suite (`spio_native_tests_NOT_BUILT` is registered but not runnable in this environment/config).
+  - several TODOs explicitly call out future-phase/implementation-behind-contract behavior, especially around remote execution and full CLI behavior guarantees (see workstream defects).
+  - docs-to-runbook synchronization requires one-to-one closure on extractability and verification runbooks before stage close, as called out in stream H.

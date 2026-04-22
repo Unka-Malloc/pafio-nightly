@@ -1,11 +1,12 @@
 #include "SpioApp/PackageApp.hpp"
 
 #include "SpioCLI/Support.hpp"
+#include "SpioCore/Paths.hpp"
+#include "SpioCore/Process.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioPack/Pack.hpp"
 #include "SpioPublish/Publish.hpp"
-#include "SpioRegistryServer/Publish.hpp"
 #include "SpioResolve/Resolver.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
 #include "SpioTree/Render.hpp"
@@ -16,11 +17,272 @@
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+
+namespace
+{
+
+std::string NormalizeRegistryRootValue(std::string value)
+{
+  while (!value.empty() && value.back() == '/')
+  {
+    value.pop_back();
+  }
+  return value;
+}
+
+bool EndsWith(std::string_view value, std::string_view suffix)
+{
+  return value.size() >= suffix.size() && value.substr(value.size() - suffix.size()) == suffix;
+}
+
+json ParseJsonObjectText(const std::string &text, const std::string &context)
+{
+  try
+  {
+    json payload = json::parse(text);
+    if (!payload.is_object())
+    {
+      throw spio::PublishError(context + " must emit a top-level JSON object");
+    }
+    return payload;
+  }
+  catch (const json::parse_error &)
+  {
+    throw spio::PublishError(context + " did not emit valid JSON");
+  }
+}
+
+std::string ProcessFailureText(const spio::ProcessResult &result)
+{
+  return spio::DescribeProcessFailure(result);
+}
+
+fs::path RegistryV2KeyDirectory()
+{
+  const std::optional<fs::path> spio_home = spio::ResolveOptionalSpioHome();
+  if (!spio_home.has_value())
+  {
+    throw spio::PublishError("unable to resolve SPIO_HOME for registry v2 signing keys: set SPIO_HOME or HOME");
+  }
+  return spio::RegistryServerRoot(*spio_home) / "v2" / "keys";
+}
+
+void EnsureRegistryV2KeyDirectory(const fs::path &key_dir)
+{
+  if (fs::exists(key_dir / "keys.json"))
+  {
+    return;
+  }
+
+  const spio::ProcessResult result = spio::RunProcess<spio::PublishError>({
+      .program = "python3",
+      .args = {
+          (spio::ProjectRoot() / "scripts" / "registry-v2-keygen.py").string(),
+          "--output-dir",
+          key_dir.string(),
+      },
+      .search_path = true,
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry v2 key generation",
+  });
+  if (result.exit_code != 0)
+  {
+    throw spio::PublishError("failed to initialize registry v2 signing keys: " + ProcessFailureText(result));
+  }
+}
+
+json RunRegistryV2FilesystemPublish(const fs::path &registry_root, const spio::PublishResult &candidate)
+{
+  const fs::path key_dir = RegistryV2KeyDirectory();
+  EnsureRegistryV2KeyDirectory(key_dir);
+
+  const spio::ProcessResult result = spio::RunProcess<spio::PublishError>({
+      .program = "python3",
+      .args = {
+          (spio::ProjectRoot() / "scripts" / "registry-v2-publish.py").string(),
+          "--root",
+          registry_root.string(),
+          "--key-dir",
+          key_dir.string(),
+          "--archive-path",
+          candidate.archive_path.string(),
+          "--publisher-id",
+          "spio-cli",
+      },
+      .search_path = true,
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry v2 publish",
+  });
+  if (result.exit_code != 0)
+  {
+    throw spio::PublishError("registry v2 filesystem publish failed: " + ProcessFailureText(result));
+  }
+
+  return ParseJsonObjectText(result.stdout_text, "registry v2 publish");
+}
+
+std::string RegistryControlPlaneBaseUrl(std::string registry_root)
+{
+  constexpr std::string_view kControlPlaneBase = "/api/spio-registry-control/v1";
+  registry_root = NormalizeRegistryRootValue(std::move(registry_root));
+  if (EndsWith(registry_root, kControlPlaneBase))
+  {
+    return registry_root;
+  }
+  return registry_root + std::string(kControlPlaneBase);
+}
+
+json RunRegistryV2ControlPlanePublish(
+    const std::string &registry_root,
+    const std::vector<std::string> &request_headers,
+    const spio::PublishResult &candidate)
+{
+  const std::string control_plane_base = RegistryControlPlaneBaseUrl(registry_root);
+  json request_body = {
+      {"archive_path", candidate.archive_path.string()},
+      {"publisher_id", "spio-cli"},
+  };
+
+  std::vector<std::string> args = {
+      "-fsS",
+      "-X",
+      "POST",
+      control_plane_base + "/publish",
+      "-H",
+      "Content-Type: application/json",
+  };
+  for (const std::string &header : request_headers)
+  {
+    args.push_back("-H");
+    args.push_back(header);
+  }
+  args.push_back("--data");
+  args.push_back(request_body.dump());
+
+  const spio::ProcessResult result = spio::RunProcess<spio::PublishError>({
+      .program = "curl",
+      .args = args,
+      .search_path = true,
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry control-plane publish request",
+  });
+  if (result.exit_code != 0)
+  {
+    throw spio::PublishError("registry control-plane publish request failed: " + ProcessFailureText(result));
+  }
+
+  const json envelope = ParseJsonObjectText(result.stdout_text, "registry control-plane publish response");
+  const int returncode = envelope.value("returncode", -1);
+  if (returncode != 0)
+  {
+    std::string detail;
+    if (envelope.contains("error_payload") && envelope["error_payload"].is_object())
+    {
+      detail = envelope["error_payload"].value("detail", "");
+    }
+    if (detail.empty())
+    {
+      detail = envelope.value("stderr", "");
+    }
+    if (detail.empty())
+    {
+      detail = envelope.value("message", "registry control-plane returned a failure envelope");
+    }
+    throw spio::PublishError("registry control-plane publish failed: " + detail);
+  }
+  if (!envelope.contains("payload") || !envelope["payload"].is_object())
+  {
+    throw spio::PublishError("registry control-plane publish response is missing payload");
+  }
+  return envelope["payload"];
+}
+
+json BuildFilesystemPublishPayload(
+    const spio::PublishResult &candidate,
+    const fs::path &registry_root,
+    const json &publish_result)
+{
+  return {
+      {"command", "publish"},
+      {"mode", "publish"},
+      {"transport", "filesystem"},
+      {"registry_protocol", "v2"},
+      {"message", "published package into registry v2 static root: " + (registry_root / publish_result.at("index_path").get<std::string>()).string()},
+      {"manifest_path", candidate.manifest_path.string()},
+      {"package_root", candidate.package_root.string()},
+      {"archive_path", candidate.archive_path.string()},
+      {"package", candidate.package_name},
+      {"version", candidate.package_version},
+      {"dependencies", candidate.dependency_count},
+      {"dev_dependencies", candidate.dev_dependency_count},
+      {"registry_root", registry_root.string()},
+      {"registry_config_path", (registry_root / "config.json").string()},
+      {"registry_index_path", (registry_root / publish_result.at("index_path").get<std::string>()).string()},
+      {"registry_artifact_path", (registry_root / publish_result.at("artifact_path").get<std::string>()).string()},
+      {"registry_log_leaf_path", (registry_root / publish_result.at("log_leaf_path").get<std::string>()).string()},
+      {"created_root", publish_result.value("created_root", false)},
+      {"sequence", publish_result.value("sequence", 0)},
+      {"checkpoint_version", publish_result.value("checkpoint_version", 0)},
+      {"snapshot_version", publish_result.value("snapshot_version", 0)},
+      {"timestamp_version", publish_result.value("timestamp_version", 0)},
+      {"sha256", publish_result.at("archive_sha256")},
+      {"size_bytes", publish_result.at("archive_size_bytes")},
+      {"published_at", publish_result.at("published_at")},
+  };
+}
+
+json BuildHttpPublishPayload(
+    const spio::PublishResult &candidate,
+    const std::string &registry_root,
+    const spio::RegistryWriteSecurityDecision &security,
+    const json &publish_result)
+{
+  json payload = {
+      {"command", "publish"},
+      {"mode", "publish"},
+      {"transport", "http"},
+      {"registry_protocol", "v2"},
+      {"message", "published package through registry v2 control plane: " + RegistryControlPlaneBaseUrl(registry_root) + "/publish"},
+      {"manifest_path", candidate.manifest_path.string()},
+      {"package_root", candidate.package_root.string()},
+      {"archive_path", candidate.archive_path.string()},
+      {"package", candidate.package_name},
+      {"version", candidate.package_version},
+      {"dependencies", candidate.dependency_count},
+      {"dev_dependencies", candidate.dev_dependency_count},
+      {"registry_root", NormalizeRegistryRootValue(registry_root)},
+      {"control_plane_base_url", RegistryControlPlaneBaseUrl(registry_root)},
+      {"publish_endpoint", RegistryControlPlaneBaseUrl(registry_root) + "/publish"},
+      {"registry_index_path", publish_result.at("index_path")},
+      {"registry_artifact_path", publish_result.at("artifact_path")},
+      {"registry_log_leaf_path", publish_result.at("log_leaf_path")},
+      {"created_root", publish_result.value("created_root", false)},
+      {"sequence", publish_result.value("sequence", 0)},
+      {"checkpoint_version", publish_result.value("checkpoint_version", 0)},
+      {"snapshot_version", publish_result.value("snapshot_version", 0)},
+      {"timestamp_version", publish_result.value("timestamp_version", 0)},
+      {"registry_security_provider", security.provider_name},
+      {"registry_write_security_mode", security.mode},
+      {"registry_header_count", security.request_headers.size()},
+      {"sha256", publish_result.at("archive_sha256")},
+      {"size_bytes", publish_result.at("archive_size_bytes")},
+      {"published_at", publish_result.at("published_at")},
+  };
+  if (security.profile_name.has_value())
+  {
+    payload["registry_profile"] = *security.profile_name;
+  }
+  return payload;
+}
+
+}  // namespace
 
 namespace spio
 {
@@ -926,6 +1188,8 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
 
     try
     {
+      const PublishResult candidate = PreparePublishCandidate(request);
+
       if (IsHttpRegistryRoot(*registry_root))
       {
         const RegistryWriteSecurityDecision security = ResolveRegistryWriteSecurity({
@@ -934,39 +1198,13 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
             .policy_file = registry_policy_file,
             .explicit_request_headers = registry_headers,
         });
-        const HttpRegistryPublishResult result = PublishToHttpRegistry({
-            .publish_request = request,
-            .registry_root = security.registry_root,
-            .request_headers = security.request_headers,
-        });
-        json payload = {
-            {"command", "publish"},
-            {"mode", "publish"},
-            {"transport", "http"},
-            {"message", "published package into remote registry: " + result.registry_entry_url},
-            {"manifest_path", result.candidate.manifest_path.string()},
-            {"package_root", result.candidate.package_root.string()},
-            {"archive_path", result.candidate.archive_path.string()},
-            {"package", result.candidate.package_name},
-            {"version", result.candidate.package_version},
-            {"dependencies", result.candidate.dependency_count},
-            {"dev_dependencies", result.candidate.dev_dependency_count},
-            {"registry_root", result.registry_root},
-            {"registry_marker_url", result.registry_marker_url},
-            {"registry_blob_url", result.registry_blob_url},
-            {"registry_entry_url", result.registry_entry_url},
-            {"registry_security_provider", security.provider_name},
-            {"registry_write_security_mode", security.mode},
-            {"registry_header_count", security.request_headers.size()},
-            {"sha256", result.archive_sha256},
-            {"size_bytes", result.archive_size_bytes},
-            {"published_at", result.published_at_utc},
-        };
-        if (security.profile_name.has_value())
-        {
-          payload["registry_profile"] = *security.profile_name;
-        }
-        return EmitSuccess(payload, as_json);
+        return EmitSuccess(
+            BuildHttpPublishPayload(
+                candidate,
+                security.registry_root,
+                security,
+                RunRegistryV2ControlPlanePublish(security.registry_root, security.request_headers, candidate)),
+            as_json);
       }
 
       const fs::path filesystem_registry_root =
@@ -999,31 +1237,11 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
             {"UsageError", kExitUsage, "--registry-header is only valid for http:// or https:// registry roots", "publish"},
             as_json);
       }
-      const RegistryPublishResult result = PublishToFilesystemRegistry({
-          .publish_request = request,
-          .registry_root = filesystem_registry_root,
-      });
       return EmitSuccess(
-          {
-              {"command", "publish"},
-              {"mode", "publish"},
-              {"transport", "filesystem"},
-              {"message", "published package into local filesystem registry: " + result.registry_entry_path.string()},
-              {"manifest_path", result.candidate.manifest_path.string()},
-              {"package_root", result.candidate.package_root.string()},
-              {"archive_path", result.candidate.archive_path.string()},
-              {"package", result.candidate.package_name},
-              {"version", result.candidate.package_version},
-              {"dependencies", result.candidate.dependency_count},
-              {"dev_dependencies", result.candidate.dev_dependency_count},
-              {"registry_root", result.registry_root.string()},
-              {"registry_marker_path", result.registry_marker_path.string()},
-              {"registry_blob_path", result.registry_blob_path.string()},
-              {"registry_entry_path", result.registry_entry_path.string()},
-              {"sha256", result.archive_sha256},
-              {"size_bytes", result.archive_size_bytes},
-              {"published_at", result.published_at_utc},
-          },
+          BuildFilesystemPublishPayload(
+              candidate,
+              fs::absolute(filesystem_registry_root).lexically_normal(),
+              RunRegistryV2FilesystemPublish(filesystem_registry_root, candidate)),
           as_json);
     }
     catch (const ValidationError &err)

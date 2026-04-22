@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-23
 
 ## Mission
 
@@ -22,6 +22,7 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, and cloud execution-policy semantics, and keep machine-readable graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
 3. Keep handoff docs and interface gates aligned in the same checkpoint.
 4. Use `--styio-bin` health legs when validating the published binary path.
+5. Treat compile-plan v1 as live only when `styio --machine-info=json`, `contracts/compat/styio-support.toml`, and the black-box interop gate all agree.
 
 ## Change Classes
 
@@ -33,6 +34,7 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 
 ```bash
 ./scripts/checkpoint-health.sh --styio-bin /absolute/path/to/styio
+python3 scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --spio-bin ./build-codex/bin/spio --require-compile-plan --json
 ```
 
 ## Cross-Team Dependencies
@@ -42,4 +44,4 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 
 ## Handoff / Recovery
 
-Record the exact published external compiler binary or source revision, compatibility phase when relevant, and the failing contract command when stopping mid-checkpoint.
+Record the exact published external compiler binary or source revision, compatibility phase, supported compile-plan versions, and the failing contract command when stopping mid-checkpoint.

@@ -39,6 +39,10 @@ struct ProcessRequest
   std::string error_context = "child process";
 };
 
+inline constexpr std::chrono::milliseconds kExternalProcessProbeTimeout{std::chrono::seconds{30}};
+inline constexpr std::chrono::milliseconds kExternalProcessStepTimeout{std::chrono::minutes{10}};
+inline constexpr std::chrono::milliseconds kExternalProcessBuildTimeout{std::chrono::minutes{60}};
+
 class ProcessFailure : public std::runtime_error
 {
 public:
@@ -46,6 +50,7 @@ public:
 };
 
 ProcessResult RunProcessChecked(const ProcessRequest &request);
+std::string DescribeProcessFailure(const ProcessResult &result);
 std::string TrimTrailingNewline(std::string text);
 
 template <typename Error = ProcessFailure>

@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the command surface, exit code ranges, and machine-readable output rules for the `spio` bootstrap phase so later implementations can evolve behind a stable interface.
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-04-23
 
 ## 1. Command Surface
 
@@ -155,14 +155,15 @@ This is the package-manager-side self-description endpoint. It reports:
 - `supported_contracts.build_job_request` reports `[1]`
 - `supported_contracts.toolchain_state` reports `[1]`
 - `supported_contracts.workflow_success_payloads` reports `[1]`
+- `supported_contracts.compile_plan` reports `[1]`
 - `supported_contracts.cloud_execution_policy` reports `[1]`
 - `supported_contracts.worker_pool_keys` reports `[1]`
 
-Phase-2 rule:
+Compile-plan publication rule:
 
-- `supported_contracts.compile_plan` must remain an empty list until `styio` publishes a real compile-plan consumer and the compatibility matrix allows that phase
-- owning `contracts/compile-plan/` schema files does not by itself authorize advertising active compile-plan support
-- local `spio build --dry-run`, `spio run --dry-run`, and `spio test --dry-run` plan emission also do not authorize advertising active compile-plan support
+- `supported_contracts.compile_plan` may advertise `[1]` because the active compatibility matrix is `compile-plan-live`
+- owning `contracts/compile-plan/` schema files still does not authorize future versions by itself
+- every advertised compile-plan version must have a matching `styio --compile-plan <path>` consumer and an interop gate
 
 ### 3.1 `spio project-graph --json`
 
@@ -306,22 +307,24 @@ Optional keys:
 - `spio publish --dry-run` requires `package.publish = true`
 - published packages may include dependency entries only when those dependencies are themselves registry-addressable
 - non-dry-run `spio publish` is active for an explicit registry root passed through `--registry <path-or-url>`
-- local paths and `file://...` roots publish directly into the local filesystem registry layout
-- `http://...` and `https://...` roots publish through anonymous HTTP `PUT` to the same marker/blob/entry paths
+- local paths and `file://...` roots publish into the local `registry v2` static read plane by generating signing keys under `SPIO_HOME/server/registry/v2/keys` on first use
+- `http://...` and `https://...` roots publish through the versioned registry control-plane route family rooted at `/api/spio-registry-control/v1`
 - `--registry-profile <name>`, `--registry-policy-file <path>`, and `--registry-header <name:value>` reserve the private write-side security interface for remote publish
 - the tracked open-source core rejects those three options unless a private security module is linked from `src-private/`
 - when a private security module accepts them, they apply only to remote publish against the write origin and do not affect read-side fetch behavior
-- publish writes:
-  - registry marker: `<registry-root>/spio-registry.json`
-  - immutable archive blob: `<registry-root>/blobs/sha256/<xx>/<yy>/<sha256>.tar`
-  - version entry: `<registry-root>/index/<namespace>/<name>/<version>.json`
-- registry version entries record dependency metadata for `[dependencies]` and `[dev-dependencies]`
-- publish must reject republishing an existing package version entry
-- remote publish currently assumes an origin that preserves immutable paths and rejects overwrites
+- local publish writes:
+  - registry config: `<registry-root>/config.json`
+  - signed namespace targets: `<registry-root>/trust/targets/<namespace>.json`
+  - append-only package index: `<registry-root>/index/<namespace>/<name>.jsonl`
+  - immutable source artifact: `<registry-root>/artifacts/source/sha256/<xx>/<yy>/<sha256>.spio.src.tar`
+  - transparency leaf/checkpoint: `<registry-root>/log/...`
+- registry `v2` index records store dependency metadata for `[dependencies]` and `[dev-dependencies]`
+- publish must reject republishing an existing package version record
+- remote publish assumes a control-plane service that appends releases and refreshes signed metadata without exposing raw static-root writes
 - publish JSON must not expose raw request headers or resolved private policy file paths; it may expose only redacted security metadata
 - first-class auth/account policy remains outside the tracked public tree behind the private security-module boundary
 - registry dependency roots in manifests use `file://`, `http://`, or `https://`
-- resolver-backed `fetch` materializes registry marker metadata, version entries, immutable blobs, and extracted snapshots under `SPIO_HOME/registry/`
+- resolver-backed `fetch` materializes registry `config`, namespace targets, append-only package indexes, immutable source artifacts, and extracted snapshots under `SPIO_HOME/registry/`
 - `spio tool install` installs only local self-contained `styio` executables in the current native core
 - `spio tool install` must validate the compiler through `styio --machine-info=json` plus the published compatibility matrix before writing managed state
 - `spio tool install` writes managed compiler state under `SPIO_HOME/tools/styio/`
@@ -354,9 +357,10 @@ Optional keys:
 - `spio test --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "test"` to `.spio/build/<cache-key>/plan.json`
 - `spio test` only supports explicit manifest `[[test]]` targets in the current native core
 - in `binary` mode, non-dry-run `spio build` requires a resolved compiler from explicit `--styio-bin <path>`, `SPIO_STYIO_BIN`, a project toolchain pin, or the managed current compiler
-- in `binary` mode, non-dry-run `spio build` may call `styio --compile-plan <path>` only when the published compatibility matrix enables compile-plan v1 for the current phase
+- in `binary` mode, non-dry-run `spio build` calls `styio --compile-plan <path>` after compiler discovery and compatibility gating confirm compile-plan v1
 - in `binary` mode, non-dry-run `spio run` follows the same published compile-plan gate as `spio build`
 - in `binary` mode, non-dry-run `spio test` follows the same published compile-plan gate as `spio build`
+- after a successful compiler exit, `spio build`, `spio run`, and `spio test` require the declared output directories and `outputs.build_root/receipt.json` to exist
 - in `build` mode, non-dry-run `spio build`, `spio run`, and `spio test` use the locally built compiler path produced from the selected or fetched source tree
 - source-build mode bypasses the published binary compatibility matrix and instead uses the locally built compiler revision recorded in `spio-toolchain.lock`
 - the current native baseline resolves cloud execution policy locally:

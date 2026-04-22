@@ -271,13 +271,14 @@ private:
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
         .program = "git",
         .args = {"clone", "--mirror", normalized_source, repo_dir.string()},
+        .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)
     {
       throw spio::FetchError(
           "failed to clone git source '" + normalized_source + "': " +
-          spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+          spio::DescribeProcessFailure(result));
     }
   }
 
@@ -286,8 +287,13 @@ private:
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
         .program = "git",
         .args = {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"},
+        .timeout = spio::kExternalProcessProbeTimeout,
         .error_context = "resolver process",
     });
+    if (result.timed_out)
+    {
+      throw spio::FetchError("failed to check git rev '" + rev + "': " + spio::DescribeProcessFailure(result));
+    }
     return result.exit_code == 0;
   }
 
@@ -296,13 +302,14 @@ private:
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
         .program = "git",
         .args = {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"},
+        .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)
     {
       throw spio::FetchError(
           "failed to fetch git source cache '" + repo_dir.string() + "': " +
-          spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+          spio::DescribeProcessFailure(result));
     }
   }
 
@@ -316,35 +323,26 @@ private:
 
     fs::remove_all(snapshot_root);
     fs::create_directories(snapshot_root);
+    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
     const spio::ProcessResult archive = spio::RunProcess<spio::CacheError>({
         .program = "git",
-        .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", rev},
+        .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", "--output", archive_path.string(), rev},
+        .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
     if (archive.exit_code != 0)
     {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
       throw spio::FetchError(
           "failed to archive git rev '" + rev + "': " +
-          spio::TrimTrailingNewline(archive.stderr_text.empty() ? archive.stdout_text : archive.stderr_text));
-    }
-
-    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
-    {
-      std::ofstream out(archive_path, std::ios::binary);
-      if (!out)
-      {
-        throw spio::CacheError("failed to create temporary git archive: " + archive_path.string());
-      }
-      out.write(archive.stdout_text.data(), static_cast<std::streamsize>(archive.stdout_text.size()));
-      if (!out.good())
-      {
-        throw spio::CacheError("failed to write temporary git archive: " + archive_path.string());
-      }
+          spio::DescribeProcessFailure(archive));
     }
 
     const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
         .program = "tar",
         .args = {"-xf", archive_path.string(), "-C", snapshot_root.string()},
+        .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
     fs::remove(archive_path);
@@ -352,7 +350,7 @@ private:
     {
       throw spio::CacheError(
           "failed to extract git snapshot '" + snapshot_root.string() + "': " +
-          spio::TrimTrailingNewline(extract.stderr_text.empty() ? extract.stdout_text : extract.stderr_text));
+          spio::DescribeProcessFailure(extract));
     }
 
     std::ofstream marker(ready_marker);

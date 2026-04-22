@@ -110,10 +110,11 @@ Must not:
 - CLI/exit-code/error contract: `docs/governance/Spio-CLI-Contract.md`
 - entrypoint and argument index: `docs/governance/Spio-Entry-Argument-Index.md`
 - manifest/lock conventions: `docs/governance/Spio-Manifest-and-Lock-Conventions.md`
-- registry repository contract: `docs/governance/Spio-Registry-Repository-Contract.md`
 - private security boundary: `docs/security/Spio-Private-Security-Module-Contract.md`
+- registry v2 static read-plane protocol: `docs/registry/Spio-Registry-V2-Protocol.md`
+- registry v2 control-plane contract: `docs/registry/Spio-Registry-Control-Plane-Contract.md`
+- registry v2 publish-plane responsibilities: `docs/registry/Spio-Registry-V2-Publish-Control-Plane.md`
 - registry client contract: `docs/registry/Spio-Registry-Client-Contract.md`
-- registry server contract: `docs/registry/Spio-Registry-Server-Contract.md`
 - registry deployment baseline: `docs/registry/Spio-Registry-Deployment-Baseline.md`
 - design and implementation decision records: `docs/adr/INDEX.md`
 - overall roadmap: `docs/planning/Spio-Master-Plan.md`

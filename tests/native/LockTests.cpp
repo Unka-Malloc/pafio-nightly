@@ -439,6 +439,45 @@ TEST(ResolverTests, ResolvesPinnedGitWorkspaceAndTransitivePathDependencies)
   EXPECT_EQ(spio::SerializeLockfileCanonical(generated.lockfile), expected);
 }
 
+TEST(ResolverTests, ResolvesLargeGitSnapshotsWithoutArchiveTruncation)
+{
+  const fs::path root = MakeTempDir("git-workspace-large-snapshot");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path git_repo = root / "remote-feed";
+  (void) CreateWorkspaceGitRepo(git_repo, "0.9.0");
+
+  WriteFile(git_repo / "packages/feed/assets/large.txt", std::string(1U << 21, 'x'));
+  RunGitOrAssert(
+      {"-C", git_repo.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "add", "."});
+  RunGitOrAssert(
+      {"-C", git_repo.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "commit", "--quiet", "-m", "large snapshot"});
+  const std::string rev = GitHeadRev(git_repo);
+
+  WriteFile(
+      root / "spio.toml",
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "feed = { package = \"acme/feed\", git = \"") +
+          CanonicalAbsolutePath(git_repo).generic_string() +
+          "\", rev = \"" + rev + "\" }\n");
+
+  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  ASSERT_EQ(generated.lockfile.packages.size(), 3U);
+  EXPECT_EQ(generated.lockfile.packages.back().source_kind, "workspace");
+}
+
 TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit)
 {
   const fs::path root = MakeTempDir("single-version-conflict");

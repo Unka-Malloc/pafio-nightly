@@ -938,16 +938,18 @@ Behavior summary:
 - requires `package.publish = true`
 - allows dependency entries only when they are themselves registry-addressable
 - stages the same deterministic source archive shape used by `spio pack`
-- non-dry-run `publish` writes into the static registry layout rooted at `--registry <path-or-url>`
-- local paths and `file://...` publish directly into the filesystem registry root
-- `http://...` and `https://...` publish through anonymous HTTP `PUT`
+- non-dry-run `publish` writes into the registry `v2` static read plane or calls the registry `v2` control plane rooted at `--registry <path-or-url>`
+- local paths and `file://...` publish directly into a filesystem registry `v2` root
+- `http://...` and `https://...` publish through `/api/spio-registry-control/v1/publish`
 - when a private security module accepts `--registry-profile <name>`, `--registry-policy-file <path>`, or `--registry-header <name:value>`, those options affect only remote publish against the write origin and do not affect client-side fetch semantics
 - publish writes:
-  - marker file: `<registry-root>/spio-registry.json`
-  - immutable archive blob: `<registry-root>/blobs/sha256/<xx>/<yy>/<sha256>.tar`
-  - version entry: `<registry-root>/index/<namespace>/<name>/<version>.json`
-- version entries record package name, version, archive digest, archive size, publish timestamp, and dependency metadata for `[dependencies]` and `[dev-dependencies]`
-- remote publish currently requires the origin to preserve immutable paths and reject overwrites
+  - registry config: `<registry-root>/config.json`
+  - signed namespace targets: `<registry-root>/trust/targets/<namespace>.json`
+  - append-only package index: `<registry-root>/index/<namespace>/<name>.jsonl`
+  - source artifact: `<registry-root>/artifacts/source/sha256/<xx>/<yy>/<sha256>.spio.src.tar`
+  - transparency metadata: `<registry-root>/log/...`
+- index records store package name, version, archive digest, archive size, publish timestamp, and dependency metadata for `[dependencies]` and `[dev-dependencies]`
+- remote publish currently requires a registry control-plane service that preserves append-only index and immutable artifact semantics
 - publish JSON stays redacted and may expose only security-provider metadata, security mode, header count, and optional profile name
 - auth/account behavior is intentionally kept behind the private security-module boundary
 - republishing an existing package version into the same registry fails explicitly
@@ -1242,7 +1244,7 @@ Arguments:
 
 - `--source-root <path-or-file-url>`
   - required
-  - writable source registry root that already contains canonical marker, index entries, and blobs
+  - writable source registry `v2` root that already contains canonical `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects
 - `--dest-root <path-or-file-url>`
   - required
   - read-side registry root that will serve the promoted objects
@@ -1260,8 +1262,8 @@ Arguments:
 Behavior:
 
 - supports only local paths and `file://` roots
-- validates the source registry marker
-- copies marker, version entries, and referenced immutable blobs into the destination root
+- validates the source registry `v2` root shape
+- copies `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects into the destination root
 - treats destination objects as immutable and fails if an existing object differs from the source
 - supports idempotent repeated promotion runs
 

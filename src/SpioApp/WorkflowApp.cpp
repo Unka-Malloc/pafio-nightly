@@ -28,6 +28,40 @@ using json = nlohmann::json;
 namespace spio
 {
 
+std::optional<std::string> ValidateCompilePlanMaterialization(const BuildPlanResult &plan)
+{
+  std::vector<std::string> missing;
+  const auto require_directory = [&missing](const fs::path &path, const std::string &label) {
+    if (!fs::is_directory(path))
+    {
+      missing.push_back(label + "=" + path.string());
+    }
+  };
+  const auto require_file = [&missing](const fs::path &path, const std::string &label) {
+    if (!fs::is_regular_file(path))
+    {
+      missing.push_back(label + "=" + path.string());
+    }
+  };
+
+  require_directory(plan.build_root, "outputs.build_root");
+  require_directory(plan.artifact_dir, "outputs.artifact_dir");
+  require_directory(plan.diag_dir, "outputs.diag_dir");
+  require_file(plan.build_root / "receipt.json", "receipt");
+
+  if (missing.empty())
+  {
+    return std::nullopt;
+  }
+
+  std::string detail = missing.front();
+  for (size_t index = 1; index < missing.size(); ++index)
+  {
+    detail += ", " + missing[index];
+  }
+  return detail;
+}
+
 int HandleProjectGraph(const std::vector<std::string> &args, bool as_json)
 {
   if (args.size() == 1 && args.front() == "--help")
@@ -394,7 +428,7 @@ int HandlePlanCommand(
             report.supported_compile_plan_versions.end())
         {
           return EmitError(
-              {"ContractError", kExitContract, "published compatibility matrix does not yet allow compile-plan v1 " + std::string(command_name) + " in this spio phase", std::string(command_name)},
+              {"ContractError", kExitContract, "active compatibility matrix does not allow compile-plan v1 " + std::string(command_name) + " for this compiler", std::string(command_name)},
               as_json);
         }
         request.compiler_version = report.compiler_version;
@@ -532,6 +566,7 @@ int HandlePlanCommand(
         .program = compiler->string(),
         .args = {"--compile-plan", plan.plan_path.string()},
         .search_path = false,
+        .timeout = kExternalProcessBuildTimeout,
         .error_context = "compiler compile-plan execution",
     });
     if (result.exit_code == 127)
@@ -542,7 +577,7 @@ int HandlePlanCommand(
     }
     if (result.exit_code != 0)
     {
-      const std::string detail = TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
+      const std::string detail = DescribeProcessFailure(result);
       return EmitError(
           {"CompilerError", kExitCompiler, "compiler failed for compile-plan " + plan.plan_path.string() + (detail.empty() ? "" : ": " + detail), std::string(command_name)},
           as_json);
@@ -557,6 +592,13 @@ int HandlePlanCommand(
       {
         std::cerr << result.stderr_text;
       }
+    }
+    if (const std::optional<std::string> materialization_error = ValidateCompilePlanMaterialization(plan);
+        materialization_error.has_value())
+    {
+      return EmitError(
+          {"CompilerError", kExitCompiler, "compiler completed but did not materialize compile-plan outputs: " + *materialization_error, std::string(command_name)},
+          as_json);
     }
   }
   catch (const std::exception &err)

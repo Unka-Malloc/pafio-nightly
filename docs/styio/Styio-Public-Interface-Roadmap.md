@@ -2,7 +2,7 @@
 
 **Purpose:** Describe the exact compiler-facing interfaces that `spio` needs from `styio`, so future `spio` maintainers know what to request, test, and vendor without depending on compiler internals.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-23
 
 This file is the sequencing view.
 
@@ -20,7 +20,7 @@ Published bootstrap command:
 styio --machine-info=json
 ```
 
-Bootstrap-stable fields needed by `spio`:
+Compile-plan-live fields needed by `spio`:
 
 - tool identity
 - compiler version
@@ -29,15 +29,15 @@ Bootstrap-stable fields needed by `spio`:
 - supported capability flags
 - maximum supported edition
 
-Current bootstrap expectation:
+Current handoff expectation:
 
-- compile-plan support is still empty
-- `spio` may use this command for handshake and compatibility gating
-- `spio` may not yet use it as proof that project build orchestration is available
+- compile-plan support advertises `[1]`
+- `spio` uses this command for handshake and compatibility gating
+- `spio` may use it as proof of project build orchestration only when the compatibility matrix also enables compile-plan v1
 
 ### 2. Compile Plan Entry
 
-Planned command:
+Published command:
 
 ```text
 styio --compile-plan <path>
@@ -52,7 +52,7 @@ styio --compile-plan <path>
 
 Status:
 
-- not yet published by `styio`
+- active for compile-plan v1 and covered by `scripts/styio-interface-gate.py --require-compile-plan`
 - must not be guessed or reverse-engineered from compiler internals
 
 ### 3. JSON Diagnostics
@@ -61,13 +61,13 @@ Status:
 
 ### 4. Handoff Gate
 
-Compiler publication is not complete until the released binary passes:
+Compiler publication is not complete until the released binary passes the handshake gate:
 
 ```text
 ./scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio
 ```
 
-and, once compile-plan support is advertised:
+and the required compile-plan handoff gate:
 
 ```text
 ./scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --require-compile-plan

@@ -170,6 +170,91 @@ add_test(
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-split-origin-http.sh" "$<TARGET_FILE:spio>"
 )
 
+add_test(
+  NAME spio_registry_v2_unit
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_registry_v2.py"
+)
+
+add_test(
+  NAME spio_cloud_compile_stress_unit
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_cloud_compile_stress.py"
+)
+
+add_test(
+  NAME spio_registry_v2_contract
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-contract-gate.py"
+)
+
+add_test(
+  NAME spio_registry_v2_publish
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-publish.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_registry_v2_http_read
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-http-read.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_registry_control_plane_contract
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/registry-control-plane-contract-gate.py"
+)
+
+add_test(
+  NAME spio_registry_v2_control_plane_http
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-control-plane-http.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_registry_control_plane_openapi_lint
+  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/openapi.json" --config "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/redocly.yaml"
+)
+
+add_test(
+  NAME spio_registry_control_plane_workflow_lint
+  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/workflows.arazzo.json"
+)
+
+add_test(
+  NAME spio_hosted_api_contract_unit
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode unit
+)
+
+add_test(
+  NAME spio_hosted_api_contract_integration
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode integration
+)
+
+add_test(
+  NAME spio_hosted_api_contract_regression
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode regression
+)
+
+add_test(
+  NAME spio_hosted_api_contract_smoke
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode smoke
+)
+
+add_test(
+  NAME spio_hosted_api_contract_fuzz
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode fuzz
+)
+
+add_test(
+  NAME spio_hosted_api_contract_pack_sync
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/scripts/export_hosted_control_plane_api.py" --check
+)
+
+add_test(
+  NAME spio_hosted_api_openapi_lint
+  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/openapi.json" --config "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/redocly.yaml"
+)
+
+add_test(
+  NAME spio_hosted_api_workflow_lint
+  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/workflows.arazzo.json"
+)
+
 if(EXISTS "${CMAKE_SOURCE_DIR}/tests-private/CMakeLists.txt")
   add_subdirectory("${CMAKE_SOURCE_DIR}/tests-private" "${CMAKE_BINARY_DIR}/tests-private")
 endif()

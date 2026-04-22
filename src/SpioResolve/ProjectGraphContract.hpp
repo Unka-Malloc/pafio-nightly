@@ -1,6 +1,5 @@
 #pragma once
 
-#include "SpioCLI/Support.hpp"
 #include "SpioCloud/Execution.hpp"
 #include "SpioResolve/Resolver.hpp"
 #include "SpioTool/Install.hpp"
@@ -12,6 +11,8 @@
 
 namespace spio
 {
+
+struct WorkflowFlags;
 
 nlohmann::json BuildProjectGraphPayload(
     const std::filesystem::path &manifest_path,

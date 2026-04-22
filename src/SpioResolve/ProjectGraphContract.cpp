@@ -1,5 +1,6 @@
 #include "SpioResolve/ProjectGraphContract.hpp"
 
+#include "SpioCLI/Support.hpp"
 #include "SpioCloud/Contract.hpp"
 #include "SpioCloud/Job.hpp"
 #include "SpioCore/Paths.hpp"

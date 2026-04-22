@@ -12,6 +12,27 @@
   - `binary`: published compiler path through a versioned machine contract and a process boundary
   - `build`: source-build path through an official `styio` source checkout and local compiler build cache
 
+## Product Surface Split
+
+- `frontend/console/` is reserved for the repo-hosted human control console page.
+- `src/` remains the backend/domain core for package, registry, toolchain, and cloud-platform behavior.
+- `docs/registry/` and `docs/governance/` remain the SSOT for service-side contracts.
+- the native CLI stays the machine/admin surface; it is not the user-facing control console.
+
+The normative split is defined in
+[`docs/governance/Spio-Control-Console-And-Service-Split.md`](docs/governance/Spio-Control-Console-And-Service-Split.md).
+
+## Native Target Split
+
+- `src/` no longer builds as one monolithic `spio_core`.
+- backend/domain code now composes from internal static libraries such as `spio_foundation`, `spio_manifest`, `spio_resolution`, `spio_toolchain_service`, `spio_package_service`, and `spio_project_service`.
+- the CLI surface now sits on top as `spio_cli_support`, `spio_cli_commands`, and `spio_cli_shell`, with the `spio` executable linking the shell target only.
+- this keeps future backend/service binaries free to reuse the backend-side libraries without inheriting CLI routing code or any repo-hosted console UI concerns.
+
+The source-level ownership summary lives in
+[`src/README.md`](src/README.md) and the planning note for the split lives in
+[`docs/planning/Spio-Native-Target-Split.md`](docs/planning/Spio-Native-Target-Split.md).
+
 ## Independence Rules
 
 - `spio` must not include or link against `styio` implementation headers or libraries.
@@ -24,6 +45,8 @@
 
 ```text
 spio/
+  frontend/
+    console/
   src/
   tests/
     unit/
@@ -41,13 +64,14 @@ The current repository root still hosts the existing `styio` compiler project di
 
 The active implementation target is a native `C++20` + `CMake` codebase aligned with the operational toolchain used by `styio`.
 
-The existing Python bootstrap remains in-tree only as a temporary migration reference while native phase-2 parity is being built for:
+The native core is now the active implementation path for:
 
 - CLI shape
 - manifest and lockfile validation rules
 - machine-facing contract boundaries
+- registry `v2` static distribution and control-plane contract gates
 
-Python is not the intended long-term implementation path for `spio`.
+Python remains in-tree only where it owns repository automation, contract gates, and registry/control-plane helper tooling.
 
 ## Developer Context Pack
 
@@ -76,6 +100,7 @@ Project-local workflow mode selection now uses:
 - `./scripts/spio project-graph --json`
 - `./scripts/spio cloud status --json`
 - `./scripts/spio cloud plan --json build minimal`
+- `./scripts/cloud-compile-stress.py --require-hot-replacement --summary-json /tmp/spio-cloud-stress-summary.json --events-jsonl /tmp/spio-cloud-stress-events.jsonl`
 - `./scripts/spio tool status --json`
 - `./scripts/spio build minimal`
 

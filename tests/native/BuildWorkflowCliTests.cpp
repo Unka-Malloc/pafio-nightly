@@ -12,10 +12,11 @@ using spio::testsupport::MakeTempDir;
 using spio::testsupport::ReadFile;
 using spio::testsupport::ScopedEnvVar;
 using spio::testsupport::WriteExecutable;
+using spio::testsupport::WriteFakeCompilePlanStyio;
 using spio::testsupport::WriteFakeSourceToolchain;
 using spio::testsupport::WriteFile;
 
-TEST(BuildCliTests, NonDryRunBuildIsBlockedByPublishedCompatibilityPhase)
+TEST(BuildCliTests, NonDryRunBuildRejectsCompilerWithoutRequiredCompilePlanVersion)
 {
   const fs::path root = MakeTempDir("build-contract-gate");
   const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
@@ -55,6 +56,55 @@ TEST(BuildCliTests, NonDryRunBuildIsBlockedByPublishedCompatibilityPhase)
       fake_styio.string(),
   });
   EXPECT_EQ(exit_code, spio::kExitContract);
+}
+
+TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
+{
+  const fs::path root = MakeTempDir("build-compile-plan-live");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  WriteFile(
+      root / "spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
+
+  const fs::path fake_styio = root / "fake-styio";
+  WriteFakeCompilePlanStyio(fake_styio);
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "build",
+      "--manifest-path",
+      (root / "spio.toml").string(),
+      "--styio-bin",
+      fake_styio.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("mode").get<std::string>(), "execute");
+  EXPECT_EQ(payload.at("intent").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
+  EXPECT_EQ(payload.at("styio").at("supported_compile_plan_versions").at(0).get<int>(), 1);
+
+  const fs::path build_root = payload.at("build_root").get<std::string>();
+  ASSERT_TRUE(fs::exists(build_root / "receipt.json"));
+  const json receipt = json::parse(ReadFile(build_root / "receipt.json"));
+  EXPECT_EQ(receipt.at("tool").get<std::string>(), "styio");
+  EXPECT_EQ(receipt.at("intent").get<std::string>(), "build");
 }
 
 TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)

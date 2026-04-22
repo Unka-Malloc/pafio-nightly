@@ -11,17 +11,19 @@
 3. Stage review and future direction: [planning/Spio-Stage-Review-and-Future-Features.md](./planning/Spio-Stage-Review-and-Future-Features.md)
 4. Version-decoupling rules: [governance/Spio-Version-Decoupling-Constraints.md](./governance/Spio-Version-Decoupling-Constraints.md)
 5. Cloud execution policy contract: [governance/Spio-Cloud-Control-Plane-Contract.md](./governance/Spio-Cloud-Control-Plane-Contract.md)
-6. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
-7. External compiler knowledge pack: [styio/Styio-for-Spio-Developers.md](./styio/Styio-for-Spio-Developers.md)
+6. Compile-cloud stress framework: [governance/Spio-Cloud-Compile-Stress-Framework.md](./governance/Spio-Cloud-Compile-Stress-Framework.md)
+7. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
+8. External compiler knowledge pack: [styio/Styio-for-Spio-Developers.md](./styio/Styio-for-Spio-Developers.md)
 
 ## Modules
 
 - `assets/` — reusable workflow and gate documentation
 - `governance/` — normative rules and single-source contracts
 - `security/` — public/private security boundary for auth, account, and trust hooks
+- `specs/` — cross-cutting agent, audit, repository-boundary, dependency, and documentation rules
 - `adr/` — durable design and implementation decisions
 - `planning/` — phases, workstreams, retrospectives, and TODO decomposition
-- `registry/` — client contract, server contract, and deployment baseline for shared package distribution
+- `registry/` — registry v2 static read-plane, control-plane, client, and deployment contracts for shared package distribution
 - `operations/` — gates, preflight, registry server runbook, and split runbook
 - `styio/` — external compiler knowledge pack and public interface expectations
 - `teams/` — owner runbooks, review routing, and delivery-facing ownership boundaries
@@ -36,18 +38,21 @@
 6. `adr/INDEX.md`
 7. `governance/Spio-Cloud-Control-Plane-Contract.md`
 8. `governance/Spio-Entry-Argument-Index.md`
-9. `governance/Spio-Registry-Repository-Contract.md`
-10. `governance/Docs-Maintenance-Model.md`
-11. `security/Spio-Private-Security-Module-Contract.md`
-12. `registry/Spio-Registry-Client-Contract.md`
-13. `registry/Spio-Registry-Server-Contract.md`
-14. `registry/Spio-Registry-Deployment-Baseline.md`
-15. `planning/Spio-Workstreams-and-TODOs.md`
-16. `operations/Spio-Verification-Matrix.md`
-17. `operations/Spio-Registry-Server-Runbook.md`
-18. `styio/Styio-External-Interface-Requirement-Spec.md`
-19. `styio/Styio-for-Spio-Developers.md`
-20. `operations/Spio-Repo-Split-Runbook.md`
+9. `registry/Spio-Registry-V2-Protocol.md`
+10. `registry/Spio-Registry-Control-Plane-Contract.md`
+11. `registry/Spio-Registry-V2-Publish-Control-Plane.md`
+12. `governance/Docs-Maintenance-Model.md`
+13. `specs/audit/CODE-AUDIT-CHECKLIST.md`
+14. `security/Spio-Private-Security-Module-Contract.md`
+15. `registry/Spio-Registry-Client-Contract.md`
+16. `registry/Spio-Registry-Deployment-Baseline.md`
+17. `planning/Spio-Workstreams-and-TODOs.md`
+18. `operations/Spio-Verification-Matrix.md`
+19. `operations/Spio-Cloud-Compile-Stress-Runbook.md`
+20. `operations/Spio-Registry-Server-Runbook.md`
+21. `styio/Styio-External-Interface-Requirement-Spec.md`
+22. `styio/Styio-for-Spio-Developers.md`
+23. `operations/Spio-Repo-Split-Runbook.md`
 
 ## Precedence
 
@@ -56,10 +61,11 @@ When documents disagree:
 1. `governance/`
 2. `security/`
 3. `registry/`
-4. `adr/`
-5. `operations/`
-6. `planning/`
-7. `styio/`
+4. `specs/`
+5. `adr/`
+6. `operations/`
+7. `planning/`
+8. `styio/`
 
 ## Maintenance Rules
 

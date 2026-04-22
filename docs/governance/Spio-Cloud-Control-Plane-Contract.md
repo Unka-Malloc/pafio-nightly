@@ -24,6 +24,16 @@ This document does not own:
 
 Those remain in the existing governance, registry, and `styio` contract documents.
 
+## Route Ownership
+
+The route-level HTTP contract for hosted workspace and deployment operations is now owned by:
+
+- [`./Spio-Hosted-Control-Plane-Contract.md`](./Spio-Hosted-Control-Plane-Contract.md)
+- [`../../contracts/hosted-control-plane/v1/openapi.json`](../../contracts/hosted-control-plane/v1/openapi.json)
+- [`../../contracts/hosted-control-plane/v1/workflows.arazzo.json`](../../contracts/hosted-control-plane/v1/workflows.arazzo.json)
+
+This cloud-policy document still owns the execution-lane, risk-class, security-profile, cache-policy, and worker-pool semantics that those route payloads must preserve.
+
 ## Baseline Position
 
 The tracked open-source native core currently exposes a **local cloud-execution baseline**. It does **not** yet implement a production multi-service control plane, queue, worker pool, or remote scheduler.
@@ -35,6 +45,7 @@ What is implemented today:
 - machine-readable introspection through `spio machine-info --json` and `spio cloud status --json`
 - machine-readable build-job request rendering through `spio cloud plan --json`
 - workflow success payloads that surface the resolved cloud execution policy
+- deterministic synthetic stress testing for multi-tenant compile-cloud scheduling, container hot replacement, and worker lifecycle gates through `./scripts/cloud-compile-stress.py`
 
 The purpose of this baseline is to freeze the terminology and policy surface before remote execution is introduced.
 
@@ -42,6 +53,7 @@ Implementation rules for the open-source native core:
 
 - `CloudBuildJobRequest` is created only through the domain factory that validates workflow invariants.
 - `spio cloud plan --json` and future workflow success payloads must serialize cloud policy and build-job payloads through shared contract serializers, not ad-hoc CLI JSON builders.
+- compile-cloud stress validation must use the public framework described in [Spio Cloud Compile Stress Framework](./Spio-Cloud-Compile-Stress-Framework.md), not a page-local or service-local ad hoc benchmark.
 
 ## Terms
 

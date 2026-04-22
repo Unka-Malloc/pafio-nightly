@@ -66,6 +66,7 @@ CMakeFiles/
 Testing/
 __pycache__/
 .pytest_cache/
+docs/audit/defects/
 !docs/**/build/
 !docs/**/build/**
 !docs/**/build-*/

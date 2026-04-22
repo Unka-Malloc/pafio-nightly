@@ -2,11 +2,11 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, and build/test flow.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-22
 
 ## Mission
 
-Own the package-manager core and native workflow behavior, including project-local toolchain mode selection and source-build orchestration, without redefining registry policy or published external compiler contracts.
+Own the package-manager core and native workflow behavior, including project-local toolchain mode selection, source-build orchestration, and public compile-cloud stress harness behavior, without redefining registry policy or published external compiler contracts.
 
 ## Owned Surface
 
@@ -16,6 +16,7 @@ Own the package-manager core and native workflow behavior, including project-loc
 4. `scripts/bootstrap-check.py`
 5. `scripts/native-check.sh`
 6. `scripts/checkpoint-health.sh`
+7. `scripts/cloud-compile-stress.py`
 
 ## Daily Workflow
 
@@ -25,17 +26,19 @@ Own the package-manager core and native workflow behavior, including project-loc
 4. Update CLI or workflow docs when public behavior changes.
 5. Keep `src/SpioCLI/CLI.cpp` thin. New payload builders, workflow validation rules, and private process helpers belong in domain or infrastructure modules, not in the CLI router.
 6. Keep `src/SpioToolchain/` vocabulary and project-local state terminology aligned with docs. When source-build, channel, risk, lane, or security terms change in code, update the owning governance and delivery docs in the same checkpoint.
+7. Keep `spio_cloud_stress` deterministic, tenant-isolated, and runnable without Docker/Kubernetes so the public gate stays available before the production cloud scheduler exists.
 
 ## Change Classes
 
 1. Small: local command behavior, fixture cleanup, or dry-run plan output. Run checkpoint health.
-2. Medium: CLI shape, manifest/lock semantics, project-graph payloads, cloud-plan request payloads, tool-status payloads, toolchain-mode persistence, cloud preference persistence, or resolver behavior. Update docs and tests together.
-3. High: binary/build execution routing, source-build fetch/build semantics, cloud execution policy semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery and Styio / Contracts.
+2. Medium: CLI shape, manifest/lock semantics, project-graph payloads, cloud-plan request payloads, tool-status payloads, toolchain-mode persistence, cloud preference persistence, compile-cloud stress thresholds, or resolver behavior. Update docs and tests together.
+3. High: binary/build execution routing, source-build fetch/build semantics, cloud execution policy semantics, tenant/container lifecycle semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery and Styio / Contracts.
 
 ## Required Gates
 
 ```bash
 ./scripts/checkpoint-health.sh
+python3 tests/unit/test_cloud_compile_stress.py
 ```
 
 ## Cross-Team Dependencies

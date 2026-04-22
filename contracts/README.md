@@ -2,7 +2,7 @@
 
 **Purpose:** Hold the source-of-truth machine contracts owned by the `spio` side of the `spio` / `styio` boundary.
 
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-21
 
 ## Rules
 
@@ -14,3 +14,6 @@
 
 - `compile-plan/` — build orchestration contract from `spio` to `styio`
 - `compat/` — supported compiler matrix declarations used by `spio`
+- `hosted-control-plane/` — repo-hosted/cloud workspace API contract consumed by frontend clients
+- `registry-control-plane/` — versioned HTTP service contract for operating a registry `v2` root
+- `registry-v2/` — industrial static package-distribution contract with signed metadata and append-only package indexes

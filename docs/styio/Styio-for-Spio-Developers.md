@@ -2,7 +2,7 @@
 
 **Purpose:** Give future `spio` maintainers a migration-ready knowledge pack for the `styio` compiler project: what is stable, what is not, which documents matter, and which files must never become hidden dependencies.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-23
 
 Read this after:
 
@@ -87,7 +87,7 @@ The first real public handshake now exists:
 styio --machine-info=json
 ```
 
-Expected bootstrap-era fields:
+Expected compile-plan-live fields:
 
 - `tool`
 - `compiler_version`
@@ -96,14 +96,14 @@ Expected bootstrap-era fields:
 - `capabilities`
 - `edition_max`
 
-Current bootstrap expectation is metadata-only integration:
+Current handoff expectation is compile-plan-live integration:
 
-- `supported_contracts.compile_plan = []`
+- `supported_contracts.compile_plan = [1]`
 - `capabilities` includes `machine_info_json`
 - `capabilities` includes `single_file_entry`
 - `capabilities` includes `jsonl_diagnostics`
 
-That means `spio` may safely detect compiler compatibility, but it must not assume project build orchestration is ready yet.
+That means `spio` may detect compiler compatibility and, after the compatibility matrix agrees, execute project build orchestration through `styio --compile-plan <path>`.
 
 ## 5. Things Spio Must Not Depend On
 
@@ -118,14 +118,14 @@ These may change even when the public compiler behavior does not.
 
 ## 6. Current Reality Check
 
-Today, the public compiler contract is still incomplete:
+Today, the public compiler contract baseline is live:
 
 - `styio` has a stable single-file CLI
 - `styio` has stable pipeline tests
-- `styio` now exposes bootstrap `--machine-info=json`
-- `styio` does not yet expose the final `--compile-plan <path>` interface
+- `styio` exposes `--machine-info=json` with compile-plan v1 support
+- `styio` exposes `--compile-plan <path>` for build/check/run/test plan execution
 
-That means `spio` developers should treat current compiler internals as a moving target and work only against formal contracts as they become available.
+That means `spio` developers should continue to treat compiler internals as a moving target and work only against formal contracts, even though compile-plan v1 is now an active contract.
 
 ## 7. Migration Guidance
 

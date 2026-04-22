@@ -131,12 +131,108 @@ json ParseJsonObject(const std::string &text, const std::string &context)
   }
 }
 
-void ValidateMarker(const json &marker, const std::string &context)
+fs::path NormalizeRelativeRegistryPath(const std::string &relative_path, const std::string &context)
 {
-  if (marker.value("kind", "") != "filesystem-local" || marker.value("schema_version", 0) != 1)
+  if (relative_path.empty())
   {
-    throw spio::FetchError(context + " does not match the supported registry marker contract");
+    throw spio::FetchError(context + " must be a non-empty relative path");
   }
+  const fs::path path(relative_path);
+  if (path.is_absolute())
+  {
+    throw spio::FetchError(context + " must be relative: " + relative_path);
+  }
+  const fs::path normalized = path.lexically_normal();
+  const std::string text = normalized.generic_string();
+  if (text.empty() || text == "." || text == ".." || text.starts_with("../"))
+  {
+    throw spio::FetchError(context + " escapes the registry root: " + relative_path);
+  }
+  return normalized;
+}
+
+struct RegistryConfig
+{
+  std::string targets_prefix = "trust/targets/";
+};
+
+RegistryConfig ValidateConfig(const json &config, const std::string &context)
+{
+  if (config.value("protocol", "") != "spio-static-registry" || config.value("protocol_version", 0) != 2)
+  {
+    throw spio::FetchError(context + " does not match the supported registry v2 protocol");
+  }
+
+  RegistryConfig parsed;
+  if (config.contains("paths"))
+  {
+    if (!config["paths"].is_object())
+    {
+      throw spio::FetchError(context + " paths must be a JSON object");
+    }
+    parsed.targets_prefix = config["paths"].value("targets_prefix", "trust/targets/");
+  }
+  if (parsed.targets_prefix.empty())
+  {
+    throw spio::FetchError(context + " is missing paths.targets_prefix");
+  }
+  return parsed;
+}
+
+struct RegistryPackageMetadata
+{
+  std::string index_path;
+};
+
+RegistryPackageMetadata ValidateTargetsMetadata(
+    const json &payload,
+    const std::string &package_name,
+    const std::string &package_namespace,
+    const std::string &version,
+    const std::string &context)
+{
+  if (!payload.contains("signed") || !payload["signed"].is_object())
+  {
+    throw spio::FetchError(context + " must contain a signed object");
+  }
+  const json &signed_payload = payload["signed"];
+  if (signed_payload.value("type", "") != "targets")
+  {
+    throw spio::FetchError(context + " signed.type must equal 'targets'");
+  }
+  if (signed_payload.value("namespace", "") != package_namespace)
+  {
+    throw spio::FetchError(
+        context + " namespace mismatch: expected '" + package_namespace + "' but found '" +
+        signed_payload.value("namespace", "") + "'");
+  }
+  if (!signed_payload.contains("packages") || !signed_payload["packages"].is_object())
+  {
+    throw spio::FetchError(context + " signed.packages must be a JSON object");
+  }
+  const auto package_it = signed_payload["packages"].find(package_name);
+  if (package_it == signed_payload["packages"].end() || !package_it->is_object())
+  {
+    throw spio::FetchError("registry v2 targets metadata is missing package: " + package_name);
+  }
+
+  const std::string index_path = package_it->value("index_path", "");
+  if (index_path.empty())
+  {
+    throw spio::FetchError("registry v2 targets metadata is missing index_path for " + package_name);
+  }
+  if (!package_it->contains("releases") || !(*package_it)["releases"].is_object())
+  {
+    throw spio::FetchError("registry v2 targets metadata is missing releases for " + package_name);
+  }
+  if ((*package_it)["releases"].find(version) == (*package_it)["releases"].end())
+  {
+    throw spio::FetchError("registry v2 targets metadata does not contain version " + package_name + "@" + version);
+  }
+
+  return {
+      .index_path = NormalizeRelativeRegistryPath(index_path, "registry v2 package index_path").generic_string(),
+  };
 }
 
 struct RegistryEntry
@@ -144,38 +240,39 @@ struct RegistryEntry
   std::string package;
   std::string version;
   std::string sha256;
-  std::string blob_path;
+  std::string artifact_path;
 };
 
 RegistryEntry ValidateEntry(const json &entry, const std::string &expected_package, const std::string &expected_version)
 {
   const std::string package = entry.value("package", "");
   const std::string version = entry.value("version", "");
-  const std::string sha256 = entry.value("sha256", "");
-  const std::string blob_path = entry.value("blob_path", "");
-
   if (package != expected_package)
   {
-    throw spio::FetchError("registry entry package mismatch: expected '" + expected_package + "' but found '" + package + "'");
+    throw spio::FetchError("registry v2 entry package mismatch: expected '" + expected_package + "' but found '" + package + "'");
   }
   if (version != expected_version)
   {
-    throw spio::FetchError("registry entry version mismatch: expected '" + expected_version + "' but found '" + version + "'");
+    throw spio::FetchError("registry v2 entry version mismatch: expected '" + expected_version + "' but found '" + version + "'");
   }
+  if (!entry.contains("source_artifact") || !entry["source_artifact"].is_object())
+  {
+    throw spio::FetchError("registry v2 entry is missing source_artifact");
+  }
+  const json &artifact = entry["source_artifact"];
+  const std::string sha256 = artifact.value("sha256", "");
+  const std::string artifact_path = artifact.value("path", "");
   if (sha256.size() != 64U)
   {
-    throw spio::FetchError("registry entry is missing a valid sha256 digest");
+    throw spio::FetchError("registry v2 source_artifact is missing a valid sha256 digest");
   }
-  if (blob_path.empty())
-  {
-    throw spio::FetchError("registry entry is missing blob_path");
-  }
+  NormalizeRelativeRegistryPath(artifact_path, "registry v2 source_artifact path");
 
   return {
       .package = package,
       .version = version,
       .sha256 = sha256,
-      .blob_path = blob_path,
+      .artifact_path = artifact_path,
   };
 }
 
@@ -191,13 +288,14 @@ std::string FetchUrlToString(const std::string &url, const std::vector<std::stri
   const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
       .program = "curl",
       .args = args,
+      .timeout = spio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
   if (result.exit_code != 0)
   {
     throw spio::FetchError(
         "failed to fetch registry url '" + url + "': " +
-        spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+        spio::DescribeProcessFailure(result));
   }
   return result.stdout_text;
 }
@@ -218,6 +316,7 @@ void FetchUrlToFile(const std::string &url, const fs::path &path, const std::vec
   const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
       .program = "curl",
       .args = args,
+      .timeout = spio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
   if (result.exit_code != 0)
@@ -225,43 +324,27 @@ void FetchUrlToFile(const std::string &url, const fs::path &path, const std::vec
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     throw spio::FetchError(
-        "failed to download registry blob '" + url + "': " +
-        spio::TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text));
+        "failed to download registry artifact '" + url + "': " +
+        spio::DescribeProcessFailure(result));
   }
   std::error_code ec;
   fs::rename(temp_path, path, ec);
   if (ec)
   {
     fs::remove(temp_path);
-    throw spio::CacheError("failed to finalize registry blob cache: " + path.string());
+    throw spio::CacheError("failed to finalize registry artifact cache: " + path.string());
   }
 }
 
 std::string JoinUrl(const std::string &root, const std::string &relative_path)
 {
-  return NormalizeRegistryRoot(root) + "/" + relative_path;
+  return NormalizeRegistryRoot(root) + "/" + NormalizeRelativeRegistryPath(relative_path, "registry object path").generic_string();
 }
 
-std::string MarkerUrl(const std::string &registry_root)
+fs::path RegistryObjectCachePath(const fs::path &spio_home, const std::string &registry_root, const std::string &relative_path)
 {
-  return JoinUrl(registry_root, "spio-registry.json");
-}
-
-std::string EntryRelativePath(const std::string &package_name, const std::string &version)
-{
-  const auto [package_namespace, short_name] = SplitPackageName(package_name);
-  return "index/" + package_namespace + "/" + short_name + "/" + version + ".json";
-}
-
-fs::path EntryCachePath(const fs::path &spio_home, const std::string &registry_root, const std::string &package_name, const std::string &version)
-{
-  const auto [package_namespace, short_name] = SplitPackageName(package_name);
-  return spio::RegistryIndexCacheRoot(spio_home) / Hex64(Fnv1a64(registry_root)) / package_namespace / short_name / (version + ".json");
-}
-
-fs::path MarkerCachePath(const fs::path &spio_home, const std::string &registry_root)
-{
-  return spio::RegistryIndexCacheRoot(spio_home) / Hex64(Fnv1a64(registry_root)) / "marker.json";
+  return spio::RegistryIndexCacheRoot(spio_home) / Hex64(Fnv1a64(registry_root)) /
+         NormalizeRelativeRegistryPath(relative_path, "registry cache object path");
 }
 
 fs::path BlobCachePath(const fs::path &spio_home, const std::string &sha256)
@@ -275,32 +358,76 @@ fs::path CheckoutPath(const fs::path &spio_home, const std::string &package_name
   return spio::RegistryCheckoutRoot(spio_home) / package_namespace / short_name / version / sha256;
 }
 
-std::string LoadMarker(
+std::string LoadRegistryObjectText(
     const fs::path &spio_home,
     const std::string &registry_root,
     const std::vector<std::string> &request_headers,
+    const std::string &relative_path,
+    const std::string &context,
     const bool offline)
 {
+  const fs::path normalized_relative = NormalizeRelativeRegistryPath(relative_path, context);
   if (IsFileRegistry(registry_root))
   {
-    return ReadTextFile(FileUrlToPath(registry_root) / "spio-registry.json", "registry marker");
+    return ReadTextFile(FileUrlToPath(registry_root) / normalized_relative, context);
   }
   if (!IsHttpRegistry(registry_root))
   {
     throw spio::FetchError("registry root must use file://, http://, or https://: " + registry_root);
   }
-  const fs::path marker_cache_path = MarkerCachePath(spio_home, registry_root);
+
+  const fs::path cache_path = RegistryObjectCachePath(spio_home, registry_root, normalized_relative.generic_string());
   if (offline)
   {
-    if (!fs::exists(marker_cache_path))
+    if (!fs::exists(cache_path))
     {
-      throw spio::FetchError("offline mode is missing cached registry marker for " + registry_root);
+      throw spio::FetchError("offline mode is missing cached " + context + " for " + registry_root);
     }
-    return ReadTextFile(marker_cache_path, "cached registry marker");
+    return ReadTextFile(cache_path, "cached " + context);
   }
-  const std::string text = FetchUrlToString(MarkerUrl(registry_root), request_headers);
-  WriteFileAtomically(marker_cache_path, text, "registry marker cache");
+
+  const std::string text = FetchUrlToString(JoinUrl(registry_root, normalized_relative.generic_string()), request_headers);
+  WriteFileAtomically(cache_path, text, context + " cache");
   return text;
+}
+
+RegistryConfig LoadConfig(
+    const fs::path &spio_home,
+    const std::string &registry_root,
+    const std::vector<std::string> &request_headers,
+    const bool offline)
+{
+  return ValidateConfig(
+      ParseJsonObject(
+          LoadRegistryObjectText(spio_home, registry_root, request_headers, "config.json", "registry v2 config", offline),
+          "registry v2 config"),
+      "registry v2 config");
+}
+
+RegistryPackageMetadata LoadPackageMetadata(
+    const fs::path &spio_home,
+    const std::string &registry_root,
+    const std::vector<std::string> &request_headers,
+    const RegistryConfig &config,
+    const std::string &package_name,
+    const std::string &version,
+    const bool offline)
+{
+  const auto [package_namespace, _short_name] = SplitPackageName(package_name);
+  return ValidateTargetsMetadata(
+      ParseJsonObject(
+          LoadRegistryObjectText(
+              spio_home,
+              registry_root,
+              request_headers,
+              config.targets_prefix + package_namespace + ".json",
+              "registry v2 targets metadata",
+              offline),
+          "registry v2 targets metadata"),
+      package_name,
+      package_namespace,
+      version,
+      "registry v2 targets metadata");
 }
 
 RegistryEntry LoadEntry(
@@ -309,37 +436,36 @@ RegistryEntry LoadEntry(
     const std::vector<std::string> &request_headers,
     const std::string &package_name,
     const std::string &version,
+    const RegistryPackageMetadata &metadata,
     const bool offline)
 {
-  const std::string entry_relative_path = EntryRelativePath(package_name, version);
-  const fs::path entry_cache_path = EntryCachePath(spio_home, registry_root, package_name, version);
+  const std::string text = LoadRegistryObjectText(
+      spio_home,
+      registry_root,
+      request_headers,
+      metadata.index_path,
+      "registry v2 index",
+      offline);
 
-  std::string text;
-  if (IsFileRegistry(registry_root))
+  std::istringstream lines(text);
+  std::string line;
+  while (std::getline(lines, line))
   {
-    text = ReadTextFile(FileUrlToPath(registry_root) / entry_relative_path, "registry entry");
-  }
-  else
-  {
-    if (offline)
+    if (line.find_first_not_of(" \t\r\n") == std::string::npos)
     {
-      if (!fs::exists(entry_cache_path))
-      {
-        throw spio::FetchError("offline mode is missing cached registry entry for " + package_name + "@" + version);
-      }
-      text = ReadTextFile(entry_cache_path, "cached registry entry");
+      continue;
     }
-    else
+    const json entry = ParseJsonObject(line, "registry v2 index record");
+    if (entry.value("package", "") == package_name && entry.value("version", "") == version)
     {
-      text = FetchUrlToString(JoinUrl(registry_root, entry_relative_path), request_headers);
-      WriteFileAtomically(entry_cache_path, text, "registry entry cache");
+      return ValidateEntry(entry, package_name, version);
     }
   }
 
-  return ValidateEntry(ParseJsonObject(text, "registry entry"), package_name, version);
+  throw spio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
 }
 
-void MaterializeBlob(
+void MaterializeArtifact(
     const fs::path &spio_home,
     const std::string &registry_root,
     const std::vector<std::string> &request_headers,
@@ -352,39 +478,40 @@ void MaterializeBlob(
     const std::string actual_sha256 = spio::Sha256File(blob_cache_path);
     if (actual_sha256 != entry.sha256)
     {
-      throw spio::CacheError("cached registry blob sha256 mismatch: " + blob_cache_path.string());
+      throw spio::CacheError("cached registry artifact sha256 mismatch: " + blob_cache_path.string());
     }
     return;
   }
 
+  const fs::path artifact_relative = NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
   if (IsFileRegistry(registry_root))
   {
-    const fs::path source_blob = FileUrlToPath(registry_root) / entry.blob_path;
+    const fs::path source_blob = FileUrlToPath(registry_root) / artifact_relative;
     if (!fs::exists(source_blob))
     {
-      throw spio::FetchError("registry blob not found: " + source_blob.string());
+      throw spio::FetchError("registry v2 source artifact not found: " + source_blob.string());
     }
     fs::create_directories(blob_cache_path.parent_path());
     std::error_code ec;
     fs::copy_file(source_blob, blob_cache_path, fs::copy_options::overwrite_existing, ec);
     if (ec)
     {
-      throw spio::CacheError("failed to cache registry blob: " + blob_cache_path.string());
+      throw spio::CacheError("failed to cache registry v2 source artifact: " + blob_cache_path.string());
     }
   }
   else
   {
     if (offline)
     {
-      throw spio::FetchError("offline mode is missing cached registry blob for " + entry.package + "@" + entry.version);
+      throw spio::FetchError("offline mode is missing cached registry artifact for " + entry.package + "@" + entry.version);
     }
-    FetchUrlToFile(JoinUrl(registry_root, entry.blob_path), blob_cache_path, request_headers);
+    FetchUrlToFile(JoinUrl(registry_root, artifact_relative.generic_string()), blob_cache_path, request_headers);
   }
 
   const std::string actual_sha256 = spio::Sha256File(blob_cache_path);
   if (actual_sha256 != entry.sha256)
   {
-    throw spio::FetchError("registry blob sha256 mismatch for " + entry.package + "@" + entry.version);
+    throw spio::FetchError("registry v2 source artifact sha256 mismatch for " + entry.package + "@" + entry.version);
   }
 }
 
@@ -429,13 +556,14 @@ fs::path EnsureCheckout(const fs::path &spio_home, const RegistryEntry &entry)
   const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
       .program = "tar",
       .args = {"-xf", blob_cache_path.string(), "-C", checkout_root.string()},
+      .timeout = spio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });
   if (extract.exit_code != 0)
   {
     throw spio::CacheError(
-        "failed to extract registry blob '" + blob_cache_path.string() + "': " +
-        spio::TrimTrailingNewline(extract.stderr_text.empty() ? extract.stdout_text : extract.stderr_text));
+        "failed to extract registry artifact '" + blob_cache_path.string() + "': " +
+        spio::DescribeProcessFailure(extract));
   }
   const fs::path snapshot_root = DetectSnapshotRoot(checkout_root);
 
@@ -465,12 +593,12 @@ RegistryMaterializationResult MaterializeRegistryPackage(
   });
   const fs::path spio_home = ResolveSpioHome();
 
-  ValidateMarker(
-      ParseJsonObject(LoadMarker(spio_home, security.registry_root, security.request_headers, offline), "registry marker"),
-      "registry marker");
+  const RegistryConfig config = LoadConfig(spio_home, security.registry_root, security.request_headers, offline);
+  const RegistryPackageMetadata metadata =
+      LoadPackageMetadata(spio_home, security.registry_root, security.request_headers, config, package_name, version, offline);
   const RegistryEntry entry =
-      LoadEntry(spio_home, security.registry_root, security.request_headers, package_name, version, offline);
-  MaterializeBlob(spio_home, security.registry_root, security.request_headers, entry, offline);
+      LoadEntry(spio_home, security.registry_root, security.request_headers, package_name, version, metadata, offline);
+  MaterializeArtifact(spio_home, security.registry_root, security.request_headers, entry, offline);
   const fs::path snapshot_root = EnsureCheckout(spio_home, entry);
 
   return {

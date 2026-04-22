@@ -13,6 +13,7 @@ DOCS = ROOT / "docs"
 REQUIRED_COLLECTION_DIRS = [
     DOCS,
     DOCS / "adr",
+    DOCS / "audit",
     DOCS / "assets",
     DOCS / "assets" / "workflow",
     DOCS / "governance",
@@ -20,6 +21,8 @@ REQUIRED_COLLECTION_DIRS = [
     DOCS / "planning",
     DOCS / "registry",
     DOCS / "security",
+    DOCS / "specs",
+    DOCS / "specs" / "audit",
     DOCS / "styio",
     DOCS / "teams",
 ]

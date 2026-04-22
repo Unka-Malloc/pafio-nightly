@@ -99,7 +99,7 @@ inline void WriteFakeStyio(
           version +
           "\",\"channel\":\"" +
           channel +
-          "\",\"supported_contracts\":{\"compile_plan\":[]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"" +
+          "\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"" +
           edition_max +
           "\"}'\n"
           "  exit 0\n"

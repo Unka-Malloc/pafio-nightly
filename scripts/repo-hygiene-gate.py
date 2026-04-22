@@ -37,6 +37,7 @@ FORBIDDEN_GLOBS = [
     "dist/*",
     ".spio",
     ".spio/*",
+    "docs/audit/defects/*",
 ]
 REQUIRED_GITIGNORE_PATTERNS = [
     ".DS_Store",
@@ -56,6 +57,7 @@ REQUIRED_GITIGNORE_PATTERNS = [
     "tmp/",
     "*.tmp",
     "*.log",
+    "docs/audit/defects/",
     "!docs/**/build/",
     "!docs/**/build/**",
     "!docs/**/build-*/",

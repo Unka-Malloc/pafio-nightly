@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-22
 
 ## Mission
 
@@ -28,7 +28,7 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 3. Keep workflow docs in `docs/assets/workflow/` aligned with the actual scripts.
 4. Keep the shared `styio-spio` / `styio-nightly` toolchain baseline explicit in docs and CI: Debian 13, LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5.
 5. Keep the official command grammar consistent across docs: `spio use <mode>`, `spio set <subject> as <value>`, `spio project-graph --json`, `spio cloud status --json`, `spio cloud plan --json`, and `spio tool status --json`.
-6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Spio-Master-Plan.md`, `docs/planning/Spio-Stage-Review-and-Future-Features.md`, `docs/planning/Spio-Workstreams-and-TODOs.md`, `docs/operations/Spio-Verification-Matrix.md`, and `docs/operations/Spio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
+6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Spio-Master-Plan.md`, `docs/planning/Spio-Stage-Review-and-Future-Features.md`, `docs/planning/Spio-Workstreams-and-TODOs.md`, `docs/operations/Spio-Verification-Matrix.md`, `docs/operations/Spio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Spio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
 
 ## Change Classes
 

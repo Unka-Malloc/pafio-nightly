@@ -8,7 +8,8 @@
 
 - Do not add source-level dependencies on `styio` implementation files.
 - The authoritative implementation path should move toward native `C++20` sources built by `CMake`.
-- The current Python package under `src/` is a legacy bootstrap scaffold kept temporarily as migration reference, not the final implementation commitment.
+- Python modules under `src/` are registry/control-plane tooling owned by `spio`; they are part of the active package-management implementation where referenced by CLI scripts.
+- `src/` is the backend/service implementation surface. Human-facing control-console assets belong under `../frontend/console/` and must consume `spio` through published contracts, not direct source coupling.
 - Keep the native core layered:
   - `SpioCLI/` owns thin command routing, shared usage/help text, and machine-info contracts.
   - `SpioApp/` owns command-cluster orchestration for workflow, cloud, tool, and package operations.
@@ -17,10 +18,10 @@
 
 ## Registry Split
 
-- `src/SpioRegistryClient/` owns registry consumption and local materialization, but not private trust/auth policy.
-- `src/SpioRegistryServer/` owns registry write/publish transports, but not private auth/account policy.
+- `src/SpioRegistryClient/` owns registry v2 static read-plane consumption and local materialization, but not private trust/auth policy.
+- `src/spio_registry_v2/` owns registry v2 key generation, local publish, verification, and control-plane helpers used by scripts and tests.
 - `src/SpioSecurity/` owns the public registry-security interface boundary.
-- `src/SpioPublish/` owns shared publish-candidate preparation and must not absorb server transport logic.
+- `src/SpioPublish/` owns shared publish-candidate preparation and must not absorb registry control-plane logic.
 - `src-private/` is gitignored and reserved for closed-source security implementations; public extractability excludes it.
 
 ## Implementation Notes

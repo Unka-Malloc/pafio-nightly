@@ -2,7 +2,7 @@
 
 **Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-23
 
 ## 1. Preconditions
 
@@ -61,5 +61,5 @@ After the subtree moves:
 
 - This runbook assumes the current subtree layout remains stable.
 - It intentionally references the verification matrix instead of duplicating every gate command; that keeps drift lower but adds one more document hop.
-- It includes handshake-era compiler handoff validation, but compile-plan execution remains blocked until the published compatibility phase enables it.
+- It includes handshake and compile-plan-live compiler handoff validation through the published compatibility phase.
 - Absolute paths in current developer docs are useful today but will need rewriting after the split.

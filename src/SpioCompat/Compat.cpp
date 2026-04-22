@@ -65,11 +65,12 @@ json ProbeMachineInfo(const fs::path &binary)
       .program = binary.string(),
       .args = {"--machine-info=json"},
       .search_path = false,
+      .timeout = spio::kExternalProcessProbeTimeout,
       .error_context = "compiler probe process",
   });
   if (result.exit_code != 0)
   {
-    const std::string detail = result.stderr_text.empty() ? result.stdout_text : result.stderr_text;
+    const std::string detail = spio::DescribeProcessFailure(result);
     throw spio::CompilerProbeError("compiler '" + binary.string() + "' rejected --machine-info=json" + (detail.empty() ? "" : ": " + detail));
   }
 

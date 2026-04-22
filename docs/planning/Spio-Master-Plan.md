@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the full delivery map for `spio` from bootstrap scaffold to split-ready package manager, while preserving strict decoupling from `styio`.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-23
 
 ## 1. Scope
 
@@ -30,7 +30,7 @@
 - `spio` must remain movable as a self-contained subtree and later as its own repository.
 - `spio` may talk to `styio` only through process boundaries and versioned machine contracts.
 - `spio` releases trail the `styio` releases they support.
-- `spio` must not assume compile-plan support until `styio` publishes it.
+- `spio` must only assume compile-plan support for versions that `styio` advertises and the compatibility matrix enables.
 - source, cache, build output, test temp data, and integration fixtures must remain isolated.
 - `spio` implementation work after the bootstrap freeze should converge on a native `C++20` + `CMake` codebase, aligned with `styio`'s operational toolchain but not coupled to compiler internals.
 
@@ -42,12 +42,13 @@ Current tracked baseline:
 
 - phases `0-3` are materially implemented in the native tree
 - local `build/run/test` dry-run workflow and source-build mode are implemented
+- binary-mode `build/run/test` compile-plan v1 execution is active through `styio --compile-plan`
 - local registry publish/fetch transport is implemented for filesystem roots and anonymous HTTP roots
 - project-local cloud execution policy, worker-pool-key, and build-job-request contracts are implemented
 
 Still explicitly partial:
 
-- published external compile-plan execution remains gated on the compiler side
+- release-matrix hardening around compile-plan remains ongoing
 - the enterprise async remote control plane remains future work
 - auth, signatures, and stronger registry trust hardening remain future work
 
@@ -71,7 +72,7 @@ Exit gate:
 
 Primary defect:
 
-- useful mostly for design freezing, not yet for real dependency orchestration
+- historical bootstrap phase; real dependency orchestration now lives in later native phases
 
 ### Phase 1. Compatibility and Public Handshake
 
@@ -88,7 +89,7 @@ Exit gate:
 
 Primary defect:
 
-- still metadata-only; it does not yet enable project compilation
+- historical handshake-only phase; project compilation now depends on the compile-plan-live gate
 
 ### Phase 2. Manifest, Lockfile, and Workspace Core
 
@@ -230,4 +231,4 @@ Each workstream must end in a gate that can be run without hidden local state.
 - `compile-plan` remains the largest external dependency because it requires a published `styio` interface.
 - Single-version resolution reduces ambiguity but will reject some dependency graphs that more permissive ecosystems accept.
 - Migration safety increases documentation volume; this is useful but can drift if not maintained.
-- During the implementation transition, legacy Python bootstrap code may coexist temporarily with the native C++ path; the native path is the one that should continue to grow.
+- Python registry/control-plane tooling may coexist with the native C++ path where it owns contract generation, signing, verification, or backend orchestration.

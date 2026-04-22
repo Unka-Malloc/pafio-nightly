@@ -84,6 +84,46 @@ inline void WriteExecutable(const fs::path &path, const std::string &content)
       fs::perm_options::add);
 }
 
+inline std::string FakeCompilePlanConsumerBody()
+{
+  return
+      "if [ \"$1\" = \"--compile-plan\" ] && [ -n \"${2:-}\" ]; then\n"
+      "  python3 - \"$2\" <<'PY'\n"
+      "import json, os, pathlib, sys\n"
+      "plan = json.load(open(sys.argv[1], 'r', encoding='utf-8'))\n"
+      "outputs = plan['outputs']\n"
+      "for key in ('build_root', 'artifact_dir', 'diag_dir'):\n"
+      "    os.makedirs(outputs[key], exist_ok=True)\n"
+      "pathlib.Path(outputs['artifact_dir'], 'fake-artifact.txt').write_text(plan['intent'] + '\\n', encoding='utf-8')\n"
+      "pathlib.Path(outputs['diag_dir'], 'diagnostics.jsonl').write_text('', encoding='utf-8')\n"
+      "receipt = {\n"
+      "    'schema_version': 1,\n"
+      "    'tool': 'styio',\n"
+      "    'plan_version': plan['plan_version'],\n"
+      "    'intent': plan['intent'],\n"
+      "    'outputs': outputs,\n"
+      "}\n"
+      "pathlib.Path(outputs['build_root'], 'receipt.json').write_text(json.dumps(receipt, sort_keys=True) + '\\n', encoding='utf-8')\n"
+      "print('fake styio executed compile-plan ' + plan['intent'])\n"
+      "PY\n"
+      "  exit 0\n"
+      "fi\n";
+}
+
+inline void WriteFakeCompilePlanStyio(const fs::path &path)
+{
+  WriteExecutable(
+      path,
+      "#!/bin/sh\n"
+      "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  exit 0\n"
+      "fi\n" +
+          FakeCompilePlanConsumerBody() +
+          "echo unexpected invocation >&2\n"
+          "exit 64\n");
+}
+
 inline void WriteFakeSourceToolchain(const fs::path &root)
 {
   WriteFile(
@@ -97,18 +137,9 @@ inline void WriteFakeSourceToolchain(const fs::path &root)
   WriteFile(
       root / "styio.sh.in",
       "#!/bin/sh\n"
-      "if [ \"$1\" = \"--compile-plan\" ]; then\n"
-      "  python3 - \"$2\" <<'PY'\n"
-      "import json, os, sys\n"
-      "plan = json.load(open(sys.argv[1], 'r', encoding='utf-8'))\n"
-      "for key in ('build_root', 'artifact_dir', 'diag_dir'):\n"
-      "    os.makedirs(plan['outputs'][key], exist_ok=True)\n"
-      "print('fake source toolchain executed compile-plan')\n"
-      "PY\n"
-      "  exit 0\n"
-      "fi\n"
-      "echo unexpected invocation >&2\n"
-      "exit 64\n");
+      + FakeCompilePlanConsumerBody() +
+          "echo unexpected invocation >&2\n"
+          "exit 64\n");
 }
 
 }  // namespace spio::testsupport

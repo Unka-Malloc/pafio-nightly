@@ -92,6 +92,18 @@ void WriteChildSetupError(const std::string &message)
   static_cast<void>(write(STDERR_FILENO, message.c_str(), message.size()));
 }
 
+void KillChildProcess(const pid_t child, const bool terminate_process_group)
+{
+  if (terminate_process_group)
+  {
+    kill(-child, SIGKILL);
+  }
+  else
+  {
+    kill(child, SIGKILL);
+  }
+}
+
 }  // namespace
 
 namespace spio
@@ -181,28 +193,12 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
 
   SetNonBlocking(stdout_pipe[0], context);
   SetNonBlocking(stderr_pipe[0], context);
-
-  if (!request.stdin_text.empty())
+  bool stdin_open = !request.stdin_text.empty();
+  size_t stdin_written = 0;
+  if (stdin_open)
   {
-    size_t written = 0;
-    while (written < request.stdin_text.size())
-    {
-      const ssize_t write_size = write(
-          stdin_pipe[1],
-          request.stdin_text.data() + written,
-          request.stdin_text.size() - written);
-      if (write_size < 0)
-      {
-        if (errno == EINTR)
-        {
-          continue;
-        }
-        break;
-      }
-      written += static_cast<size_t>(write_size);
-    }
+    SetNonBlocking(stdin_pipe[1], context);
   }
-  CloseIfValid(stdin_pipe[1]);
 
   ProcessResult result;
   const auto start = std::chrono::steady_clock::now();
@@ -212,7 +208,7 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
 
   while (stdout_open || stderr_open)
   {
-    std::array<pollfd, 2> poll_fds{};
+    std::array<pollfd, 3> poll_fds{};
     nfds_t poll_count = 0;
     if (stdout_open)
     {
@@ -222,6 +218,12 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
     {
       poll_fds[poll_count++] = {.fd = stderr_pipe[0], .events = POLLIN | POLLHUP, .revents = 0};
     }
+    std::optional<nfds_t> stdin_index;
+    if (stdin_open)
+    {
+      stdin_index = poll_count;
+      poll_fds[poll_count++] = {.fd = stdin_pipe[1], .events = POLLOUT | POLLHUP | POLLERR, .revents = 0};
+    }
 
     int timeout_ms = -1;
     if (request.timeout.has_value())
@@ -230,12 +232,11 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
           std::chrono::steady_clock::now() - start);
       if (elapsed >= *request.timeout)
       {
-        timeout_ms = 0;
+        result.timed_out = true;
+        KillChildProcess(child, request.terminate_process_group_on_timeout);
+        break;
       }
-      else
-      {
-        timeout_ms = static_cast<int>((*request.timeout - elapsed).count());
-      }
+      timeout_ms = static_cast<int>((*request.timeout - elapsed).count());
     }
 
     const int poll_result = poll(poll_fds.data(), poll_count, timeout_ms);
@@ -253,15 +254,39 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
     if (poll_result == 0)
     {
       result.timed_out = true;
-      if (request.terminate_process_group_on_timeout)
-      {
-        kill(-child, SIGKILL);
-      }
-      else
-      {
-        kill(child, SIGKILL);
-      }
+      KillChildProcess(child, request.terminate_process_group_on_timeout);
       break;
+    }
+
+    if (stdin_index.has_value() && (poll_fds[*stdin_index].revents & (POLLOUT | POLLHUP | POLLERR)))
+    {
+      while (stdin_written < request.stdin_text.size())
+      {
+        const ssize_t write_size = write(
+            stdin_pipe[1],
+            request.stdin_text.data() + stdin_written,
+            request.stdin_text.size() - stdin_written);
+        if (write_size > 0)
+        {
+          stdin_written += static_cast<size_t>(write_size);
+          continue;
+        }
+        if (write_size < 0 && errno == EINTR)
+        {
+          continue;
+        }
+        if (write_size < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+          break;
+        }
+        stdin_written = request.stdin_text.size();
+        break;
+      }
+      if (stdin_written >= request.stdin_text.size())
+      {
+        CloseIfValid(stdin_pipe[1]);
+        stdin_open = false;
+      }
     }
 
     auto drain_fd = [&](int fd, std::string &text, bool &truncated, size_t limit, bool &is_open) {
@@ -311,6 +336,7 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
     }
   }
 
+  CloseIfValid(stdin_pipe[1]);
   CloseIfValid(stdout_pipe[0]);
   CloseIfValid(stderr_pipe[0]);
 
@@ -334,6 +360,27 @@ ProcessResult RunProcessChecked(const ProcessRequest &request)
     result.exit_code = 1;
   }
   return result;
+}
+
+std::string DescribeProcessFailure(const ProcessResult &result)
+{
+  if (result.timed_out)
+  {
+    return "process timed out";
+  }
+  if (!result.stderr_text.empty())
+  {
+    return TrimTrailingNewline(result.stderr_text);
+  }
+  if (!result.stdout_text.empty())
+  {
+    return TrimTrailingNewline(result.stdout_text);
+  }
+  if (result.terminated_by_signal)
+  {
+    return "process terminated by signal " + std::to_string(result.signal_number);
+  }
+  return "process exited with code " + std::to_string(result.exit_code);
 }
 
 std::string TrimTrailingNewline(std::string text)

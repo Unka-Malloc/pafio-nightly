@@ -5,6 +5,7 @@
 #include "SpioCore/Process.hpp"
 #include "SpioToolchain/Vocabulary.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -154,6 +155,7 @@ std::string TryResolveGitRevision(const fs::path &source_root)
       .program = "git",
       .args = {"rev-parse", "HEAD"},
       .working_directory = source_root,
+      .timeout = spio::kExternalProcessProbeTimeout,
       .error_context = "source-toolchain process",
   });
   if (result.exit_code != 0)
@@ -163,17 +165,23 @@ std::string TryResolveGitRevision(const fs::path &source_root)
   return Trim(result.stdout_text);
 }
 
-void RunChecked(const std::string &program, const std::vector<std::string> &args, const std::optional<fs::path> &workdir, const std::string &label)
+void RunChecked(
+    const std::string &program,
+    const std::vector<std::string> &args,
+    const std::optional<fs::path> &workdir,
+    const std::string &label,
+    const std::chrono::milliseconds timeout = spio::kExternalProcessStepTimeout)
 {
   const spio::ProcessResult result = spio::RunProcess<spio::ToolError>({
       .program = program,
       .args = args,
       .working_directory = workdir,
+      .timeout = timeout,
       .error_context = "source-toolchain process",
   });
   if (result.exit_code != 0)
   {
-    const std::string detail = Trim(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
+    const std::string detail = spio::DescribeProcessFailure(result);
     throw spio::ToolError(label + " failed" + (detail.empty() ? "" : ": " + detail));
   }
 }
@@ -274,8 +282,14 @@ SourceBuildResult EnsureSourceBuiltStyio(const SourceBuildRequest &request)
         "cmake",
         {"-S", source_root.string(), "-B", build_root.string(), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"},
         std::nullopt,
-        "cmake configure");
-    RunChecked("cmake", {"--build", build_root.string(), "--target", "styio"}, std::nullopt, "cmake build");
+        "cmake configure",
+        spio::kExternalProcessBuildTimeout);
+    RunChecked(
+        "cmake",
+        {"--build", build_root.string(), "--target", "styio"},
+        std::nullopt,
+        "cmake build",
+        spio::kExternalProcessBuildTimeout);
     built = true;
   }
 

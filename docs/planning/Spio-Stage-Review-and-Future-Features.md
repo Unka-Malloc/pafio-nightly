@@ -2,7 +2,7 @@
 
 **Purpose:** Summarize the current implemented `spio` surface, capture the durable lessons from the implementation path so far, and rank the next high-value features using mature package-manager patterns as reference points.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-23
 
 ## 1. Scope and Ownership
 
@@ -30,7 +30,7 @@ As of 2026-04-21, the authoritative implementation path is the native `C++20` + 
 
 Current local validation status:
 
-- native test suite: `139/139` passing
+- native and contract test suite: `155/155` passing
 - native workflow verification: passing
 - extractability verification: passing
 - styio handoff spec and black-box gate: present
@@ -171,13 +171,13 @@ Implemented:
 - `spio test --dry-run`
 - local `compile-plan v1` emission under project-local `.spio/build/<cache-key>/plan.json`
 - explicit target selection for `lib`, `bin`, and `test`
-- compatibility gating that prevents claiming live compiler execution before the published `styio` side exists
+- compatibility gating that requires the published `styio` side to advertise compile-plan v1 before live execution
 
 Important boundary:
 
 - `spio` owns local plan generation
-- `spio` does not yet claim active compile-plan interoperability because the published compiler consumer is still gated
-- compiler handoff is now defined explicitly through the `styio` spec and executable gate, even though the live compiler phase is still blocked
+- `spio` now claims active compile-plan v1 interoperability only through the published compatibility matrix
+- compiler handoff is defined explicitly through the `styio` spec and executable gate
 
 Owner documents:
 
@@ -199,7 +199,7 @@ Implemented:
 Important boundary:
 
 - `build` mode is implemented as a local source-build path
-- it does not imply that the published external binary-mode compile-plan consumer is already live
+- it remains separate from the published external binary-mode compile-plan consumer
 - it also does not imply that a remote build farm or distributed execution service exists
 
 Owner documents:
@@ -284,10 +284,10 @@ Owner documents:
 
 The project is not feature-empty anymore, but three important boundaries remain explicit:
 
-1. Real compiler execution is not yet live.
-   - published external binary-mode `build`, `run`, and `test` only guarantee `--dry-run` today.
-   - non-dry-run execution remains gated on a published `styio --compile-plan <path>` consumer and compatible handshake.
-   - local source-build mode exists, but it is not a substitute for published compiler-side compile-plan support.
+1. Real compiler execution is live for compile-plan v1, but release hardening remains.
+   - published external binary-mode `build`, `run`, and `test` require a compatible `styio --compile-plan <path>` consumer.
+   - non-dry-run execution must keep producing `receipt.json` and output-root materialization evidence.
+   - local source-build mode exists, but it is not a substitute for the published binary compatibility matrix.
 2. Registry work is only partially live.
    - local/filesystem and anonymous remote HTTP publish transport now exist
    - registry dependency resolution and fetch are live through static `file://`, `http://`, and `https://` repository roots

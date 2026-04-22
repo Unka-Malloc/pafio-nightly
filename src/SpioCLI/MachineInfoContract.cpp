@@ -17,7 +17,7 @@ json BuildMachineInfoPayload()
       {"supported_manifests", json::array({1})},
       {"supported_lockfiles", json::array({1})},
       {"supported_contracts", {
-                                 {"compile_plan", json::array()},
+                                 {"compile_plan", json::array({1})},
                                  {"build_job_request", json::array({1})},
                                  {"project_graph", json::array({1})},
                                  {"toolchain_state", json::array({1})},
@@ -26,8 +26,8 @@ json BuildMachineInfoPayload()
                                  {"worker_pool_keys", json::array({1})},
                              }},
       {"notes", json::array({
-                    "native c++ phase-3 minimal resolver core",
-                    "compile-plan schema is owned but not yet active",
+                    "native c++ workflow core with compile-plan v1 handoff",
+                    "binary-mode build/run/test execute through styio --compile-plan when compatibility passes",
                     "cloud control-plane execution-policy baseline is active as a local machine contract",
                 })},
   };

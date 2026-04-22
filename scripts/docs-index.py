@@ -15,6 +15,7 @@ TODAY = date.today().isoformat()
 COLLECTION_DIRS = [
     Path("docs"),
     Path("docs/adr"),
+    Path("docs/audit"),
     Path("docs/assets"),
     Path("docs/assets/workflow"),
     Path("docs/governance"),
@@ -22,12 +23,15 @@ COLLECTION_DIRS = [
     Path("docs/planning"),
     Path("docs/registry"),
     Path("docs/security"),
+    Path("docs/specs"),
+    Path("docs/specs/audit"),
     Path("docs/styio"),
     Path("docs/teams"),
 ]
 INDEX_META = {
     "docs": ("spio Docs Index", "Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md)."),
     "docs/adr": ("ADR Index", "Provide the generated inventory for `docs/adr/`; decision-record conventions live in [README.md](./README.md)."),
+    "docs/audit": ("Audit Index", "Provide the generated inventory for `docs/audit/`; transient defect records live in ignored `docs/audit/defects/` and are enforced by external `styio-audit` runs."),
     "docs/assets": ("Assets Index", "Provide the generated inventory for `docs/assets/`; reusable workflow assets live in [README.md](./README.md)."),
     "docs/assets/workflow": ("Workflow Assets Index", "Provide the generated inventory for `docs/assets/workflow/`; gate and workflow guidance live in [README.md](./README.md)."),
     "docs/governance": ("Governance Index", "Provide the generated inventory for `docs/governance/`; normative rules and contracts live in [README.md](./README.md)."),
@@ -35,6 +39,8 @@ INDEX_META = {
     "docs/planning": ("Planning Index", "Provide the generated inventory for `docs/planning/`; phased implementation plans live in [README.md](./README.md)."),
     "docs/registry": ("Registry Index", "Provide the generated inventory for `docs/registry/`; package registry contracts live in [README.md](./README.md)."),
     "docs/security": ("Security Index", "Provide the generated inventory for `docs/security/`; public/private security boundary docs live in [README.md](./README.md)."),
+    "docs/specs": ("Specs Index", "Provide the generated inventory for `docs/specs/`; cross-cutting agent and audit rules live in [README.md](./README.md)."),
+    "docs/specs/audit": ("Audit Specs Index", "Provide the generated inventory for `docs/specs/audit/`; audit checklist ownership lives in [README.md](./README.md)."),
     "docs/styio": ("Styio Handoff Index", "Provide the generated inventory for `docs/styio/`; external compiler knowledge and requirements live in [README.md](./README.md)."),
     "docs/teams": ("Teams Index", "Provide the generated inventory for `docs/teams/`; team ownership and runbook boundaries live in [README.md](./README.md)."),
 }

@@ -7,6 +7,7 @@
 ## Scope
 
 - verification matrix
+- compile-cloud stress runbook
 - repository split runbook
 - registry server runbook
 
