@@ -30,11 +30,12 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 5. Keep the official command grammar consistent across docs: `spio use <mode>`, `spio set <subject> as <value>`, `spio project-graph --json`, `spio cloud status --json`, `spio cloud plan --json`, and `spio tool status --json`.
 6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Spio-Master-Plan.md`, `docs/planning/Spio-Stage-Review-and-Future-Features.md`, `docs/planning/Spio-Workstreams-and-TODOs.md`, `docs/operations/Spio-Verification-Matrix.md`, `docs/operations/Spio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Spio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
 7. When `docs/governance/Spio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
+8. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, gate wiring, workflow entrypoint changes, source-build contract wording, or cloud-control-plane contract updates.
+2. Medium: docs tree, gate wiring, workflow entrypoint changes, source-build contract wording, post-push CI checking rules, or cloud-control-plane contract updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
