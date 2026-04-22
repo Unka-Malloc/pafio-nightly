@@ -23,10 +23,11 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 3. Keep handoff docs and interface gates aligned in the same checkpoint.
 4. Use `--styio-bin` health legs when validating the published binary path.
 5. Treat compile-plan v1 as live only when `styio --machine-info=json`, `contracts/compat/styio-support.toml`, and the black-box interop gate all agree.
+6. Keep the source-build doc needles exact for the cross-repo gate: official origin, `stable`/`nightly` branch mapping, `spio build minimal`, `spio-toolchain.lock`, and the binary compatibility-matrix bypass statement must all remain visible in `Spio-CLI-Contract.md`.
 
 ## Change Classes
 
-1. Small: compatibility doc wording or fixture updates.
+1. Small: compatibility doc wording, source-build needle wording, or fixture updates.
 2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, cloud policy JSON fields, or CLI JSON contract updates.
 3. High: compatibility phase changes, official source origin rules, public machine contract expansion, or cloud execution-policy vocabulary changes.
 

@@ -350,6 +350,11 @@ Optional keys:
 - `spio build minimal` uses the selected project toolchain mode:
   - `binary` continues through published compiler discovery and compatibility gating
   - `build` resolves or fetches the official `styio` source tree from `https://github.com/eBioRing/Styio.git`, maps `stable` and `nightly` to the same-named source branches, builds a local compiler under `SPIO_HOME/toolchains/source/`, and then runs the compile-plan through that source-built compiler
+- Source-build alignment requirements for `spio build minimal`:
+  - official source origin is `https://github.com/eBioRing/Styio.git`
+  - channel mapping is `stable` and `nightly` to the same-named source branches
+  - project-local workflow state remains in `spio-toolchain.lock`
+  - source-build mode bypasses the published binary compatibility matrix
 - `spio build` accepts `minimal` as the only current build mode; bare `spio build` normalizes to the same mode through project defaults
 - `spio build`, `spio run`, and `spio test` accept `--source-root`, `--source-rev`, `--yes`, `--no-fetch`, and `--non-interactive` when the selected project mode is `build`
 - `spio run --dry-run` resolves the active graph and writes a local `compile-plan v1` with `intent = "run"` to `.spio/build/<cache-key>/plan.json`
