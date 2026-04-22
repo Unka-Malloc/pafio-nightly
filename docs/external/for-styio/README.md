@@ -19,5 +19,5 @@ These files document the external compiler dependency. They must not become a ba
 
 1. `Styio-External-Interface-Requirement-Spec.md`
 2. `Styio-Public-Interface-Roadmap.md`
-3. `../planning/Spio-Future-Direction-and-Styio-Coordination.md`
+3. `../../planning/Spio-Future-Direction-and-Styio-Coordination.md`
 4. `Styio-for-Spio-Developers.md`

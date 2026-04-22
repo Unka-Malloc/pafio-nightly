@@ -1,6 +1,6 @@
 # Styio Handoff Index
 
-**Purpose:** Provide the generated inventory for `docs/styio/`; external compiler knowledge and requirements live in [README.md](./README.md).
+**Purpose:** Provide the generated inventory for `docs/external/for-styio/`; external compiler knowledge and requirements live in [README.md](./README.md).
 
 **Last updated:** 2026-04-23
 

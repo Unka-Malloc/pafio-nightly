@@ -44,7 +44,7 @@ Ownership boundary:
 - `contracts/compat/*`
 - `src/SpioCompat/*`
 - `docs/governance/Spio-Version-Decoupling-Constraints.md`
-- `docs/styio/Styio-Public-Interface-Roadmap.md`
+- `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
 
 TODOs:
 

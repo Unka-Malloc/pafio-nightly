@@ -77,8 +77,8 @@ Python remains in-tree only where it owns repository automation, contract gates,
 
 Before moving this subtree into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, `spio` developers should read:
 
-- `docs/styio/Styio-for-Spio-Developers.md`
-- `docs/styio/Styio-Public-Interface-Roadmap.md`
+- `docs/external/for-styio/Styio-for-Spio-Developers.md`
+- `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
 - `docs/governance/Spio-Version-Decoupling-Constraints.md`
 
 Those documents are the migration knowledge pack for working against `styio` without creating hidden source-level dependencies.

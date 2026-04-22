@@ -51,7 +51,7 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         Path("docs/teams/STYIO-CONTRACTS-RUNBOOK.md"),
         (
             "contracts/",
-            "docs/styio/",
+            "docs/external/for-styio/",
             "docs/governance/Spio-CLI-Contract.md",
             "scripts/styio-interface-gate.py",
             "scripts/preflight-readiness-check.py",

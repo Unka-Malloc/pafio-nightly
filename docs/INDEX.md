@@ -13,13 +13,13 @@
 | `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for spio/docs/adr/, which holds durable design and implementation decisions for the standalone spio project. |
 | `assets/` | [Assets Index](./assets/INDEX.md) | Define the reusable workflow and gate asset boundary under docs/assets/; concrete entries live in INDEX.md. |
 | `audit/` | [Audit Index](./audit/INDEX.md) | Define the repository-local audit queue for security, correctness, and design defects discovered before they are converted into normal tracked work. |
+| `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that spio shares with sibling Styio repositories. |
 | `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative spio rules. These files define stable contracts, policy, and compatibility constraints. |
 | `operations/` | [Operations Index](./operations/INDEX.md) | Hold executable verification and migration procedures for spio. |
 | `planning/` | [Planning Index](./planning/INDEX.md) | Hold delivery phases, workstreams, and planning summaries for spio. |
 | `registry/` | [Registry Index](./registry/INDEX.md) | Separate shared registry layout from client-side consumption rules, server-side write rules, and deployment guidance so spio can serve both client and server roles without mixing responsibilities. |
 | `security/` | [Security Index](./security/INDEX.md) | Define the public/private boundary for security-sensitive spio code so registry auth, account policy, and trust decisions do not leak into the open-source tree. |
 | `specs/` | [Specs Index](./specs/INDEX.md) | Define the scope and naming rules for docs/specs/; generated inventory lives in INDEX.md. |
-| `styio/` | [Styio Handoff Index](./styio/INDEX.md) | Hold the styio knowledge pack and public interface expectations required by spio developers. |
 | `teams/` | [Teams Index](./teams/INDEX.md) | Define the scope, naming rules, and maintenance rules for docs/teams/; product semantics, package-manager contracts, and registry behavior remain owned by their existing SSOT documents. |
 
 ## Files

@@ -25,7 +25,8 @@ COLLECTION_DIRS = [
     Path("docs/security"),
     Path("docs/specs"),
     Path("docs/specs/audit"),
-    Path("docs/styio"),
+    Path("docs/external"),
+    Path("docs/external/for-styio"),
     Path("docs/teams"),
 ]
 INDEX_META = {
@@ -41,7 +42,8 @@ INDEX_META = {
     "docs/security": ("Security Index", "Provide the generated inventory for `docs/security/`; public/private security boundary docs live in [README.md](./README.md)."),
     "docs/specs": ("Specs Index", "Provide the generated inventory for `docs/specs/`; cross-cutting agent and audit rules live in [README.md](./README.md)."),
     "docs/specs/audit": ("Audit Specs Index", "Provide the generated inventory for `docs/specs/audit/`; audit checklist ownership lives in [README.md](./README.md)."),
-    "docs/styio": ("Styio Handoff Index", "Provide the generated inventory for `docs/styio/`; external compiler knowledge and requirements live in [README.md](./README.md)."),
+    "docs/external": ("External Docs Index", "Provide the generated inventory for `docs/external/`; external handoff boundaries live in [README.md](./README.md)."),
+    "docs/external/for-styio": ("Styio Handoff Index", "Provide the generated inventory for `docs/external/for-styio/`; external compiler knowledge and requirements live in [README.md](./README.md)."),
     "docs/teams": ("Teams Index", "Provide the generated inventory for `docs/teams/`; team ownership and runbook boundaries live in [README.md](./README.md)."),
 }
 TITLE_RE = re.compile(r"^#\s+(.+?)\s*$", re.M)
@@ -170,7 +172,7 @@ def render_index(base: Path) -> str:
 
 def sync_indexes(check: bool) -> int:
     failures: list[str] = []
-    for rel_dir in COLLECTION_DIRS:
+    for rel_dir in sorted(COLLECTION_DIRS, key=lambda path: len(path.parts), reverse=True):
         base = ROOT / rel_dir
         index_path = base / "INDEX.md"
         expected = render_index(base)

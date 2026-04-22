@@ -133,7 +133,7 @@ Run source-build mode without a published external compiler:
 1. Planning and migration roadmap: [planning/Spio-Master-Plan.md](./planning/Spio-Master-Plan.md)
 2. Current implementation-stage snapshot and remaining gaps: [planning/Spio-Stage-Review-and-Future-Features.md](./planning/Spio-Stage-Review-and-Future-Features.md)
 3. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
-4. Published external compiler requirements for `binary` mode: [styio/Styio-External-Interface-Requirement-Spec.md](./styio/Styio-External-Interface-Requirement-Spec.md)
+4. Published external compiler requirements for `binary` mode: [external/for-styio/Styio-External-Interface-Requirement-Spec.md](./external/for-styio/Styio-External-Interface-Requirement-Spec.md)
 5. Cloud execution policy contract: [governance/Spio-Cloud-Control-Plane-Contract.md](./governance/Spio-Cloud-Control-Plane-Contract.md)
 6. Script inventory: [../scripts/README.md](../scripts/README.md)
 

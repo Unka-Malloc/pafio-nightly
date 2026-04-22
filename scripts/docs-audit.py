@@ -23,7 +23,8 @@ REQUIRED_COLLECTION_DIRS = [
     DOCS / "security",
     DOCS / "specs",
     DOCS / "specs" / "audit",
-    DOCS / "styio",
+    DOCS / "external",
+    DOCS / "external" / "for-styio",
     DOCS / "teams",
 ]
 PURPOSE_RE = re.compile(r"^\*\*Purpose:\*\*\s+.+$", re.M)

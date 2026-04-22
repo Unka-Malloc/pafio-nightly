@@ -91,7 +91,7 @@ Must not:
 - redefine policy that belongs to governance
 - redefine backlog decomposition that belongs to planning
 
-### `docs/styio/`
+### `docs/external/for-styio/`
 
 Owns:
 
@@ -125,9 +125,9 @@ Must not:
 - gate definitions and commands: `docs/operations/Spio-Verification-Matrix.md`
 - registry server operational validation: `docs/operations/Spio-Registry-Server-Runbook.md`
 - split procedure: `docs/operations/Spio-Repo-Split-Runbook.md`
-- `styio` developer knowledge: `docs/styio/Styio-for-Spio-Developers.md`
-- `styio` handoff interface spec: `docs/styio/Styio-External-Interface-Requirement-Spec.md`
-- `styio` public interface expectations: `docs/styio/Styio-Public-Interface-Roadmap.md`
+- `styio` developer knowledge: `docs/external/for-styio/Styio-for-Spio-Developers.md`
+- `styio` handoff interface spec: `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md`
+- `styio` public interface expectations: `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
 
 ## 3. Drift Prevention Rules
 
@@ -151,7 +151,7 @@ When a change happens:
 - compatibility change: update governance plus `contracts/compat/*`, then verification coverage
 - gate command change: update operations first, then any summaries that link to the gate
 - migration procedure change: update operations runbook and preflight script together
-- new `styio` public interface: update `docs/styio/Styio-External-Interface-Requirement-Spec.md` first, then compatibility or workflow docs as needed
+- new `styio` public interface: update `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md` first, then compatibility or workflow docs as needed
 - security boundary change: update `docs/security/Spio-Private-Security-Module-Contract.md` first, then the affected public contract, tests, and private-module scaffolding
 
 ## 5. Known Defects

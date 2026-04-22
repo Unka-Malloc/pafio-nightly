@@ -11,7 +11,7 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 ## Owned Surface
 
 1. `contracts/`
-2. `docs/styio/`
+2. `docs/external/for-styio/`
 3. `docs/governance/Spio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`

@@ -53,7 +53,7 @@ All non-coordination runbooks must follow [TEAM-RUNBOOK-TEMPLATE.md](./TEAM-RUNB
 |----------|---------------|
 | `CORE-WORKFLOW-RUNBOOK.md` | `src/`, `tests/`, `CMakeLists.txt`, native build/test scripts |
 | `REGISTRY-PUBLISH-RUNBOOK.md` | `docs/registry/`, registry server/promotion scripts |
-| `STYIO-CONTRACTS-RUNBOOK.md` | `contracts/`, `docs/styio/`, compiler-facing CLI contract docs and interface scripts |
+| `STYIO-CONTRACTS-RUNBOOK.md` | `contracts/`, `docs/external/for-styio/`, compiler-facing CLI contract docs and interface scripts |
 | `DOCS-DELIVERY-RUNBOOK.md` | `README.md`, `docs/`, docs scripts, hygiene/docs/delivery gate scripts |
 
 Generated `docs/**/INDEX.md` files do not themselves require runbook updates.

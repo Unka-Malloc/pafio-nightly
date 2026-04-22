@@ -13,7 +13,7 @@
 5. Cloud execution policy contract: [governance/Spio-Cloud-Control-Plane-Contract.md](./governance/Spio-Cloud-Control-Plane-Contract.md)
 6. Compile-cloud stress framework: [governance/Spio-Cloud-Compile-Stress-Framework.md](./governance/Spio-Cloud-Compile-Stress-Framework.md)
 7. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
-8. External compiler knowledge pack: [styio/Styio-for-Spio-Developers.md](./styio/Styio-for-Spio-Developers.md)
+8. External compiler knowledge pack: [external/for-styio/Styio-for-Spio-Developers.md](./external/for-styio/Styio-for-Spio-Developers.md)
 
 ## Modules
 
@@ -25,7 +25,7 @@
 - `planning/` — phases, workstreams, retrospectives, and TODO decomposition
 - `registry/` — registry v2 static read-plane, control-plane, client, and deployment contracts for shared package distribution
 - `operations/` — gates, preflight, registry server runbook, and split runbook
-- `styio/` — external compiler knowledge pack and public interface expectations
+- `external/for-styio/` — external compiler knowledge pack and public interface expectations
 - `teams/` — owner runbooks, review routing, and delivery-facing ownership boundaries
 
 ## Recommended Reading Order
@@ -50,8 +50,8 @@
 18. `operations/Spio-Verification-Matrix.md`
 19. `operations/Spio-Cloud-Compile-Stress-Runbook.md`
 20. `operations/Spio-Registry-Server-Runbook.md`
-21. `styio/Styio-External-Interface-Requirement-Spec.md`
-22. `styio/Styio-for-Spio-Developers.md`
+21. `external/for-styio/Styio-External-Interface-Requirement-Spec.md`
+22. `external/for-styio/Styio-for-Spio-Developers.md`
 23. `operations/Spio-Repo-Split-Runbook.md`
 
 ## Precedence
@@ -65,7 +65,7 @@ When documents disagree:
 5. `adr/`
 6. `operations/`
 7. `planning/`
-8. `styio/`
+8. `external/for-styio/`
 
 ## Maintenance Rules
 

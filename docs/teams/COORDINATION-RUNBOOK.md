@@ -38,7 +38,7 @@ Registry / Publish -> Core / Workflow
 ## Escalation Rules
 
 1. If implementation and planning disagree, escalate to `docs/planning/`.
-2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/styio/`.
+2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/external/for-styio/`.
 3. If registry delivery shape disagrees, escalate to `docs/registry/`.
 4. If workflow or delivery process disagrees, escalate to `docs/assets/workflow/`.
 

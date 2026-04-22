@@ -12,14 +12,15 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 
 1. `README.md`
 2. `docs/`
-3. `scripts/docs-index.py`
-4. `scripts/docs-lifecycle.py`
-5. `scripts/docs-audit.py`
-6. `scripts/repo-hygiene-gate.py`
-7. `scripts/team-docs-gate.py`
-8. `scripts/docs-gate.sh`
-9. `scripts/delivery-gate.sh`
-10. `scripts/ecosystem-cli-doc-gate.py`
+3. `docs/external/`
+4. `scripts/docs-index.py`
+5. `scripts/docs-lifecycle.py`
+6. `scripts/docs-audit.py`
+7. `scripts/repo-hygiene-gate.py`
+8. `scripts/team-docs-gate.py`
+9. `scripts/docs-gate.sh`
+10. `scripts/delivery-gate.sh`
+11. `scripts/ecosystem-cli-doc-gate.py`
 
 ## Daily Workflow
 
@@ -31,11 +32,12 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Spio-Master-Plan.md`, `docs/planning/Spio-Stage-Review-and-Future-Features.md`, `docs/planning/Spio-Workstreams-and-TODOs.md`, `docs/operations/Spio-Verification-Matrix.md`, `docs/operations/Spio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Spio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
 7. When `docs/governance/Spio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
 8. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
+9. Keep sibling-repository handoff docs under `docs/external/for-*`; do not recreate root-level external handoff collections.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, gate wiring, workflow entrypoint changes, source-build contract wording, post-push CI checking rules, or cloud-control-plane contract updates.
+2. Medium: docs tree, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, post-push CI checking rules, or cloud-control-plane contract updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
