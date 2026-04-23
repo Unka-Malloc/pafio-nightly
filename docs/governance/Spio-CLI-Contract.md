@@ -20,6 +20,7 @@ The intended public command set is:
 - `spio set`
 - `spio add`
 - `spio remove`
+- `spio sync`
 - `spio fetch`
 - `spio lock`
 - `spio build`
@@ -126,7 +127,16 @@ Basic dependency edit and source fetch commands are also part of the active comm
 ```text
 spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) ...
 spio remove <alias-or-package> ...
+spio sync --manifest-path path/to/spio.toml
 spio fetch --manifest-path path/to/spio.toml
+```
+
+Project sync is the user-facing dependency preparation loop. It refreshes the lockfile unless `--locked` or `--frozen` is set, then materializes dependency sources through the same resolver and cache path as `fetch`:
+
+```text
+spio sync --manifest-path path/to/spio.toml
+spio sync --manifest-path path/to/spio.toml --locked
+spio sync --manifest-path path/to/spio.toml --frozen
 ```
 
 ## 2. Global Flags
@@ -217,8 +227,10 @@ Compile-plan publication rule:
 ### 3.6 Supporting JSON Success Commands
 
 - spio --json fetch --manifest-path path/to/spio.toml ...
+- spio --json sync --manifest-path path/to/spio.toml ...
 - spio --json tool install --styio-bin /path/to/styio
 - supporting internal commands invoked through `spio --json fetch/vendor/pack/publish/tool install/tool use/tool pin`
+- `spio --json sync` participates in the same stable JSON success rule for dependency preparation
 - must also return one stable JSON success object on stdout
 
 ## 4. Exit Codes

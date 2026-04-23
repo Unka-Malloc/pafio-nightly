@@ -20,6 +20,7 @@ add_executable(spio_native_tests
   native/PublishTests.cpp
   native/RunAndTestCliTests.cpp
   native/SecurityTests.cpp
+  native/SyncTests.cpp
   native/ToolInstallTests.cpp
   native/ToolPinTests.cpp
   native/ToolchainStateTests.cpp
@@ -78,6 +79,11 @@ add_test(
 add_test(
   NAME spio_cli_fetch_help
   COMMAND bash -c "\"$<TARGET_FILE:spio>\" fetch --help | grep -q '^usage: spio fetch \\[--manifest-path <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+)
+
+add_test(
+  NAME spio_cli_sync_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" sync --help | grep -q '^usage: spio sync \\[--manifest-path <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
 )
 
 add_test(

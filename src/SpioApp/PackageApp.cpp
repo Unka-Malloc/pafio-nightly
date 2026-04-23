@@ -282,6 +282,20 @@ json BuildHttpPublishPayload(
   return payload;
 }
 
+void WriteCanonicalLockfile(const fs::path &lockfile_path, const std::string &rendered)
+{
+  std::ofstream out(lockfile_path);
+  if (!out)
+  {
+    throw std::runtime_error("failed to open lockfile for write: " + lockfile_path.string());
+  }
+  out << rendered;
+  if (!out.good())
+  {
+    throw std::runtime_error("failed to write lockfile: " + lockfile_path.string());
+  }
+}
+
 }  // namespace
 
 namespace spio
@@ -773,16 +787,7 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
 
   try
   {
-    std::ofstream out(generated.lockfile_path);
-    if (!out)
-    {
-      throw std::runtime_error("failed to open lockfile for write: " + generated.lockfile_path.string());
-    }
-    out << rendered;
-    if (!out.good())
-    {
-      throw std::runtime_error("failed to write lockfile: " + generated.lockfile_path.string());
-    }
+    WriteCanonicalLockfile(generated.lockfile_path, rendered);
   }
   catch (const std::exception &err)
   {
@@ -800,6 +805,104 @@ int HandleLock(const std::vector<std::string> &args, bool as_json)
           {"offline", workflow_flags.offline},
       },
       as_json);
+}
+
+int HandleSync(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    return PrintCommandUsage("sync");
+  }
+
+  fs::path manifest_path = "spio.toml";
+  WorkflowFlags workflow_flags;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--manifest-path")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "sync"}, as_json);
+      }
+      manifest_path = args[index];
+    }
+    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
+    {
+      continue;
+    }
+    else
+    {
+      return EmitError({"UsageError", kExitUsage, "unexpected argument for sync: " + args[index], "sync"}, as_json);
+    }
+  }
+
+  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
+  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "sync", workflow_flags, resolve_options);
+      lock_policy_error.has_value())
+  {
+    return EmitError(*lock_policy_error, as_json);
+  }
+
+  try
+  {
+    const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
+    const std::string rendered = SerializeLockfileCanonical(generated.lockfile);
+    std::string lockfile_mode = workflow_flags.locked ? "locked" : "unchanged";
+
+    if (!workflow_flags.locked)
+    {
+      bool write_lockfile = true;
+      if (fs::exists(generated.lockfile_path))
+      {
+        write_lockfile = ReadFile(generated.lockfile_path) != rendered;
+      }
+      if (write_lockfile)
+      {
+        WriteCanonicalLockfile(generated.lockfile_path, rendered);
+        lockfile_mode = "write";
+      }
+    }
+
+    const FetchCommandResult fetched = FetchDependencies(manifest_path, resolve_options);
+    return EmitSuccess(
+        {
+            {"command", "sync"},
+            {"message", "synced project dependencies for " + std::to_string(generated.lockfile.packages.size()) + " package(s)"},
+            {"manifest_path", generated.manifest_path.string()},
+            {"lockfile_path", generated.lockfile_path.string()},
+            {"lockfile_mode", lockfile_mode},
+            {"packages", generated.lockfile.packages.size()},
+            {"git_packages", fetched.git_package_count},
+            {"registry_packages", fetched.registry_package_count},
+            {"locked", workflow_flags.locked},
+            {"offline", workflow_flags.offline},
+        },
+        as_json);
+  }
+  catch (const ValidationError &err)
+  {
+    return EmitError({"ManifestError", kExitManifest, err.what(), "sync"}, as_json);
+  }
+  catch (const WorkspaceError &err)
+  {
+    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "sync"}, as_json);
+  }
+  catch (const ResolutionError &err)
+  {
+    return EmitError({"ResolutionError", kExitResolve, err.what(), "sync"}, as_json);
+  }
+  catch (const FetchError &err)
+  {
+    return EmitError({"FetchError", kExitFetch, err.what(), "sync"}, as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitError({"CacheError", kExitCache, err.what(), "sync"}, as_json);
+  }
+  catch (const std::exception &err)
+  {
+    return EmitError({"LockfileError", kExitLock, err.what(), "sync"}, as_json);
+  }
 }
 
 int HandleTree(const std::vector<std::string> &args, bool as_json)

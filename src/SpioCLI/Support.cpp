@@ -80,6 +80,10 @@ constexpr std::array kUsageCommands = {
         "usage: spio remove <alias-or-package> [--dev] [--manifest-path <path>]\n",
     },
     UsageCommandEntry{
+        "sync",
+        "usage: spio sync [--manifest-path <path>] [--locked|--offline|--frozen]\n",
+    },
+    UsageCommandEntry{
         "fetch",
         "usage: spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n",
     },
@@ -204,6 +208,7 @@ int PrintGlobalHelp()
       << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
+      << "  sync [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  lock [--manifest-path <path>] [--check] [--offline]\n"
       << "  tree [--manifest-path <path>]\n"

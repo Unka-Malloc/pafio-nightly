@@ -60,6 +60,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]`
 - `spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]`
 - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
+- `spio sync [--manifest-path <path>] [--locked|--offline|--frozen]`
 - `spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]`
 - `spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
 - `spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
@@ -472,6 +473,38 @@ Behavior summary:
 - refreshes the adjacent `spio.lock` through the active resolver before returning success
 - rolls back manifest and adjacent lockfile changes if the post-edit resolver step fails
 - rejects ambiguous remove targets
+
+### `sync`
+
+Canonical form:
+
+```text
+spio sync [--manifest-path <path>] [--locked|--offline|--frozen]
+```
+
+Arguments:
+
+- `--manifest-path <path>`
+  - optional
+  - path to the project manifest
+  - defaults to `spio.toml`
+- `--locked`
+  - optional
+  - requires the adjacent `spio.lock` to match the active graph
+- `--offline`
+  - optional
+  - forbids network fetches and uses only local cache or vendored snapshots
+- `--frozen`
+  - optional
+  - shorthand for `--locked` plus `--offline`
+
+Behavior summary:
+
+- validates the selected manifest
+- resolves the active graph
+- writes or refreshes the adjacent lockfile unless locked mode is requested
+- materializes dependency sources through the same resolver/cache path as `fetch`
+- reports lockfile mode as `write`, `unchanged`, or `locked`
 
 ### `fetch`
 

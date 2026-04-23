@@ -110,6 +110,7 @@ Commands:
 ./scripts/native-check.sh
 ./scripts/spio --version
 ./scripts/spio machine-info --json
+./scripts/spio sync --help
 ./scripts/spio --json build
 ```
 

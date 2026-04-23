@@ -92,6 +92,7 @@ Implemented:
 - lock generation from the active resolver graph
 - read-only tree rendering from the resolver graph
 - `fetch` to materialize pinned git and registry cache state
+- `sync` to refresh the lockfile and materialize dependency sources through one user-facing preparation loop
 - hermetic git mirrors and snapshots under `SPIO_HOME`
 - hermetic registry metadata, blob, and checkout cache under `SPIO_HOME/registry/`
 - project-local vendored git snapshots under `.spio/vendor/`
@@ -148,6 +149,7 @@ Implemented:
 
 - `spio add`
 - `spio remove`
+- `spio sync`
 - manifest canonical rewrite after successful edit
 - adjacent lock refresh after successful edit
 - rollback of manifest and lockfile if post-edit resolution fails
@@ -155,6 +157,7 @@ Implemented:
 Why it matters:
 
 - the project now has a real dependency-edit loop instead of a validate-only loop
+- the project now has a default dependency preparation loop instead of making users compose `lock` and `fetch`
 - dependency editing is transaction-like at the local workspace boundary
 
 Owner documents:

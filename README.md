@@ -101,6 +101,7 @@ Project-local workflow mode selection now uses:
 - `./scripts/spio cloud status --json`
 - `./scripts/spio cloud plan --json build minimal`
 - `./scripts/cloud-compile-stress.py --require-hot-replacement --summary-json /tmp/spio-cloud-stress-summary.json --events-jsonl /tmp/spio-cloud-stress-events.jsonl`
+- `./scripts/spio sync`
 - `./scripts/spio tool status --json`
 - `./scripts/spio build minimal`
 

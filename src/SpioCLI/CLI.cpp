@@ -38,6 +38,7 @@ enum class TopLevelCommand
   Check,
   Add,
   Remove,
+  Sync,
   Fetch,
   Build,
   Run,
@@ -112,6 +113,10 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   if (raw == "remove")
   {
     return TopLevelCommand::Remove;
+  }
+  if (raw == "sync")
+  {
+    return TopLevelCommand::Sync;
   }
   if (raw == "fetch")
   {
@@ -282,6 +287,8 @@ int RunCli(const std::vector<std::string> &argv)
       return HandleAdd(args, global_json);
     case TopLevelCommand::Remove:
       return HandleRemove(args, global_json);
+    case TopLevelCommand::Sync:
+      return HandleSync(args, global_json);
     case TopLevelCommand::Fetch:
       return HandleFetch(args, global_json);
     case TopLevelCommand::Build:
