@@ -190,6 +190,55 @@ class RegistryV2Tests(unittest.TestCase):
         self.assertEqual(observed["location"], "https://packages.example.test/spio/config.json")
         self.assertEqual(observed["timeout"], 0.25)
 
+    def test_reader_rejects_oversized_remote_metadata(self) -> None:
+        original_max = validator.HTTP_METADATA_MAX_BYTES
+        original_urlopen = validator.urlopen
+
+        class FakeResponse:
+            headers = {"Content-Type": "application/json"}
+
+            def __enter__(self) -> "FakeResponse":
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+            def read(self, length: int = -1) -> bytes:
+                return b"x" * length
+
+        try:
+            validator.HTTP_METADATA_MAX_BYTES = 8
+            validator.urlopen = lambda location, timeout=None: FakeResponse()
+            reader = RootReader("https://packages.example.test/spio/")
+            with self.assertRaises(RegistryV2Error):
+                reader.read_bytes("config.json")
+        finally:
+            validator.urlopen = original_urlopen
+            validator.HTTP_METADATA_MAX_BYTES = original_max
+
+    def test_reader_rejects_unexpected_remote_metadata_media_type(self) -> None:
+        original_urlopen = validator.urlopen
+
+        class FakeResponse:
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+
+            def __enter__(self) -> "FakeResponse":
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+            def read(self, length: int = -1) -> bytes:
+                return b"{}"
+
+        try:
+            validator.urlopen = lambda location, timeout=None: FakeResponse()
+            reader = RootReader("https://packages.example.test/spio/")
+            with self.assertRaises(RegistryV2Error):
+                reader.read_bytes("config.json")
+        finally:
+            validator.urlopen = original_urlopen
+
     def test_control_plane_request_timeout_is_reported(self) -> None:
         module = runpy.run_path(str(ROOT / "scripts" / "registry-v2-control-plane-server.py"))
         load_json_request = module["load_json_request"]
@@ -295,6 +344,69 @@ class RegistryV2Tests(unittest.TestCase):
                     publisher_id="unit-test",
                 )
 
+    def test_publish_rejects_oversized_manifest_member(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            dest_root = root / "registry-v2"
+            key_dir = root / "keys"
+            archive = root / "artifacts" / "util-1.0.0.tar"
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            with tarfile.open(archive, mode="w") as package:
+                info = tarfile.TarInfo(name="util-1.0.0/spio.toml")
+                info.size = publisher.MAX_ARCHIVE_MANIFEST_BYTES + 1
+                info.mtime = 0
+                info.mode = 0o644
+                package.addfile(info, io.BytesIO(b"x" * info.size))
+            generate_key_directory(key_dir)
+
+            with self.assertRaises(RegistryV2Error):
+                publish_to_registry_v2(
+                    str(dest_root),
+                    str(key_dir),
+                    archive_path_value=str(archive),
+                    publisher_id="unit-test",
+                )
+
+    def test_publish_rejects_symlink_archive_member(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            dest_root = root / "registry-v2"
+            key_dir = root / "keys"
+            archive = root / "artifacts" / "util-1.0.0.tar"
+            self._build_source_archive("acme/util", "1.0.0", archive)
+            with tarfile.open(archive, mode="a") as package:
+                info = tarfile.TarInfo(name="util-1.0.0/link")
+                info.type = tarfile.SYMTYPE
+                info.linkname = "/etc/passwd"
+                info.mtime = 0
+                package.addfile(info)
+            generate_key_directory(key_dir)
+
+            with self.assertRaises(RegistryV2Error):
+                publish_to_registry_v2(
+                    str(dest_root),
+                    str(key_dir),
+                    archive_path_value=str(archive),
+                    publisher_id="unit-test",
+                )
+
+    def test_publish_rejects_invalid_package_name_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            dest_root = root / "registry-v2"
+            key_dir = root / "keys"
+            archive = root / "artifacts" / "util-1.0.0.tar"
+            self._build_source_archive("acme/util.core", "1.0.0", archive)
+            generate_key_directory(key_dir)
+
+            with self.assertRaises(RegistryV2Error):
+                publish_to_registry_v2(
+                    str(dest_root),
+                    str(key_dir),
+                    archive_path_value=str(archive),
+                    publisher_id="unit-test",
+                )
+
     def test_verify_rejects_tampered_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -325,6 +437,8 @@ class RegistryV2Tests(unittest.TestCase):
                 "trust/../root.json",
                 "trust/./root.json",
                 "trust//root.json",
+                "/trust/root.json",
+                "trust/root.json/",
                 "trust\\root.json",
             ]
             for reader in (local_reader, remote_reader):

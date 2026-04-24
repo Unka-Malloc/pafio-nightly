@@ -21,8 +21,10 @@ from .common import (
     load_json_file,
     load_role_keys,
     normalize_local_root,
+    normalize_registry_relative_path,
     parse_semver_key,
     require_object,
+    require_sha256_digest,
     require_string,
     sha256_bytes,
     sha256_file,
@@ -30,8 +32,25 @@ from .common import (
     signed_file_meta,
     split_package_name,
     utc_now,
+    validate_package_name,
     write_json_file,
 )
+
+
+MAX_ARCHIVE_MANIFEST_BYTES = 1024 * 1024
+
+
+def _prescan_source_archive(archive_path: pathlib.Path) -> None:
+    with tarfile.open(archive_path, mode="r:*") as archive:
+        for member in archive.getmembers():
+            normalized = member.name.replace("\\", "/")
+            if member.isdir():
+                normalized = normalized.rstrip("/")
+            normalize_registry_relative_path(normalized, "source artifact archive member path")
+            if not (member.isfile() or member.isdir()):
+                raise RegistryV2Error(
+                    f"source artifact archive may contain only regular files and directories: {member.name!r}"
+                )
 
 
 def _find_manifest_bytes(archive_path: pathlib.Path) -> bytes:
@@ -40,15 +59,15 @@ def _find_manifest_bytes(archive_path: pathlib.Path) -> bytes:
         for member in archive.getmembers():
             if not member.isfile():
                 continue
-            normalized = member.name.replace("\\", "/")
-            if normalized.startswith("/"):
-                raise RegistryV2Error(f"source artifact archive member path must be relative: {member.name!r}")
-            parts = normalized.split("/")
-            if any(part in ("", ".", "..") for part in parts):
-                raise RegistryV2Error(
-                    f"source artifact archive member path is not canonical POSIX-relative path: {member.name!r}"
-                )
+            normalized = normalize_registry_relative_path(
+                member.name.replace("\\", "/"),
+                "source artifact archive member path",
+            )
             if normalized == "spio.toml" or normalized.endswith("/spio.toml"):
+                if member.size > MAX_ARCHIVE_MANIFEST_BYTES:
+                    raise RegistryV2Error(
+                        f"source artifact manifest candidate exceeds {MAX_ARCHIVE_MANIFEST_BYTES} bytes: {member.name!r}"
+                    )
                 handle = archive.extractfile(member)
                 if handle is None:
                     continue
@@ -172,6 +191,7 @@ def _normalize_dependency(alias: str, spec: Any, section_name: str) -> dict[str,
     if not isinstance(spec, dict):
         raise RegistryV2Error(f"dependency '{alias}' in [{section_name}] must be an inline table")
     package = require_string(spec.get("package"), f"dependency '{alias}' package in [{section_name}]")
+    validate_package_name(package, f"dependency '{alias}' package in [{section_name}]")
     version = require_string(spec.get("version"), f"dependency '{alias}' version in [{section_name}]")
     registry = require_string(spec.get("registry"), f"dependency '{alias}' registry in [{section_name}]")
     return {
@@ -201,6 +221,7 @@ def _extract_record_from_archive(
     publisher_id: str,
     published_at: str,
 ) -> tuple[dict[str, Any], bytes]:
+    _prescan_source_archive(archive_path)
     manifest_bytes = _find_manifest_bytes(archive_path)
     try:
         manifest_doc = tomllib.loads(manifest_bytes.decode("utf-8"))
@@ -211,6 +232,7 @@ def _extract_record_from_archive(
 
     package_table = require_object(manifest_doc.get("package"), "source package manifest [package]")
     package_name = require_string(package_table.get("name"), "source package manifest package.name")
+    validate_package_name(package_name, "source package manifest package.name")
     package_version = require_string(package_table.get("version"), "source package manifest package.version")
     dependencies = _record_dependencies(manifest_doc, "dependencies")
     dev_dependencies = _record_dependencies(manifest_doc, "dev-dependencies")
@@ -400,12 +422,15 @@ def _collect_package_maps(dest_root: pathlib.Path) -> tuple[dict[str, dict[str, 
             releases[version] = {
                 "release_revision": record.get("release_revision", 1),
                 "index_record_sha256": sha256_bytes(canonical_json_bytes(record)),
-                "source_artifact_sha256": require_string(
+                "source_artifact_sha256": require_sha256_digest(
                     source_artifact.get("sha256"),
                     f"registry v2 source artifact sha256 in {index_path}",
                 ),
-                "source_artifact_path": require_string(
-                    source_artifact.get("path"),
+                "source_artifact_path": normalize_registry_relative_path(
+                    require_string(
+                        source_artifact.get("path"),
+                        f"registry v2 source artifact path in {index_path}",
+                    ),
                     f"registry v2 source artifact path in {index_path}",
                 ),
                 "binary_artifact_count": len(record.get("binary_artifacts", [])),
@@ -489,9 +514,14 @@ def _refresh_signed_metadata(dest_root: pathlib.Path, role_keys: dict[str, Any],
 
 def _append_release_record(dest_root: pathlib.Path, record: dict[str, Any], archive_path: pathlib.Path) -> dict[str, Any]:
     package_name = require_string(record.get("package"), "registry v2 publish record package")
+    validate_package_name(package_name, "registry v2 publish record package")
     package_version = require_string(record.get("version"), "registry v2 publish record version")
     artifact = require_object(record.get("source_artifact"), "registry v2 publish source artifact")
-    artifact_relative_path = require_string(artifact.get("path"), "registry v2 publish source artifact path")
+    require_sha256_digest(artifact.get("sha256"), "registry v2 publish source artifact sha256")
+    artifact_relative_path = normalize_registry_relative_path(
+        require_string(artifact.get("path"), "registry v2 publish source artifact path"),
+        "registry v2 publish source artifact path",
+    )
     artifact_dest_path = dest_root / pathlib.PurePosixPath(artifact_relative_path)
     copy_if_missing_or_same(archive_path, artifact_dest_path)
 
@@ -521,7 +551,7 @@ def _append_release_record(dest_root: pathlib.Path, record: dict[str, Any], arch
         "release_revision": 1,
         "index_path": index_path.relative_to(dest_root).as_posix(),
         "index_record_sha256": sha256_bytes(canonical_json_bytes(record)),
-        "source_artifact_sha256": require_string(artifact.get("sha256"), "registry v2 publish source artifact sha256"),
+        "source_artifact_sha256": require_sha256_digest(artifact.get("sha256"), "registry v2 publish source artifact sha256"),
         "source_artifact_path": artifact_relative_path,
     }
     leaf_path = dest_root / "log" / "leaves" / f"{sequence:012d}.json"

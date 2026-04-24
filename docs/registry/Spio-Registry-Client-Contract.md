@@ -2,7 +2,7 @@
 
 **Purpose:** Define the client-side rules for consuming packages from a `spio` registry without mixing them with server upload or deployment concerns.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-24
 
 ## 1. Scope
 
@@ -25,6 +25,10 @@ Registry clients may consume packages from:
 - `https://<registry-root>`
 
 The client consumes the same `v2` config, namespace-targets, append-only index, and source-artifact paths regardless of transport.
+HTTP roots may be platform-hosted mirrors or direct registry read origins, but
+the client treats them as read roots only. Mirror freshness, replay, and
+regional routing are platform responsibilities; local cache and offline
+behavior remain valid when no mirror is reachable.
 
 Any environment-specific trust policy, credential injection, or allowlist enforcement belongs behind the private security boundary documented in [../security/Spio-Private-Security-Module-Contract.md](../security/Spio-Private-Security-Module-Contract.md).
 
@@ -57,6 +61,7 @@ Behavior rules:
 - artifacts are keyed by `sha256`
 - cached artifacts must be re-verified before reuse
 - offline mode may use only cached metadata, cached blobs, extracted snapshots, vendored state, or `file://` registries
+- cached state must not silently relax digest checks, even when the package was originally fetched from a trusted platform mirror
 
 ## 5. Client Failure Semantics
 

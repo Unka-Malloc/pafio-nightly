@@ -7,7 +7,22 @@
 ## Source Of Truth
 
 - `registry-control-plane.contract.json` is the canonical status, publish, and verify operation catalog.
-- `registry-control-plane.examples.json` is the canonical example pack.
+- `registry-control-plane.examples.json` is the canonical request, success, and failure example pack.
+- Human-readable registry docs stay secondary to this package.
+
+## Repository Boundary
+
+This package is shared by `styio-platform` and `styio-spio`.
+
+- `styio-platform` operates the hosted registry and mirror service side.
+- `styio-spio` consumes the package as the local package-manager compatibility contract.
+- Offline package resolution, cache reuse, and local import/export behavior stay client-side and must not depend on platform mirror availability.
+
+## Package Workflow
+
+1. Edit `registry-control-plane.contract.json` and `registry-control-plane.examples.json`.
+2. Update registry governance docs when route families or envelope rules change.
+3. Verify the native JSON package with the contract and example gates before claiming compatibility.
 
 ## Stability Rules
 
@@ -15,3 +30,4 @@
 - Renaming operations, changing required fields, or changing envelope semantics requires `v2`.
 - Clients must treat undocumented fields as non-existent.
 - Services must preserve the published method, path, and envelope spelling exactly.
+- Generated third-party API-description artifacts are not valid source of truth for this contract.

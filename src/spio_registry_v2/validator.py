@@ -12,19 +12,78 @@ from urllib.request import urlopen
 from .common import (
     RegistryV2Error,
     canonical_json_bytes,
+    normalize_registry_relative_path,
     normalize_local_root,
     parse_semver_key,
     require_array,
     require_bool,
     require_int,
     require_object,
+    require_sha256_digest,
     require_string,
     sha256_bytes,
+    split_package_name,
     verify_signature,
 )
 
 
 HTTP_READ_TIMEOUT_SECONDS = 10.0
+HTTP_METADATA_MAX_BYTES = 16 * 1024 * 1024
+HTTP_INDEX_MAX_BYTES = 16 * 1024 * 1024
+HTTP_ARTIFACT_MAX_BYTES = 512 * 1024 * 1024
+
+JSON_MEDIA_TYPES = {"application/json", "application/octet-stream"}
+INDEX_MEDIA_TYPES = {"application/x-ndjson", "application/jsonl", "text/plain", "application/octet-stream"}
+ARTIFACT_MEDIA_TYPES = {"application/x-tar", "application/tar", "application/octet-stream"}
+
+
+def _remote_constraints(relative_path: str) -> tuple[int, set[str], str]:
+    if relative_path.endswith(".json"):
+        return HTTP_METADATA_MAX_BYTES, JSON_MEDIA_TYPES, "JSON metadata"
+    if relative_path.endswith(".jsonl"):
+        return HTTP_INDEX_MAX_BYTES, INDEX_MEDIA_TYPES, "package index"
+    if relative_path.startswith("artifacts/source/") or relative_path.startswith("artifacts/binary/"):
+        return HTTP_ARTIFACT_MAX_BYTES, ARTIFACT_MEDIA_TYPES, "artifact"
+    return HTTP_METADATA_MAX_BYTES, JSON_MEDIA_TYPES | INDEX_MEDIA_TYPES, "registry object"
+
+
+def _response_media_type(response: Any) -> str:
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return ""
+    get_content_type = getattr(headers, "get_content_type", None)
+    if callable(get_content_type):
+        return str(get_content_type()).lower()
+    value = headers.get("Content-Type", "") if hasattr(headers, "get") else ""
+    return str(value).split(";", 1)[0].strip().lower()
+
+
+def _response_content_length(response: Any) -> int | None:
+    headers = getattr(response, "headers", None)
+    value = headers.get("Content-Length") if headers is not None and hasattr(headers, "get") else None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as err:
+        raise RegistryV2Error("registry v2 remote object has an invalid Content-Length header") from err
+
+
+def _read_limited_response(response: Any, *, location: str, max_bytes: int) -> bytes:
+    declared_length = _response_content_length(response)
+    if declared_length is not None and declared_length > max_bytes:
+        raise RegistryV2Error(f"registry v2 remote object exceeds {max_bytes} bytes: {location}")
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = response.read(min(1024 * 1024, max_bytes + 1 - total))
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise RegistryV2Error(f"registry v2 remote object exceeds {max_bytes} bytes: {location}")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 @dataclass
@@ -45,15 +104,7 @@ class RootReader:
         raise RegistryV2Error("registry v2 verify supports only local paths, file:// roots, or http(s) roots")
 
     def _normalize_relative(self, relative_path: str) -> str:
-        normalized = relative_path.lstrip("/")
-        if not normalized or normalized.endswith("/"):
-            raise RegistryV2Error(f"registry v2 relative object path is invalid: {relative_path!r}")
-        parts = normalized.split("/")
-        if any(part in ("", ".", "..") for part in parts) or "\\" in normalized:
-            raise RegistryV2Error(
-                f"registry v2 relative object path must be a canonical POSIX path inside the root: {relative_path!r}"
-            )
-        return normalized
+        return normalize_registry_relative_path(relative_path, "registry v2 relative object path")
 
     def _local_path(self, relative_path: str) -> pathlib.Path:
         if self.local_root is None:
@@ -87,9 +138,15 @@ class RootReader:
         else:
             assert self.remote_root is not None
             location = urljoin(self.remote_root, normalized)
+            max_bytes, media_types, object_kind = _remote_constraints(normalized)
             try:
                 with urlopen(location, timeout=HTTP_READ_TIMEOUT_SECONDS) as response:
-                    payload = response.read()
+                    media_type = _response_media_type(response)
+                    if media_type not in media_types:
+                        raise RegistryV2Error(
+                            f"registry v2 remote {object_kind} has unsupported media type '{media_type or '<missing>'}': {location}"
+                        )
+                    payload = _read_limited_response(response, location=location, max_bytes=max_bytes)
             except (HTTPError, TimeoutError, URLError) as err:
                 raise RegistryV2Error(f"registry v2 object could not be fetched: {location}") from err
         self._cache[normalized] = payload
@@ -225,7 +282,7 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
     if require_int(snapshot_meta.get("length"), "registry v2 timestamp snapshot length") != root_reader.object_length("trust/snapshot.json"):
         raise RegistryV2Error("registry v2 timestamp metadata snapshot length does not match file size")
     snapshot_hashes = require_object(snapshot_meta.get("hashes"), "registry v2 timestamp snapshot hashes")
-    if require_string(snapshot_hashes.get("sha256"), "registry v2 timestamp snapshot sha256") != root_reader.object_sha256("trust/snapshot.json"):
+    if require_sha256_digest(snapshot_hashes.get("sha256"), "registry v2 timestamp snapshot sha256") != root_reader.object_sha256("trust/snapshot.json"):
         raise RegistryV2Error("registry v2 timestamp metadata snapshot sha256 does not match file digest")
 
     namespace_targets_count = 0
@@ -238,7 +295,7 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
         log_meta_entries.get("log/checkpoint.json"),
         "registry v2 snapshot log_meta log/checkpoint.json",
     )
-    if require_string(
+    if require_sha256_digest(
         require_object(checkpoint_meta.get("hashes"), "registry v2 checkpoint hashes").get("sha256"),
         "registry v2 checkpoint sha256",
     ) != root_reader.object_sha256("log/checkpoint.json"):
@@ -247,18 +304,19 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
     trusted_targets_keyids = set(require_array(targets_role.get("keyids"), "registry v2 targets keyids"))
 
     for relative_path, meta in snapshot_meta_entries.items():
-        relative = pathlib.PurePosixPath(relative_path)
+        normalized_relative_path = normalize_registry_relative_path(relative_path, "registry v2 snapshot meta path")
+        relative = pathlib.PurePosixPath(normalized_relative_path)
         meta_object = require_object(meta, f"registry v2 snapshot meta entry '{relative_path}'")
-        expected_hash = require_string(
+        expected_hash = require_sha256_digest(
             require_object(meta_object.get("hashes"), f"registry v2 snapshot hashes for '{relative_path}'").get("sha256"),
             f"registry v2 snapshot sha256 for '{relative_path}'",
         )
-        if expected_hash != root_reader.object_sha256(relative_path):
+        if expected_hash != root_reader.object_sha256(normalized_relative_path):
             raise RegistryV2Error(f"registry v2 snapshot hash mismatch for {relative_path}")
         if relative.parts[:2] == ("trust", "targets"):
             namespace_targets_count += 1
             targets_signed = _verify_role_envelope(
-                root_reader.load_json(relative_path, f"registry v2 targets metadata '{relative_path}'"),
+                root_reader.load_json(normalized_relative_path, f"registry v2 targets metadata '{relative_path}'"),
                 context=f"registry v2 targets metadata '{relative_path}'",
                 required_type="targets",
                 allowed_keyids=trusted_targets_keyids,
@@ -268,10 +326,14 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
             packages = require_object(targets_signed.get("packages"), f"registry v2 targets packages '{relative_path}'")
             for package_name, package_payload in packages.items():
                 package_object = require_object(package_payload, f"registry v2 targets package '{package_name}'")
-                if not package_name.startswith(f"{namespace}/"):
+                package_namespace, _ = split_package_name(package_name)
+                if package_namespace != namespace:
                     raise RegistryV2Error(f"registry v2 targets package '{package_name}' does not match namespace '{namespace}'")
-                index_relative_path = require_string(
-                    package_object.get("index_path"),
+                index_relative_path = normalize_registry_relative_path(
+                    require_string(
+                        package_object.get("index_path"),
+                        f"registry v2 targets package '{package_name}' index_path",
+                    ),
                     f"registry v2 targets package '{package_name}' index_path",
                 )
                 lines = [
@@ -290,16 +352,25 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
                         raise RegistryV2Error(f"registry v2 index record package mismatch in {root_reader.location(index_relative_path)}")
                     version = require_string(record.get("version"), f"registry v2 index record version in {index_relative_path}")
                     source_artifact = require_object(record.get("source_artifact"), f"registry v2 source artifact in {index_relative_path}")
-                    artifact_digest = require_string(
+                    artifact_digest = require_sha256_digest(
                         source_artifact.get("sha256"),
                         f"registry v2 source artifact sha256 in {index_relative_path}",
                     )
-                    artifact_relative_path = require_string(
-                        source_artifact.get("path"),
+                    artifact_size_bytes = require_int(
+                        source_artifact.get("size_bytes"),
+                        f"registry v2 source artifact size_bytes in {index_relative_path}",
+                    )
+                    artifact_relative_path = normalize_registry_relative_path(
+                        require_string(
+                            source_artifact.get("path"),
+                            f"registry v2 source artifact path in {index_relative_path}",
+                        ),
                         f"registry v2 source artifact path in {index_relative_path}",
                     )
                     if root_reader.object_sha256(artifact_relative_path) != artifact_digest:
                         raise RegistryV2Error(f"registry v2 source artifact digest mismatch: {root_reader.location(artifact_relative_path)}")
+                    if root_reader.object_length(artifact_relative_path) != artifact_size_bytes:
+                        raise RegistryV2Error(f"registry v2 source artifact size mismatch: {root_reader.location(artifact_relative_path)}")
                     record_digest = sha256_bytes(canonical_json_bytes(record))
                     record_digests[version] = record_digest
                     versions.append(version)
@@ -313,14 +384,14 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
                 releases = require_object(package_object.get("releases"), f"registry v2 releases for '{package_name}'")
                 for version, release_payload in releases.items():
                     release_object = require_object(release_payload, f"registry v2 release '{package_name}@{version}'")
-                    if require_string(
+                    if require_sha256_digest(
                         release_object.get("index_record_sha256"),
                         f"registry v2 release index_record_sha256 for '{package_name}@{version}'",
                     ) != record_digests.get(version):
                         raise RegistryV2Error(f"registry v2 release digest mismatch for {package_name}@{version}")
 
     tree_size = require_int(checkpoint_signed.get("tree_size"), "registry v2 checkpoint tree_size")
-    root_hash = require_string(checkpoint_signed.get("root_hash"), "registry v2 checkpoint root_hash")
+    root_hash = require_sha256_digest(checkpoint_signed.get("root_hash"), "registry v2 checkpoint root_hash")
     leaf_hashes: list[str] = []
     for sequence in range(1, tree_size + 1):
         leaf_relative_path = f"log/leaves/{sequence:012d}.json"

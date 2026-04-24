@@ -24,6 +24,17 @@
 - executable server validation steps move to `styio-platform`; this repo keeps package-manager fetch/publish client gates
 - global package distribution, regional mirrors, and mirror synchronization are platform-owned; local offline packages remain client-owned
 
+## Minimum Measurable Coverage
+
+| Capability | `styio-spio` coverage |
+|------------|-----------------------|
+| Publish | Local `spio publish` preflight, filesystem/remote publish command semantics, immutable release expectations, and compatibility with the shared registry-control-plane package. |
+| Verify | Client digest verification before extraction plus static-root and control-plane contract gates that prove the shared envelope shape. |
+| Mirror | Mirror endpoints are read roots only from the client perspective; freshness, replay, and replication are platform contracts. |
+| Offline | `--offline`, `--frozen`, vendored snapshots, local caches, and import/export bundles must work without contacting platform services. |
+| Cache | `SPIO_HOME/registry/` owns cached metadata, blobs, and extracted snapshots; cached artifacts are re-verified before reuse. |
+| Security | Public docs expose redacted hook boundaries only; credential, account, allowlist, and deployment trust policy stay behind private modules or platform service policy. |
+
 ## Maintenance Rule
 
 - do not redefine the shared blob/index layout here
@@ -33,3 +44,4 @@
 - keep registry distribution `v2`-only in active contracts
 - keep static read-plane contracts and HTTP control-plane contracts distinct; clients and service operators consume different surfaces
 - keep local import/export and offline cache semantics independent from platform mirror availability
+- keep generated third-party API-description artifacts out of registry contract packages and gates

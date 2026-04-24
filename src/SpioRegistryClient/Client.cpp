@@ -6,7 +6,9 @@
 #include "SpioCore/Sha256.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
 
+#include <algorithm>
 #include <cstdlib>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -21,6 +23,15 @@ using json = nlohmann::json;
 
 namespace
 {
+
+constexpr size_t kRegistryMetadataMaxBytes = 16U * 1024U * 1024U;
+constexpr uintmax_t kRegistryArtifactMaxBytes = 512ULL * 1024ULL * 1024ULL;
+
+enum class RegistryRemoteObjectKind
+{
+  kMetadata,
+  kArtifact,
+};
 
 std::string NormalizeRegistryRoot(std::string value)
 {
@@ -48,11 +59,8 @@ fs::path FileUrlToPath(const std::string &registry_root)
 
 std::pair<std::string, std::string> SplitPackageName(const std::string &package_name)
 {
+  spio::ValidateRegistryPackageIdentity(package_name);
   const size_t slash = package_name.find('/');
-  if (slash == std::string::npos || slash == 0U || slash + 1U >= package_name.size())
-  {
-    throw spio::FetchError("registry package name must match namespace/name: " + package_name);
-  }
   return {
       package_name.substr(0U, slash),
       package_name.substr(slash + 1U),
@@ -133,22 +141,7 @@ json ParseJsonObject(const std::string &text, const std::string &context)
 
 fs::path NormalizeRelativeRegistryPath(const std::string &relative_path, const std::string &context)
 {
-  if (relative_path.empty())
-  {
-    throw spio::FetchError(context + " must be a non-empty relative path");
-  }
-  const fs::path path(relative_path);
-  if (path.is_absolute())
-  {
-    throw spio::FetchError(context + " must be relative: " + relative_path);
-  }
-  const fs::path normalized = path.lexically_normal();
-  const std::string text = normalized.generic_string();
-  if (text.empty() || text == "." || text == ".." || text.starts_with("../"))
-  {
-    throw spio::FetchError(context + " escapes the registry root: " + relative_path);
-  }
-  return normalized;
+  return spio::NormalizeRegistryObjectPath(relative_path, context);
 }
 
 struct RegistryConfig
@@ -241,6 +234,7 @@ struct RegistryEntry
   std::string version;
   std::string sha256;
   std::string artifact_path;
+  uintmax_t size_bytes = 0;
 };
 
 RegistryEntry ValidateEntry(const json &entry, const std::string &expected_package, const std::string &expected_version)
@@ -262,9 +256,13 @@ RegistryEntry ValidateEntry(const json &entry, const std::string &expected_packa
   const json &artifact = entry["source_artifact"];
   const std::string sha256 = artifact.value("sha256", "");
   const std::string artifact_path = artifact.value("path", "");
-  if (sha256.size() != 64U)
+  if (!spio::IsRegistrySha256Digest(sha256))
   {
     throw spio::FetchError("registry v2 source_artifact is missing a valid sha256 digest");
+  }
+  if (!artifact.contains("size_bytes") || !artifact["size_bytes"].is_number_unsigned())
+  {
+    throw spio::FetchError("registry v2 source_artifact is missing a valid size_bytes value");
   }
   NormalizeRelativeRegistryPath(artifact_path, "registry v2 source_artifact path");
 
@@ -273,38 +271,103 @@ RegistryEntry ValidateEntry(const json &entry, const std::string &expected_packa
       .version = version,
       .sha256 = sha256,
       .artifact_path = artifact_path,
+      .size_bytes = artifact["size_bytes"].get<uintmax_t>(),
   };
 }
 
-std::string FetchUrlToString(const std::string &url, const std::vector<std::string> &request_headers)
+std::string TrimAscii(std::string value)
 {
-  std::vector<std::string> args{"-fsSL"};
-  for (const std::string &header : request_headers)
+  while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front())) != 0)
   {
-    args.push_back("-H");
-    args.push_back(header);
+    value.erase(value.begin());
   }
-  args.push_back(url);
-  const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
-      .program = "curl",
-      .args = args,
-      .timeout = spio::kExternalProcessStepTimeout,
-      .error_context = "registry process",
-  });
-  if (result.exit_code != 0)
+  while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back())) != 0)
   {
-    throw spio::FetchError(
-        "failed to fetch registry url '" + url + "': " +
-        spio::DescribeProcessFailure(result));
+    value.pop_back();
   }
-  return result.stdout_text;
+  return value;
 }
 
-void FetchUrlToFile(const std::string &url, const fs::path &path, const std::vector<std::string> &request_headers)
+std::string LowerAscii(std::string value)
+{
+  std::transform(value.begin(), value.end(), value.begin(), [](const unsigned char ch) {
+    return static_cast<char>(std::tolower(ch));
+  });
+  return value;
+}
+
+std::string ReadLastContentType(const fs::path &headers_path)
+{
+  std::ifstream in(headers_path);
+  if (!in)
+  {
+    throw spio::FetchError("failed to read registry response headers: " + headers_path.string());
+  }
+  std::string line;
+  std::string media_type;
+  while (std::getline(in, line))
+  {
+    if (!line.empty() && line.back() == '\r')
+    {
+      line.pop_back();
+    }
+    const std::string lowered = LowerAscii(line);
+    constexpr std::string_view prefix = "content-type:";
+    if (lowered.starts_with(prefix))
+    {
+      media_type = TrimAscii(line.substr(prefix.size()));
+      const size_t semicolon = media_type.find(';');
+      if (semicolon != std::string::npos)
+      {
+        media_type = media_type.substr(0U, semicolon);
+      }
+      media_type = LowerAscii(TrimAscii(media_type));
+    }
+  }
+  return media_type;
+}
+
+bool IsAllowedRegistryMediaType(const std::string &media_type, const RegistryRemoteObjectKind kind)
+{
+  if (kind == RegistryRemoteObjectKind::kArtifact)
+  {
+    return media_type == "application/octet-stream" || media_type == "application/x-tar" ||
+           media_type == "application/tar";
+  }
+  return media_type == "application/json" || media_type == "application/octet-stream" ||
+         media_type == "application/x-ndjson" || media_type == "application/jsonl" ||
+         media_type == "text/plain";
+}
+
+std::vector<std::string> CurlReadPolicyArgs(const size_t max_bytes)
+{
+  return {
+      "--connect-timeout",
+      "10",
+      "--max-time",
+      "30",
+      "--speed-time",
+      "10",
+      "--speed-limit",
+      "1024",
+      "--max-filesize",
+      std::to_string(max_bytes),
+  };
+}
+
+void FetchUrlToFile(
+    const std::string &url,
+    const fs::path &path,
+    const std::vector<std::string> &request_headers,
+    const uintmax_t max_bytes,
+    const RegistryRemoteObjectKind object_kind)
 {
   fs::create_directories(path.parent_path());
   const fs::path temp_path = path.parent_path() / (path.filename().string() + ".tmp");
-  std::vector<std::string> args{"-fsSL"};
+  const fs::path headers_path = path.parent_path() / (path.filename().string() + ".headers.tmp");
+  std::vector<std::string> args{"-fsSL", "-D", headers_path.string()};
+  const std::vector<std::string> policy_args = CurlReadPolicyArgs(static_cast<size_t>(max_bytes));
+  args.insert(args.end(), policy_args.begin(), policy_args.end());
   for (const std::string &header : request_headers)
   {
     args.push_back("-H");
@@ -323,9 +386,25 @@ void FetchUrlToFile(const std::string &url, const fs::path &path, const std::vec
   {
     std::error_code ignored;
     fs::remove(temp_path, ignored);
+    fs::remove(headers_path, ignored);
     throw spio::FetchError(
-        "failed to download registry artifact '" + url + "': " +
+        "failed to fetch registry object '" + url + "': " +
         spio::DescribeProcessFailure(result));
+  }
+  const std::string media_type = ReadLastContentType(headers_path);
+  std::error_code ignored;
+  fs::remove(headers_path, ignored);
+  if (!IsAllowedRegistryMediaType(media_type, object_kind))
+  {
+    fs::remove(temp_path, ignored);
+    throw spio::FetchError("registry object has unsupported media type '" + (media_type.empty() ? "<missing>" : media_type) + "': " + url);
+  }
+  std::error_code size_ec;
+  const uintmax_t downloaded_size = fs::file_size(temp_path, size_ec);
+  if (size_ec || downloaded_size > max_bytes)
+  {
+    fs::remove(temp_path);
+    throw spio::FetchError("registry object exceeded response limit '" + url + "'");
   }
   std::error_code ec;
   fs::rename(temp_path, path, ec);
@@ -386,9 +465,13 @@ std::string LoadRegistryObjectText(
     return ReadTextFile(cache_path, "cached " + context);
   }
 
-  const std::string text = FetchUrlToString(JoinUrl(registry_root, normalized_relative.generic_string()), request_headers);
-  WriteFileAtomically(cache_path, text, context + " cache");
-  return text;
+  FetchUrlToFile(
+      JoinUrl(registry_root, normalized_relative.generic_string()),
+      cache_path,
+      request_headers,
+      kRegistryMetadataMaxBytes,
+      RegistryRemoteObjectKind::kMetadata);
+  return ReadTextFile(cache_path, "cached " + context);
 }
 
 RegistryConfig LoadConfig(
@@ -480,6 +563,12 @@ void MaterializeArtifact(
     {
       throw spio::CacheError("cached registry artifact sha256 mismatch: " + blob_cache_path.string());
     }
+    std::error_code size_ec;
+    const uintmax_t cached_size = fs::file_size(blob_cache_path, size_ec);
+    if (size_ec || cached_size != entry.size_bytes)
+    {
+      throw spio::CacheError("cached registry artifact size mismatch: " + blob_cache_path.string());
+    }
     return;
   }
 
@@ -505,9 +594,20 @@ void MaterializeArtifact(
     {
       throw spio::FetchError("offline mode is missing cached registry artifact for " + entry.package + "@" + entry.version);
     }
-    FetchUrlToFile(JoinUrl(registry_root, artifact_relative.generic_string()), blob_cache_path, request_headers);
+    FetchUrlToFile(
+        JoinUrl(registry_root, artifact_relative.generic_string()),
+        blob_cache_path,
+        request_headers,
+        kRegistryArtifactMaxBytes,
+        RegistryRemoteObjectKind::kArtifact);
   }
 
+  std::error_code size_ec;
+  const uintmax_t actual_size = fs::file_size(blob_cache_path, size_ec);
+  if (size_ec || actual_size != entry.size_bytes)
+  {
+    throw spio::FetchError("registry v2 source artifact size mismatch for " + entry.package + "@" + entry.version);
+  }
   const std::string actual_sha256 = spio::Sha256File(blob_cache_path);
   if (actual_sha256 != entry.sha256)
   {
@@ -539,6 +639,73 @@ fs::path DetectSnapshotRoot(const fs::path &checkout_root)
   throw spio::CacheError("registry package snapshot does not contain spio.toml: " + checkout_root.string());
 }
 
+void ValidateTarListingPaths(const fs::path &blob_cache_path)
+{
+  const spio::ProcessResult path_listing = spio::RunProcess<spio::CacheError>({
+      .program = "tar",
+      .args = {"-tf", blob_cache_path.string()},
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry process",
+  });
+  if (path_listing.exit_code != 0)
+  {
+    throw spio::CacheError(
+        "failed to list registry artifact '" + blob_cache_path.string() + "': " +
+        spio::DescribeProcessFailure(path_listing));
+  }
+  std::istringstream path_lines(path_listing.stdout_text);
+  std::string entry_path;
+  size_t manifest_candidates = 0;
+  while (std::getline(path_lines, entry_path))
+  {
+    const std::string original_entry_path = entry_path;
+    while (!entry_path.empty() && entry_path.back() == '/')
+    {
+      entry_path.pop_back();
+    }
+    if (entry_path.empty())
+    {
+      throw spio::CacheError("registry archive member path is empty after normalization: " + original_entry_path);
+    }
+    NormalizeRelativeRegistryPath(entry_path, "registry archive member path");
+    if (entry_path == "spio.toml" || entry_path.ends_with("/spio.toml"))
+    {
+      ++manifest_candidates;
+    }
+  }
+  if (manifest_candidates != 1U)
+  {
+    throw spio::CacheError("registry archive must contain exactly one spio.toml manifest");
+  }
+
+  const spio::ProcessResult verbose_listing = spio::RunProcess<spio::CacheError>({
+      .program = "tar",
+      .args = {"-tvf", blob_cache_path.string()},
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry process",
+  });
+  if (verbose_listing.exit_code != 0)
+  {
+    throw spio::CacheError(
+        "failed to inspect registry artifact '" + blob_cache_path.string() + "': " +
+        spio::DescribeProcessFailure(verbose_listing));
+  }
+  std::istringstream verbose_lines(verbose_listing.stdout_text);
+  std::string verbose_line;
+  while (std::getline(verbose_lines, verbose_line))
+  {
+    if (verbose_line.empty())
+    {
+      continue;
+    }
+    const char type = verbose_line.front();
+    if (type != '-' && type != 'd')
+    {
+      throw spio::CacheError("registry archive member type is not allowed: " + verbose_line);
+    }
+  }
+}
+
 fs::path EnsureCheckout(const fs::path &spio_home, const RegistryEntry &entry)
 {
   const fs::path checkout_root = CheckoutPath(spio_home, entry.package, entry.version, entry.sha256);
@@ -553,9 +720,10 @@ fs::path EnsureCheckout(const fs::path &spio_home, const RegistryEntry &entry)
   fs::create_directories(checkout_root);
 
   const fs::path blob_cache_path = BlobCachePath(spio_home, entry.sha256);
+  ValidateTarListingPaths(blob_cache_path);
   const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
       .program = "tar",
-      .args = {"-xf", blob_cache_path.string(), "-C", checkout_root.string()},
+      .args = {"--no-same-owner", "--no-same-permissions", "-xf", blob_cache_path.string(), "-C", checkout_root.string()},
       .timeout = spio::kExternalProcessStepTimeout,
       .error_context = "registry process",
   });

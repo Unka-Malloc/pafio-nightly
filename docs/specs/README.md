@@ -11,5 +11,8 @@
 3. Use this directory for rules that every agent or reviewer must apply across modules.
 4. Post-push GitHub Actions checking rules live in [POST-COMMIT-CI-CHECKS.md](./POST-COMMIT-CI-CHECKS.md).
 5. Technology-stack, internal-component, open-source-component, and dependency-manifest inventory maintenance rules live in [TECHNOLOGY-COMPONENT-INVENTORY.md](./TECHNOLOGY-COMPONENT-INVENTORY.md).
+6. Registry-management reviews must prove the minimum package-manager coverage
+   for publish, verify, mirror handoff, offline mode, cache reuse, and security
+   boundary docs before claiming the change is measurable.
 
 Generated inventory: [INDEX.md](./INDEX.md).

@@ -1,5 +1,6 @@
 #include "SpioCLI/CLI.hpp"
 #include "SpioCore/Errors.hpp"
+#include "SpioCore/Sha256.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioResolve/Resolver.hpp"
 
@@ -199,6 +200,48 @@ void PublishIntoFilesystemRegistryOrAssert(const fs::path &manifest_path, const 
           registry_root.string(),
       }),
       spio::kExitSuccess);
+}
+
+fs::path FindOnlySourceArtifactOrAssert(const fs::path &registry_root)
+{
+  fs::path found;
+  for (const fs::directory_entry &entry : fs::recursive_directory_iterator(registry_root / "artifacts" / "source"))
+  {
+    if (entry.is_regular_file() && entry.path().filename().string().ends_with(".spio.src.tar"))
+    {
+      if (!found.empty())
+      {
+        throw std::runtime_error("expected exactly one source artifact");
+      }
+      found = entry.path();
+    }
+  }
+  if (found.empty())
+  {
+    throw std::runtime_error("expected one source artifact");
+  }
+  return found;
+}
+
+void WriteMaliciousRegistryTarOrAssert(const fs::path &archive_path)
+{
+  const std::string script =
+      "import io, pathlib, sys, tarfile\n"
+      "target = pathlib.Path(sys.argv[1])\n"
+      "target.parent.mkdir(parents=True, exist_ok=True)\n"
+      "def add_file(archive, name, data):\n"
+      "    payload = data.encode('utf-8')\n"
+      "    info = tarfile.TarInfo(name=name)\n"
+      "    info.size = len(payload)\n"
+      "    info.mtime = 0\n"
+      "    info.mode = 0o644\n"
+      "    archive.addfile(info, io.BytesIO(payload))\n"
+      "with tarfile.open(target, 'w') as archive:\n"
+      "    add_file(archive, 'util-0.2.0/spio.toml', '[spio]\\nmanifest-version = 1\\n\\n[package]\\nname = \"acme/util\"\\nversion = \"0.2.0\"\\nedition = \"2026\"\\n\\n[toolchain]\\nchannel = \"nightly\"\\nimplicit-std = true\\n\\n[lib]\\npath = \"src/lib.styio\"\\n')\n"
+      "    add_file(archive, 'util-0.2.0/src/lib.styio', '# util\\n')\n"
+      "    add_file(archive, '../escape.txt', 'escape\\n')\n";
+  const ChildProcessResult result = RunChildProcess("python3", {"-c", script, archive_path.string()});
+  ASSERT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
 }
 
 std::string GitHeadRev(const fs::path &repo_root)
@@ -1148,6 +1191,73 @@ TEST(FetchCliTests, FetchesRegistrySourcesWithoutWritingLockfile)
   EXPECT_FALSE(fs::exists(root / "spio.lock"));
   EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "blobs" / "sha256"));
   EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0"));
+}
+
+TEST(FetchCliTests, RejectsRegistryArchiveTraversalBeforeExtraction)
+{
+  const fs::path root = MakeTempDir("fetch-registry-traversal");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path registry_root = root / "registry";
+  const std::string registry_url = FileUrl(registry_root);
+  const fs::path manifest_path = root / "spio.toml";
+
+  WriteFile(
+      root / "publish/util/spio.toml",
+      "[spio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/util\"\n"
+      "version = \"0.2.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[toolchain]\n"
+      "channel = \"nightly\"\n"
+      "implicit-std = true\n\n"
+      "[lib]\n"
+      "path = \"src/lib.styio\"\n");
+  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+
+  const fs::path artifact = FindOnlySourceArtifactOrAssert(registry_root);
+  const fs::path malicious_archive = root / "malicious" / "util-0.2.0.tar";
+  WriteMaliciousRegistryTarOrAssert(malicious_archive);
+  fs::copy_file(malicious_archive, artifact, fs::copy_options::overwrite_existing);
+  const std::string malicious_sha256 = spio::Sha256File(artifact);
+  const uintmax_t malicious_size = fs::file_size(artifact);
+
+  const fs::path index_path = registry_root / "index" / "acme" / "util.jsonl";
+  json record = json::parse(ReadFile(index_path));
+  record["source_artifact"]["sha256"] = malicious_sha256;
+  record["source_artifact"]["size_bytes"] = malicious_size;
+  WriteFile(index_path, record.dump() + "\n");
+
+  WriteFile(
+      manifest_path,
+      std::string(
+          "[spio]\n"
+          "manifest-version = 1\n\n"
+          "[package]\n"
+          "name = \"acme/app\"\n"
+          "version = \"0.1.0\"\n"
+          "edition = \"2026\"\n\n"
+          "[toolchain]\n"
+          "channel = \"nightly\"\n"
+          "implicit-std = true\n\n"
+          "[[bin]]\n"
+          "name = \"app\"\n"
+          "path = \"src/main.styio\"\n\n"
+          "[dependencies]\n"
+          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
+          registry_url +
+          "\" }\n");
+
+  testing::internal::CaptureStdout();
+  testing::internal::CaptureStderr();
+  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), spio::kExitFetch);
+  (void) testing::internal::GetCapturedStdout();
+  const std::string stderr_text = testing::internal::GetCapturedStderr();
+  EXPECT_NE(stderr_text.find("registry archive member path"), std::string::npos);
+  EXPECT_FALSE(fs::exists(root / "escape.txt"));
 }
 
 TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile)

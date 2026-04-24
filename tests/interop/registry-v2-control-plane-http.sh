@@ -145,16 +145,34 @@ assert payload["payload"]["ok"] is True
 assert payload["payload"]["releases"] == 1
 PY
 
-DUPLICATE_JSON="$(
-  curl -fsS -X POST "${BASE_URL}/publish" \
+VERIFY_BAD_CODE="$(
+  curl -sS -o "$ROOT/verify-bad-response.json" -w '%{http_code}' -X POST "${BASE_URL}/verify" \
+    -H 'Content-Type: application/json' \
+    --data '{"unexpected": true}'
+)"
+
+test "$VERIFY_BAD_CODE" = "400"
+
+python3 - "$ROOT/verify-bad-response.json" <<'PY'
+import json
+import sys
+payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
+assert payload["returncode"] == 2
+assert payload["error_payload"]["category"] == "UsageError"
+PY
+
+DUPLICATE_CODE="$(
+  curl -sS -o "$ROOT/duplicate-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
     -H 'Content-Type: application/json' \
     --data "{\"manifest_path\": \"${PACKAGE_ROOT}/spio.toml\", \"publisher_id\": \"http-test\"}"
 )"
 
-python3 - "$DUPLICATE_JSON" <<'PY'
+test "$DUPLICATE_CODE" = "409"
+
+python3 - "$ROOT/duplicate-response.json" <<'PY'
 import json
 import sys
-payload = json.loads(sys.argv[1])
+payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
 assert payload["returncode"] != 0
 assert payload["error_payload"]["category"] == "PublishError"
 PY

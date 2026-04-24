@@ -26,6 +26,7 @@ contracts, or `styio-platform` server control-plane behavior.
 5. Coordinate with Core / Workflow when publish/fetch behavior changes user-facing workflow outcomes.
 6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `SpioCore::Process`.
 7. Keep registry control-plane references on native JSON contract and example packs; do not reintroduce generated API-description artifacts or lint gates.
+8. Keep the minimum measurable registry-management checklist visible in registry docs: publish, verify, mirror handoff, offline behavior, cache reuse, and security boundary.
 
 ## Change Classes
 
@@ -37,6 +38,8 @@ contracts, or `styio-platform` server control-plane behavior.
 
 ```bash
 ./scripts/checkpoint-health.sh
+python3 ./tests/interop/registry-control-plane-contract-gate.py
+python3 ./tests/interop/native-contract-source-gate.py
 ```
 
 ## Cross-Team Dependencies

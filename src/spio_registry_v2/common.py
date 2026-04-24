@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,7 @@ from urllib.parse import unquote, urlsplit
 
 REGISTRY_OPENSSL_TIMEOUT_SECONDS = 30.0
 REGISTRY_SUBPROCESS_TIMEOUT_SECONDS = 600.0
+PACKAGE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$")
 
 
 class RegistryV2Error(RuntimeError):
@@ -151,11 +153,35 @@ def require_int(value: Any, context: str) -> int:
     return value
 
 
-def split_package_name(package_name: str) -> tuple[str, str]:
+def validate_package_name(package_name: str, context: str = "package name") -> tuple[str, str]:
+    if not PACKAGE_NAME_RE.fullmatch(package_name):
+        raise RegistryV2Error(f"{context} must match namespace/name: {package_name}")
     parts = package_name.split("/", 1)
-    if len(parts) != 2 or not parts[0] or not parts[1]:
-        raise RegistryV2Error(f"package name must match namespace/name: {package_name}")
     return parts[0], parts[1]
+
+
+def split_package_name(package_name: str) -> tuple[str, str]:
+    return validate_package_name(package_name)
+
+
+def normalize_registry_relative_path(relative_path: str, context: str = "registry object path") -> str:
+    if not relative_path or relative_path.endswith("/"):
+        raise RegistryV2Error(f"{context} must be a non-empty POSIX-relative path: {relative_path!r}")
+    if relative_path.startswith("/") or "\\" in relative_path:
+        raise RegistryV2Error(f"{context} must be a POSIX-relative path inside the registry root: {relative_path!r}")
+    if any(ord(ch) < 32 for ch in relative_path):
+        raise RegistryV2Error(f"{context} must not contain control characters: {relative_path!r}")
+    parts = relative_path.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise RegistryV2Error(f"{context} must be canonical and must not escape the registry root: {relative_path!r}")
+    return relative_path
+
+
+def require_sha256_digest(value: Any, context: str) -> str:
+    digest = require_string(value, context)
+    if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+        raise RegistryV2Error(f"{context} must be a lowercase sha256 digest")
+    return digest
 
 
 def artifact_bucket_path(prefix: str, digest: str, suffix: str) -> pathlib.Path:

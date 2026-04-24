@@ -45,11 +45,12 @@ without redefining planning, registry, compiler, or service contract semantics.
 12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `styio-audit`.
 13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
 14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `styio-audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
+15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, technology/component inventory updates, or platform handoff updates.
+2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, registry-management audit coverage, post-push CI checking rules, technology/component inventory updates, or platform handoff updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
