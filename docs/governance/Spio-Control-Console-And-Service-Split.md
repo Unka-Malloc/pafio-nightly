@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the product cut between the repo-hosted control-console frontend and the service-side backend planes so UI work does not leak into native core, registry hosting, or cloud-platform internals.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-24
 
 ## Scope
 
@@ -10,7 +10,7 @@ This document owns:
 
 - the human-facing control-surface boundary for `spio`
 - the repository-layout expectation for frontend assets versus backend code
-- the split between repository hosting and cloud-platform backend planes
+- the split between package-manager client surfaces and `styio-platform` backend planes
 - the rule that frontend code consumes published backend contracts only
 - the requirement that control-console consumer mappings stay documented
 
@@ -52,7 +52,7 @@ The repository-hosting backend owns:
 - publish control-plane and promotion flows
 - package repository serving over local paths or HTTP(S)
 
-This plane is the package repository and object-hosting side of `spio`.
+This plane is now service-side `styio-platform` ownership. `spio` keeps package-manager client compatibility docs and local test shims while server implementations move downstream.
 
 Authoritative references:
 
@@ -64,7 +64,7 @@ Authoritative references:
 
 ## 3. Backend Plane B: Cloud Platform
 
-The cloud-platform backend owns:
+The `styio-platform` cloud backend owns:
 
 - hosted workspace lifecycle
 - project-graph publication
@@ -73,7 +73,7 @@ The cloud-platform backend owns:
 - execution, runtime-event, and deployment workflows
 - future queue, scheduler, and worker-pool orchestration
 
-The tracked open-source tree currently freezes this plane as local machine-readable contracts and hosted-client expectations. When remote services are introduced, they must preserve the existing route families and payload nouns used by current consumers:
+`spio` freezes this plane as local machine-readable client compatibility and hosted-client expectations. `styio-platform` owns remote services and must preserve the existing route families and payload nouns used by current consumers:
 
 - `POST /workspaces/open`
 - `GET /workspaces/{id}/project-graph`
@@ -89,12 +89,12 @@ Authoritative references:
 
 ## 4. Native Core Position
 
-`src/` remains the backend/domain core and local contract renderer for:
+`src/` remains the package-manager core and local compatibility renderer for:
 
 - CLI automation
-- registry publish and consume behavior
+- registry publish and consume client behavior
 - toolchain state and project graph payloads
-- cloud policy rendering
+- cloud policy rendering for platform compatibility
 - workflow orchestration
 
 Rules:
@@ -106,6 +106,6 @@ Rules:
 ## 5. Cross-Plane Rules
 
 - frontend and backend may share vocabulary, but they do not share implementation
-- repository hosting and cloud platform may share security policy and deployment ownership, but they remain distinct operational planes
+- repository hosting and cloud platform may share security policy and deployment ownership inside `styio-platform`, but `spio` should consume them through contracts
 - `styio-view` may consume the same backend planes through product-owned adapters; `spio` must not fork backend semantics to suit a single frontend
 - the control console must keep a consumer map of every backend interaction instead of relying on page-local assumptions

@@ -2,11 +2,14 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 ## Mission
 
-Own `spio`'s published external compiler contract for `binary` mode and the controlled source-build handoff rules for `build` mode without letting either path drift into undocumented behavior.
+Own `spio`'s published external compiler contract for `binary` mode,
+controlled source-build handoff rules for `build` mode, local Styio environment
+optimization contracts, and the client side of the `styio-platform` migration
+without letting any path drift into undocumented behavior.
 
 ## Owned Surface
 
@@ -15,21 +18,27 @@ Own `spio`'s published external compiler contract for `binary` mode and the cont
 3. `docs/governance/Spio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
+6. `docs/planning/Spio-Platform-Migration-Handoff.md`
+7. `docs/governance/Spio-Local-Offline-Package-Contract.md`
 
 ## Daily Workflow
 
 1. Treat published compiler interaction as a machine contract, not an internal source dependency.
-2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, and cloud execution-policy semantics, and keep machine-readable sync/graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
+2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, and platform compatibility semantics, and keep machine-readable sync/graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
 3. Keep handoff docs and interface gates aligned in the same checkpoint.
 4. Use `--styio-bin` health legs when validating the published binary path.
 5. Treat compile-plan v1 as live only when `styio --machine-info=json`, `contracts/compat/styio-support.toml`, and the black-box interop gate all agree.
 6. Keep the source-build doc needles exact for the cross-repo gate: official origin, `stable`/`nightly` branch mapping, `spio build minimal`, `spio-toolchain.lock`, and the binary compatibility-matrix bypass statement must all remain visible in `Spio-CLI-Contract.md`.
+7. Keep hosted workspace, registry server control-plane, compile-platform,
+   mirror synchronization, and cloud-service ownership in `styio-platform`;
+   this repo documents the package-manager client contract, offline package
+   behavior, local compiler environment, and compatibility expectations.
 
 ## Change Classes
 
 1. Small: compatibility doc wording, source-build needle wording, or fixture updates.
-2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, cloud policy JSON fields, or CLI JSON contract updates.
-3. High: compatibility phase changes, official source origin rules, public machine contract expansion, or cloud execution-policy vocabulary changes.
+2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, platform compatibility JSON fields, or CLI JSON contract updates.
+3. High: compatibility phase changes, official source origin rules, public machine contract expansion, or platform service ownership changes.
 
 ## Required Gates
 
@@ -45,4 +54,4 @@ python3 scripts/styio-interface-gate.py --styio-bin /absolute/path/to/styio --sp
 
 ## Handoff / Recovery
 
-Record the exact published external compiler binary or source revision, compatibility phase, supported compile-plan versions, and the failing contract command when stopping mid-checkpoint.
+Record the exact published external compiler binary or source revision, compatibility phase, supported compile-plan versions, failing contract command, and whether the next service-side action belongs in `styio-platform`.

@@ -1,12 +1,16 @@
 # Core / Workflow Runbook
 
-**Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, and build/test flow.
+**Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, offline package paths, local import/export, and build/test flow.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 ## Mission
 
-Own the package-manager core and native workflow behavior, including project-local toolchain mode selection, source-build orchestration, and public compile-cloud stress harness behavior, without redefining registry policy or published external compiler contracts.
+Own the local-first package-manager core and native workflow behavior, including
+offline package use, local import/export, project-local toolchain mode
+selection, source-build orchestration, and platform compatibility shims, without
+redefining registry policy, platform service behavior, or published external
+compiler contracts.
 
 ## Owned Surface
 
@@ -16,29 +20,29 @@ Own the package-manager core and native workflow behavior, including project-loc
 4. `scripts/bootstrap-check.py`
 5. `scripts/native-check.sh`
 6. `scripts/checkpoint-health.sh`
-7. `scripts/cloud-compile-stress.py`
+7. offline resolver/cache behavior and future local import/export commands
+8. Temporary platform compatibility surfaces such as `spio cloud` until they are consumed from `styio-platform`
 
 ## Daily Workflow
 
 1. Start from [../BUILD-AND-DEV-ENV.md](../BUILD-AND-DEV-ENV.md).
 2. Keep native build/test behavior behind `scripts/checkpoint-health.sh`.
-3. Treat `spio use`, `spio set`, `spio sync`, `spio project-graph --json`, `spio cloud status --json`, `spio cloud plan --json`, `spio tool status --json`, `spio build minimal`, and `spio-toolchain.lock` as owned workflow surface.
+3. Treat `spio use`, `spio set`, `spio sync`, `spio project-graph --json`, `spio tool status --json`, `spio build minimal`, local import/export, offline package use, and `spio-toolchain.lock` as owned workflow surface.
 4. Update CLI or workflow docs when public behavior changes.
 5. Keep `src/SpioCLI/CLI.cpp` thin. New payload builders, workflow validation rules, and private process helpers belong in domain or infrastructure modules, not in the CLI router.
 6. Keep `src/SpioToolchain/` vocabulary and project-local state terminology aligned with docs. When source-build, channel, risk, lane, or security terms change in code, update the owning governance and delivery docs in the same checkpoint.
-7. Keep `spio_cloud_stress` deterministic, tenant-isolated, and runnable without Docker/Kubernetes so the public gate stays available before the production cloud scheduler exists.
+7. Keep any remaining local cloud compatibility deterministic and small; new cloud stress or scheduler behavior belongs in `styio-platform`.
 
 ## Change Classes
 
 1. Small: local command behavior, fixture cleanup, or dry-run plan output. Run checkpoint health.
-2. Medium: CLI shape, manifest/lock semantics, dependency preparation loops, project-graph payloads, cloud-plan request payloads, tool-status payloads, toolchain-mode persistence, cloud preference persistence, compile-cloud stress thresholds, or resolver behavior. Update docs and tests together.
-3. High: binary/build execution routing, source-build fetch/build semantics, cloud execution policy semantics, tenant/container lifecycle semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery and Styio / Contracts.
+2. Medium: CLI shape, manifest/lock semantics, dependency preparation loops, local import/export bundle semantics, project-graph payloads, platform compatibility payloads, tool-status payloads, toolchain-mode persistence, or resolver behavior. Update docs and tests together.
+3. High: binary/build execution routing, source-build fetch/build semantics, offline package guarantees, platform compatibility semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery and Styio / Contracts.
 
 ## Required Gates
 
 ```bash
 ./scripts/checkpoint-health.sh
-python3 tests/unit/test_cloud_compile_stress.py
 ```
 
 ## Cross-Team Dependencies
@@ -49,4 +53,4 @@ python3 tests/unit/test_cloud_compile_stress.py
 
 ## Handoff / Recovery
 
-Record the affected command path, fixture or test coverage gap, the selected project toolchain mode, and whether the next recovery step needs a published external `styio` binary or a source-build checkout.
+Record the affected command path, fixture or test coverage gap, the selected project toolchain mode, and whether the next recovery step needs a published external `styio` binary, a source-build checkout, or a downstream `styio-platform` change.

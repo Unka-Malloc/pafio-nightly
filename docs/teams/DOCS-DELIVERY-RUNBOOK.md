@@ -2,11 +2,13 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 ## Mission
 
-Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoints without redefining planning, registry, or compiler contract semantics.
+Own docs topology, generated indexes, gate wiring, delivery-facing entrypoints,
+offline package docs, local import/export docs, and platform handoff docs
+without redefining planning, registry, compiler, or service contract semantics.
 
 ## Owned Surface
 
@@ -32,12 +34,14 @@ Own docs topology, generated indexes, gate wiring, and delivery-facing entrypoin
 6. Keep repo entry docs and closure docs aligned: `README.md`, `docs/BUILD-AND-DEV-ENV.md`, `docs/planning/Spio-Master-Plan.md`, `docs/planning/Spio-Stage-Review-and-Future-Features.md`, `docs/planning/Spio-Workstreams-and-TODOs.md`, `docs/operations/Spio-Verification-Matrix.md`, `docs/operations/Spio-Cloud-Compile-Stress-Runbook.md`, and `docs/operations/Spio-Repo-Split-Runbook.md` must agree on wrapper-vs-binary entrypoints, current implementation status, and root-relative command paths.
 7. When `docs/governance/Spio-CLI-Contract.md` changes source-build wording, run the cross-repo ecosystem CLI doc gate from `styio-nightly` and keep its fixed source-build needles exact.
 8. Keep [../specs/POST-COMMIT-CI-CHECKS.md](../specs/POST-COMMIT-CI-CHECKS.md) aligned with actual GitHub Actions monitoring practice whenever commit, push, or CI handoff rules change.
-9. Keep sibling-repository handoff docs under `docs/external/for-*`; do not recreate root-level external handoff collections.
+9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
+10. Keep `docs/planning/Spio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
+11. Keep `docs/governance/Spio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, post-push CI checking rules, or cloud-control-plane contract updates.
+2. Medium: docs tree, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, or platform handoff updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
@@ -53,6 +57,7 @@ python3 scripts/repo-hygiene-gate.py --mode tracked
 1. Core / Workflow reviews workflow entrypoint changes.
 2. Styio / Contracts reviews ecosystem doc or machine-contract wording changes.
 3. Registry / Publish reviews registry runbook or gate changes.
+4. Styio / Contracts reviews `styio-platform` handoff wording.
 
 ## Handoff / Recovery
 

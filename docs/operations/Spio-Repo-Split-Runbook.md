@@ -2,7 +2,7 @@
 
 **Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 ## 1. Preconditions
 
@@ -55,6 +55,8 @@ After the subtree moves:
 - update developer docs to point to the standalone `styio` checkout used by the team
 - keep compiler-location contracts limited to explicit `--styio-bin`, `SPIO_STYIO_BIN`, project-local `spio-toolchain.toml`, and managed current compiler state
 - keep `contracts/` inside the new repository as the source of truth for package-manager-side contracts
+- keep hosted control-plane, registry server control-plane, compile-platform, cloud stress, and extensible cloud-service ownership in `styio-platform`
+- keep offline package use, local package import/export, and project-local Styio environment optimization in `styio-spio`
 - do not pull compiler implementation files into the new repository just for convenience
 
 ## 5. Known Defects
