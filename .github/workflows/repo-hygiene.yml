@@ -26,12 +26,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/styio-nightly
+          ref: ${{ github.ref_name }}
           path: styio-nightly
 
       - name: Check out styio-view sibling repository
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/styio-view
+          ref: ${{ github.ref_name }}
           path: styio-view
 
       - name: Set up Python
