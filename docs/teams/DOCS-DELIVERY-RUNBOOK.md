@@ -42,13 +42,14 @@ without redefining planning, registry, compiler, or service contract semantics.
 9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
 10. Keep `docs/planning/Spio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
 11. Keep `docs/governance/Spio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
-12. Keep top-level GPL license, derivative-source policy, and dependency usage-boundary evidence aligned with `styio-audit`.
+12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `styio-audit`.
 13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
+14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `styio-audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, or platform handoff updates.
+2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, technology/component inventory updates, or platform handoff updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
