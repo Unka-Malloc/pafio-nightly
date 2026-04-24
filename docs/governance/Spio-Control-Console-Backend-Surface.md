@@ -8,9 +8,9 @@
 
 The control console is a consumer of two backend contract families:
 
-1. Hosted control-plane API package
-   - [`../../contracts/hosted-control-plane/v1/openapi.json`](../../contracts/hosted-control-plane/v1/openapi.json)
-   - [`../../contracts/hosted-control-plane/v1/workflows.arazzo.json`](../../contracts/hosted-control-plane/v1/workflows.arazzo.json)
+1. Hosted control-plane native JSON package
+   - [`../../contracts/hosted-control-plane/v1/hosted-control-plane.contract.json`](../../contracts/hosted-control-plane/v1/hosted-control-plane.contract.json)
+   - [`../../contracts/hosted-control-plane/v1/hosted-control-plane.examples.json`](../../contracts/hosted-control-plane/v1/hosted-control-plane.examples.json)
    - [`./Spio-Hosted-Control-Plane-Contract.md`](./Spio-Hosted-Control-Plane-Contract.md)
 2. Registry `v2` read/control contracts
    - [`../registry/Spio-Registry-V2-Protocol.md`](../registry/Spio-Registry-V2-Protocol.md)
@@ -49,8 +49,8 @@ This document is the control-console consumer map. It does not replace the backe
 
 When console work spans multiple backend calls, use:
 
-1. `openapi.json` for routes, schemas, examples, and reusable links
-2. `workflows.arazzo.json` for end-to-end operator flows
+1. `hosted-control-plane.contract.json` for routes, schemas, examples, and operation identifiers
+2. `hosted-control-plane.examples.json` for end-to-end operator payloads
 3. registry `v2` protocol/control-plane contracts for static read-root and publish orchestration semantics
 
 ## Control-Console Rules
@@ -59,4 +59,4 @@ When console work spans multiple backend calls, use:
 2. The console must not parse manifests, resolve dependencies, or emulate publish orchestration locally.
 3. Registry visibility must come from published `v2` config/targets/index/artifact paths, not from repository internals.
 4. Hosted workspace/toolchain/dependency/execution/deployment interactions must match the versioned hosted contract package exactly.
-5. Any new control-console workflow that becomes product-critical must be added to the Arazzo workflow package before frontend and backend teams rely on it.
+5. Any new control-console workflow that becomes product-critical must be added to the native JSON contract package before frontend and backend teams rely on it.

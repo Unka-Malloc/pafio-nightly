@@ -23,8 +23,8 @@ It is not part of the static read-plane protocol. Clients that install packages 
 
 The current versioned HTTP service contract for this plane lives in:
 
-- [`../../contracts/registry-control-plane/v1/openapi.json`](../../contracts/registry-control-plane/v1/openapi.json)
-- [`../../contracts/registry-control-plane/v1/workflows.arazzo.json`](../../contracts/registry-control-plane/v1/workflows.arazzo.json)
+- [`../../contracts/registry-control-plane/v1/registry-control-plane.contract.json`](../../contracts/registry-control-plane/v1/registry-control-plane.contract.json)
+- [`../../contracts/registry-control-plane/v1/registry-control-plane.examples.json`](../../contracts/registry-control-plane/v1/registry-control-plane.examples.json)
 - [`./Spio-Registry-Control-Plane-Contract.md`](./Spio-Registry-Control-Plane-Contract.md)
 
 ## 2. Required Write-Side Guarantees

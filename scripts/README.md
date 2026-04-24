@@ -2,7 +2,7 @@
 
 **Purpose:** Hold repository-local helper scripts used to validate extractability, contract hygiene, and black-box test setup for `spio`.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-04-24
 
 ## Current Public Scripts
 
@@ -13,6 +13,7 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - docs/process gate
 - repository hygiene gate
 - team runbook maintenance gate
+- external `styio-audit` gate
 - checkpoint health gate
 - delivery gate
 - native configure/build/test entrypoint

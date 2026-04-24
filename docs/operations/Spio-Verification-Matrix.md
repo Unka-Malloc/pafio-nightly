@@ -274,15 +274,14 @@ Commands:
 
 ```text
 python3 ./tests/interop/registry-control-plane-contract-gate.py
-npx --yes @redocly/cli lint contracts/registry-control-plane/v1/openapi.json --config contracts/registry-control-plane/v1/redocly.yaml
-npx --yes @redocly/cli lint contracts/registry-control-plane/v1/workflows.arazzo.json
+python3 ./tests/interop/native-contract-source-gate.py
 ```
 
 Pass conditions:
 
 - the method/path snapshot remains frozen
 - the example pack matches the contract shapes
-- the OpenAPI and Arazzo artifacts stay lint-clean
+- native contract sources remain free of generated API-description artifacts
 
 Defect:
 

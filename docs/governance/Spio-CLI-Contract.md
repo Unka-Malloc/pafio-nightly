@@ -214,7 +214,7 @@ Compile-plan publication rule:
 ### 3.5 `spio cloud plan --json`
 
 - `spio cloud plan --json` publishes `build_job_request v1`
-- the payload freezes the normalized request body shape for a future `POST /v1/build-jobs`
+- the payload freezes the normalized request body shape for `POST /api/styio-platform/v1/jobs`
 - the request includes:
   - `action`
   - `toolchain`

@@ -2,7 +2,7 @@
 
 **Purpose:** Record the external audit pass over `styio-spio` using the `styio-audit` project module `for-styio-spio`.
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-04-24
 
 ## Scope
 
@@ -37,8 +37,8 @@ Parallel shards then closed additional registry, process, and subprocess-lifecyc
 | High | Registry v2 archive intake | Tar manifest discovery accepted non-canonical member paths and silently selected the first manifest candidate. | Fixed in this audit | Updated `src/spio_registry_v2/publisher.py` to require canonical member names and exactly one `spio.toml`; covered by `tests/unit/test_registry_v2.py`. |
 | High | Process lifecycle | Large `git archive` snapshots could be truncated by the 1 MiB `RunProcess` stdout cap, and synchronous stdin writes left a bidirectional I/O deadlock window. | Fixed in this audit | `src/SpioResolve/Resolver.cpp` now archives directly to output; `src/SpioCore/Process.cpp` writes stdin through the poll loop. Native regressions cover both paths. |
 | High | External subprocess lifecycle | Resolver, source-build, registry, compiler, and registry-v2 helper subprocesses did not consistently have explicit wall-clock timeouts. | Fixed for scoped runtime paths | Shared timeout constants now cover key git/tar/curl/cmake/compiler/helper subprocesses. `ProcessTests.TimesOutWhenChildKeepsProducingOutput` covers the wall-clock timeout. |
-| Medium | Control-plane semantics | Publish and verify failures still return HTTP 200 with a failure envelope. That weakens HTTP-level observability and gateway enforcement. | Open | Present in `scripts/registry-v2-control-plane-server.py` and the control-plane OpenAPI contract. This remains a residual risk. |
-| High | Audit governance | The repository still contains an open defect record at `docs/audit/defects/STYIO-SPIO-2026-04-22.md`, so the external `styio-audit` gate will continue to fail until that record is closed or moved to durable tracked work. | Open | Verified by running `styio-audit gate` against `styio-spio`. |
+| Medium | Control-plane semantics | Publish and verify failures still return HTTP 200 with a failure envelope. That weakens HTTP-level observability and gateway enforcement. | Tracked | Migrated to [Spio Audit Backlog 2026-04-22](../planning/Spio-Audit-Backlog-2026-04-22.md) as `SPIO-AUD-014`. |
+| High | Audit governance | The ignored open defect record was moved to durable tracked planning work, so the external `styio-audit` defect queue can be empty without losing the unresolved findings. | Fixed by migration | Tracked in [Spio Audit Backlog 2026-04-22](../planning/Spio-Audit-Backlog-2026-04-22.md); verify by running `styio-audit gate` against `styio-spio`. |
 | Low | Test coverage | Before this pass, there was no interop regression covering status redaction or oversized control-plane requests. | Fixed in this audit | Added checks to the control-plane HTTP gate so the regression is now exercised. |
 
 ## Design / State Machine Notes
@@ -57,4 +57,4 @@ Completed during this audit:
 
 ## Residual Risk
 
-The repository still has known open issues outside the hardening changes made here, especially around control-plane HTTP failure semantics, fixed timeout configurability, curl-specific low-speed controls, and the broader registry trust model. Those items remain tracked in the open defect record and should be handled separately rather than treated as closed by this audit note.
+The repository still has known open issues outside the hardening changes made here, especially around control-plane HTTP failure semantics, fixed timeout configurability, curl-specific low-speed controls, and the broader registry trust model. Those items remain tracked in [Spio Audit Backlog 2026-04-22](../planning/Spio-Audit-Backlog-2026-04-22.md) and should be handled separately rather than treated as closed by this audit note.

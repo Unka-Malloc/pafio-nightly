@@ -63,7 +63,11 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         Path("docs/teams/DOCS-DELIVERY-RUNBOOK.md"),
         (
             "README.md",
+            "LICENSE",
+            "LICENSE-POLICY.md",
+            "DEPENDENCY-USAGE.md",
             "docs/",
+            "scripts/audit-gate.sh",
             "scripts/docs-index.py",
             "scripts/docs-lifecycle.py",
             "scripts/docs-audit.py",

@@ -215,7 +215,7 @@ Behavior summary:
 
 - validates and normalizes the same target-selection grammar used by local `build/run/test`
 - resolves the project-local toolchain state and local cloud-execution policy
-- emits the frozen `build_job_request v1` request body for future `POST /v1/build-jobs`
+- emits the frozen `build_job_request v1` request body for `POST /api/styio-platform/v1/jobs`
 - does not execute the build and does not contact a remote scheduler
 
 ### `new`

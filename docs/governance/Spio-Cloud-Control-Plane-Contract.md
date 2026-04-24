@@ -29,8 +29,8 @@ Those remain in the existing governance, registry, and `styio` contract document
 The route-level HTTP contract for hosted workspace and deployment operations is now owned by:
 
 - [`./Spio-Hosted-Control-Plane-Contract.md`](./Spio-Hosted-Control-Plane-Contract.md)
-- [`../../contracts/hosted-control-plane/v1/openapi.json`](../../contracts/hosted-control-plane/v1/openapi.json)
-- [`../../contracts/hosted-control-plane/v1/workflows.arazzo.json`](../../contracts/hosted-control-plane/v1/workflows.arazzo.json)
+- [`../../contracts/hosted-control-plane/v1/hosted-control-plane.contract.json`](../../contracts/hosted-control-plane/v1/hosted-control-plane.contract.json)
+- [`../../contracts/hosted-control-plane/v1/hosted-control-plane.examples.json`](../../contracts/hosted-control-plane/v1/hosted-control-plane.examples.json)
 
 This cloud-policy document still owns the execution-lane, risk-class, security-profile, cache-policy, and worker-pool semantics that those route payloads must preserve.
 
@@ -170,7 +170,7 @@ This command must report at least:
 - `command = "cloud plan"`
 - a top-level `job_request`
 - `job_request.schema_version = 1`
-- `job_request.api_path = "/v1/build-jobs"`
+- `job_request.api_path = "/api/styio-platform/v1/jobs"`
 - `job_request.action`
 - `job_request.toolchain`
 - `job_request.workflow`

@@ -32,11 +32,12 @@ compiler contracts.
 5. Keep `src/SpioCLI/CLI.cpp` thin. New payload builders, workflow validation rules, and private process helpers belong in domain or infrastructure modules, not in the CLI router.
 6. Keep `src/SpioToolchain/` vocabulary and project-local state terminology aligned with docs. When source-build, channel, risk, lane, or security terms change in code, update the owning governance and delivery docs in the same checkpoint.
 7. Keep any remaining local cloud compatibility deterministic and small; new cloud stress or scheduler behavior belongs in `styio-platform`.
+8. Keep `spio cloud plan --json` targeting the native JSON `styio-platform` submit-job route, currently `POST /api/styio-platform/v1/jobs`, and update native tests when that route changes.
 
 ## Change Classes
 
 1. Small: local command behavior, fixture cleanup, or dry-run plan output. Run checkpoint health.
-2. Medium: CLI shape, manifest/lock semantics, dependency preparation loops, local import/export bundle semantics, project-graph payloads, platform compatibility payloads, tool-status payloads, toolchain-mode persistence, or resolver behavior. Update docs and tests together.
+2. Medium: CLI shape, manifest/lock semantics, dependency preparation loops, local import/export bundle semantics, project-graph payloads, platform compatibility payloads, native contract source gates, tool-status payloads, toolchain-mode persistence, or resolver behavior. Update docs and tests together.
 3. High: binary/build execution routing, source-build fetch/build semantics, offline package guarantees, platform compatibility semantics, or checkpoint entrypoint change. Coordinate with Docs / Delivery and Styio / Contracts.
 
 ## Required Gates

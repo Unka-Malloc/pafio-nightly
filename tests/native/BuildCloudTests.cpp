@@ -211,7 +211,7 @@ TEST(BuildCliTests, CloudPlanBuildEmitsControlPlaneJobRequest)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command").get<std::string>(), "cloud plan");
   const json &job_request = payload.at("job_request");
-  EXPECT_EQ(job_request.at("api_path").get<std::string>(), "/v1/build-jobs");
+  EXPECT_EQ(job_request.at("api_path").get<std::string>(), "/api/styio-platform/v1/jobs");
   EXPECT_EQ(job_request.at("action").get<std::string>(), "build");
   EXPECT_EQ(job_request.at("toolchain").at("mode").get<std::string>(), "build");
   EXPECT_EQ(job_request.at("toolchain").at("build_mode").get<std::string>(), "minimal");

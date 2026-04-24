@@ -25,11 +25,12 @@ contracts, or `styio-platform` server control-plane behavior.
 4. Keep acceptance commands discoverable from the verification matrix and checkpoint health docs.
 5. Coordinate with Core / Workflow when publish/fetch behavior changes user-facing workflow outcomes.
 6. Keep `RegistryHttpTransport` as a transport-only strategy boundary. Registry semantics stay in `RemotePublish` / publish domain code, and external process execution stays in `SpioCore::Process`.
+7. Keep registry control-plane references on native JSON contract and example packs; do not reintroduce generated API-description artifacts or lint gates.
 
 ## Change Classes
 
 1. Small: local registry test or runbook cleanup.
-2. Medium: registry layout, publish semantics, client compatibility contract, or promotion flow updates.
+2. Medium: registry layout, publish semantics, native JSON client compatibility contract, or promotion flow updates.
 3. High: split-origin, auth-adjacent, hosted deployment model, publish authorization changes, or service-side control-plane handoff changes.
 
 ## Required Gates

@@ -8,11 +8,8 @@
 
 The authoritative machine contract lives under:
 
-- [`../../contracts/registry-control-plane/v1/openapi.json`](../../contracts/registry-control-plane/v1/openapi.json)
-- [`../../contracts/registry-control-plane/v1/workflows.arazzo.json`](../../contracts/registry-control-plane/v1/workflows.arazzo.json)
 - [`../../contracts/registry-control-plane/v1/registry-control-plane.contract.json`](../../contracts/registry-control-plane/v1/registry-control-plane.contract.json)
 - [`../../contracts/registry-control-plane/v1/registry-control-plane.examples.json`](../../contracts/registry-control-plane/v1/registry-control-plane.examples.json)
-- [`../../contracts/registry-control-plane/v1/redocly.yaml`](../../contracts/registry-control-plane/v1/redocly.yaml)
 
 Human-readable docs explain those files. They do not replace them.
 

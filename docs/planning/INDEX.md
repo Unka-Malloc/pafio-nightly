@@ -10,6 +10,7 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
+| `Spio-Audit-Backlog-2026-04-22.md` | [Spio Audit Backlog 2026-04-22](./Spio-Audit-Backlog-2026-04-22.md) | Preserve the 2026-04-22 styio-spio external audit findings as durable tracked work after removing the ignored temporary defect ledger. |
 | `Spio-Bootstrap-Checklist.md` | [Spio Bootstrap Checklist](./Spio-Bootstrap-Checklist.md) | Provide a compact bootstrap summary without duplicating the detailed task definitions and gate commands owned elsewhere. |
 | `Spio-Future-Direction-and-Styio-Coordination.md` | [Spio Future Direction and Styio Coordination](./Spio-Future-Direction-and-Styio-Coordination.md) | Define the next development direction for spio, the engineering qualities it should optimize for, and the shared coordination expectations that styio developers also need to reference. |
 | `Spio-Master-Plan.md` | [Spio Master Plan](./Spio-Master-Plan.md) | Provide the full delivery map for spio from bootstrap scaffold to split-ready package manager, while preserving strict decoupling from styio. |

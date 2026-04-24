@@ -13,16 +13,21 @@ without redefining planning, registry, compiler, or service contract semantics.
 ## Owned Surface
 
 1. `README.md`
-2. `docs/`
-3. `docs/external/`
-4. `scripts/docs-index.py`
-5. `scripts/docs-lifecycle.py`
-6. `scripts/docs-audit.py`
-7. `scripts/repo-hygiene-gate.py`
-8. `scripts/team-docs-gate.py`
-9. `scripts/docs-gate.sh`
-10. `scripts/delivery-gate.sh`
-11. `scripts/ecosystem-cli-doc-gate.py`
+2. `LICENSE`
+3. `LICENSE-POLICY.md`
+4. `DEPENDENCY-USAGE.md`
+5. `docs/`
+6. `docs/external/`
+7. `docs/audit/`
+8. `scripts/audit-gate.sh`
+9. `scripts/docs-index.py`
+10. `scripts/docs-lifecycle.py`
+11. `scripts/docs-audit.py`
+12. `scripts/repo-hygiene-gate.py`
+13. `scripts/team-docs-gate.py`
+14. `scripts/docs-gate.sh`
+15. `scripts/delivery-gate.sh`
+16. `scripts/ecosystem-cli-doc-gate.py`
 
 ## Daily Workflow
 
@@ -37,17 +42,20 @@ without redefining planning, registry, compiler, or service contract semantics.
 9. Keep sibling-repository handoff docs under `docs/external/for-*` or explicit planning handoff docs; do not recreate root-level external handoff collections.
 10. Keep `docs/planning/Spio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
 11. Keep `docs/governance/Spio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
+12. Keep top-level GPL license, derivative-source policy, and dependency usage-boundary evidence aligned with `styio-audit`.
+13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
 
 ## Change Classes
 
 1. Small: link fixes, README cleanup, or index refreshes.
-2. Medium: docs tree, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, or platform handoff updates.
+2. Medium: docs tree, `docs/audit/` evidence snapshots, `docs/external/` handoff routing, gate wiring, workflow entrypoint changes, source-build contract wording, offline package wording, local import/export wording, post-push CI checking rules, or platform handoff updates.
 3. High: ownership boundary or delivery-floor policy changes.
 
 ## Required Gates
 
 ```bash
 ./scripts/docs-gate.sh
+./scripts/audit-gate.sh
 python3 scripts/repo-hygiene-gate.py --mode tracked
 ./scripts/delivery-gate.sh --mode checkpoint --skip-health
 ```

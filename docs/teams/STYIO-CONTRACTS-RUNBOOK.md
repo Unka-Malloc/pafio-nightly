@@ -33,11 +33,13 @@ without letting any path drift into undocumented behavior.
    mirror synchronization, and cloud-service ownership in `styio-platform`;
    this repo documents the package-manager client contract, offline package
    behavior, local compiler environment, and compatibility expectations.
+8. Keep client/server HTTP contracts as native JSON packages only; `spio` gates must reject generated third-party API-description artifacts and stale route references.
+9. Keep the `spio` cloud-plan submit target aligned with `styio-platform`'s `submitJob` contract route, currently `POST /api/styio-platform/v1/jobs`.
 
 ## Change Classes
 
 1. Small: compatibility doc wording, source-build needle wording, or fixture updates.
-2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, platform compatibility JSON fields, or CLI JSON contract updates.
+2. Medium: handshake fields, compile-plan consumer expectations, source-build fetch rules, platform compatibility JSON fields, native JSON contract package updates, or CLI JSON contract updates.
 3. High: compatibility phase changes, official source origin rules, public machine contract expansion, or platform service ownership changes.
 
 ## Required Gates

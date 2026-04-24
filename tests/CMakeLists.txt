@@ -212,13 +212,8 @@ add_test(
 )
 
 add_test(
-  NAME spio_registry_control_plane_openapi_lint
-  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/openapi.json" --config "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/redocly.yaml"
-)
-
-add_test(
-  NAME spio_registry_control_plane_workflow_lint
-  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/registry-control-plane/v1/workflows.arazzo.json"
+  NAME spio_native_contract_source_gate
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/native-contract-source-gate.py"
 )
 
 add_test(
@@ -244,21 +239,6 @@ add_test(
 add_test(
   NAME spio_hosted_api_contract_fuzz
   COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/hosted-control-plane-contract-gate.py" --mode fuzz
-)
-
-add_test(
-  NAME spio_hosted_api_contract_pack_sync
-  COMMAND python3 "${CMAKE_SOURCE_DIR}/scripts/export_hosted_control_plane_api.py" --check
-)
-
-add_test(
-  NAME spio_hosted_api_openapi_lint
-  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/openapi.json" --config "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/redocly.yaml"
-)
-
-add_test(
-  NAME spio_hosted_api_workflow_lint
-  COMMAND npx --yes @redocly/cli lint "${CMAKE_SOURCE_DIR}/contracts/hosted-control-plane/v1/workflows.arazzo.json"
 )
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/tests-private/CMakeLists.txt")
