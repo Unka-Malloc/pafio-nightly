@@ -11,6 +11,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -22,6 +23,25 @@ using json = nlohmann::json;
 
 namespace
 {
+
+constexpr std::string_view kEmbeddedStyioSupportToml = R"toml(
+schema = 1
+spio_version = "0.1.0-dev"
+
+[[supported_styio]]
+min = "0.0.1"
+max_exclusive = "0.1.0"
+channel = "stable"
+edition_max = "2026"
+required_capabilities = [
+  "machine_info_json",
+  "single_file_entry",
+  "jsonl_diagnostics"
+]
+supported_compile_plan_versions = [1]
+integration_phase = "compile-plan-live"
+notes = "Current compatibility requires a styio compiler that advertises compile-plan v1 and accepts styio --compile-plan for build/run/test orchestration."
+)toml";
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -56,7 +76,27 @@ int ParseEdition(const std::string &edition)
 toml::table LoadCompatMatrix()
 {
   const fs::path compat_matrix_path = spio::ProjectRoot() / "contracts" / "compat" / "styio-support.toml";
-  return toml::parse_file(compat_matrix_path.string());
+  if (fs::exists(compat_matrix_path))
+  {
+    try
+    {
+      return toml::parse_file(compat_matrix_path.string());
+    }
+    catch (const toml::parse_error &err)
+    {
+      throw spio::CompatibilityError(
+          "failed to parse compatibility matrix '" + compat_matrix_path.string() + "': " + std::string(err.description()));
+    }
+  }
+
+  try
+  {
+    return toml::parse(kEmbeddedStyioSupportToml, std::string_view{"embedded styio-support.toml"});
+  }
+  catch (const toml::parse_error &err)
+  {
+    throw spio::CompatibilityError("failed to parse embedded compatibility matrix: " + std::string(err.description()));
+  }
 }
 
 json ProbeMachineInfo(const fs::path &binary)
