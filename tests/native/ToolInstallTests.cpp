@@ -1,7 +1,10 @@
 #include "SpioCLI/CLI.hpp"
 #include "SpioCompat/Compat.hpp"
 #include "SpioCore/Errors.hpp"
+#include "SpioCore/Process.hpp"
+#include "SpioCore/Sha256.hpp"
 #include "SpioTool/Install.hpp"
+#include "SpioTool/PrebuiltInstall.hpp"
 
 #include "BuildTestSupport.hpp"
 #include "ToolTestSupport.hpp"
@@ -89,6 +92,68 @@ TEST(ToolInstallTests, TopLevelInstallBuildsStyioFromSourceRootAndSelectsLatestS
   const std::optional<fs::path> resolved = spio::ResolveStyioBinary(std::nullopt);
   ASSERT_TRUE(resolved.has_value());
   EXPECT_EQ(*resolved, CanonicalAbsolutePath(managed_binary));
+}
+
+TEST(ToolInstallTests, TopLevelInstallDownloadsPrebuiltStyioAndReportsStatus)
+{
+  const fs::path root = MakeTempDir("install-styio-latest-prebuilt");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const std::string platform = spio::DetectToolReleasePlatform();
+  const std::string version = "0.0.5";
+
+  const fs::path release_root = root / "release-root";
+  const fs::path release_dir = release_root / "tools" / "styio" / "releases" / version / platform;
+  const fs::path channel_dir = release_root / "tools" / "styio" / "channel" / "stable" / platform;
+  fs::create_directories(release_dir);
+  fs::create_directories(channel_dir);
+  const fs::path published_styio = release_dir / "styio";
+  WriteFakeStyio(published_styio, version);
+  WriteFile(release_dir / "styio.sha256", spio::Sha256File(published_styio) + "\n");
+  WriteFile(channel_dir / "version", version + "\n");
+
+  testing::internal::CaptureStdout();
+  const int exit_code = spio::RunCli({
+      "--json",
+      "install",
+      "styio@latest",
+      "--release-root",
+      "file://" + release_root.string(),
+      "--prebuilt-only",
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, spio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("command").get<std::string>(), "install");
+  EXPECT_EQ(payload.at("install_mode").get<std::string>(), "prebuilt");
+  EXPECT_EQ(payload.at("release_channel").get<std::string>(), "stable");
+  EXPECT_EQ(payload.at("release_version").get<std::string>(), version);
+  EXPECT_EQ(payload.at("release_platform").get<std::string>(), platform);
+  EXPECT_EQ(payload.at("compiler_version").get<std::string>(), version);
+
+  const fs::path managed_binary = payload.at("managed_binary_path").get<std::string>();
+  const spio::ProcessResult version_result = spio::RunProcess<spio::ToolError>({
+      .program = managed_binary.string(),
+      .args = {"--version"},
+      .search_path = false,
+      .timeout = spio::kExternalProcessProbeTimeout,
+      .error_context = "managed styio version",
+  });
+  EXPECT_EQ(version_result.exit_code, 0);
+  EXPECT_EQ(spio::TrimTrailingNewline(version_result.stdout_text), "styio " + version);
+
+  testing::internal::CaptureStdout();
+  const int status_exit_code = spio::RunCli({
+      "--json",
+      "tool",
+      "status",
+  });
+  const std::string status_stdout = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(status_exit_code, spio::kExitSuccess);
+  const json status = json::parse(status_stdout);
+  ASSERT_TRUE(status.contains("current_compiler"));
+  EXPECT_EQ(status.at("current_compiler").at("compiler_version").get<std::string>(), version);
 }
 
 TEST(ToolInstallTests, CheckFallsBackToManagedCompilerWhenNoExplicitPathIsProvided)

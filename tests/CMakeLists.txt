@@ -108,12 +108,17 @@ add_test(
 
 add_test(
   NAME spio_cli_install_help
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" install --help | grep -q '^usage: spio install styio\\[@latest\\] \\[--source-root <path>\\] \\[--source-rev <ref>\\] \\[--channel <stable\\|nightly>\\] \\[--build <minimal>\\] \\[--yes\\|--no-fetch\\|--offline\\|--non-interactive\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" install --help | grep -q '^usage: spio install styio\\[@latest\\] \\[--release-root <url>\\] \\[--source\\|--prebuilt-only\\] \\[--source-root <path>\\] \\[--source-rev <ref>\\] \\[--channel <stable\\|nightly>\\] \\[--build <minimal>\\] \\[--yes\\|--no-fetch\\|--offline\\|--non-interactive\\]$'"
 )
 
 add_test(
   NAME spio_installer_bootstrap_smoke
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/spio-installer-bootstrap-smoke.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_installer_channel_smoke
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/spio-installer-channel-smoke.sh" "$<TARGET_FILE:spio>"
 )
 
 add_test(

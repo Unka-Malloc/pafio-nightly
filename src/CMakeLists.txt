@@ -40,6 +40,7 @@ set(SPIO_TOOLCHAIN_SERVICE_SOURCES
     SpioPlan/CompilePlan.cpp
     SpioTool/Contract.cpp
     SpioTool/Install.cpp
+    SpioTool/PrebuiltInstall.cpp
     SpioToolchain/SourceBuild.cpp
     SpioToolchain/State.cpp
 )

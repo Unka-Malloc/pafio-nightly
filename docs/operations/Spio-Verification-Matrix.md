@@ -158,7 +158,7 @@ Defect:
 
 Objective:
 
-- validate the fresh-machine bootstrap flow where `curl` installs `spio`, `spio install styio@latest` builds a managed compiler from source, and the managed `styio` shim executes from `PATH`
+- validate the fresh-machine bootstrap flow where `curl` installs `spio`, `spio install styio@latest` installs a platform-hosted prebuilt compiler when available, `styio --version` reports the managed compiler version, and the managed `styio` shim executes from `PATH`
 
 Commands:
 

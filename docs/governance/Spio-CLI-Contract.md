@@ -341,11 +341,15 @@ Optional keys:
 - first-class auth/account policy remains outside the tracked public tree behind the private security-module boundary
 - registry dependency roots in manifests use `file://`, `http://`, or `https://`
 - resolver-backed `fetch` materializes registry `config`, namespace targets, append-only package indexes, immutable source artifacts, and extracted snapshots under `SPIO_HOME/registry/`
-- `spio install styio` and `spio install styio@latest` default to stable latest and build the compiler from source while the platform package repository is unavailable
-- source install fetches from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
-- source install uses `SPIO_STYIO_SOURCE_REF` when set, otherwise `main` for `latest`; explicit `styio@<ref>` maps to that source revision
-- source install defaults to non-interactive fetch approval so fresh machines can bootstrap with one command
-- source install validates the resulting compiler through the same compatibility matrix as `spio tool install` before promoting it to `SPIO_HOME/tools/styio/current/`
+- `spio install styio` and `spio install styio@latest` default to stable latest and prefer a platform-hosted prebuilt compiler when a release root is configured
+- prebuilt install resolves the release root from `--release-root`, `SPIO_STYIO_RELEASE_ROOT`, `SPIO_TOOL_RELEASE_ROOT`, or `SPIO_HOME/config/tool-release-root`
+- prebuilt install reads `tools/styio/channel/<stable|nightly>/<platform>/version`, downloads `tools/styio/releases/<version>/<platform>/styio`, verifies `styio.sha256`, and promotes the compiler to `SPIO_HOME/tools/styio/current/`
+- managed installs write a `styio` wrapper that answers `styio --version` from compatibility metadata and delegates all other invocations to the real compiler binary
+- `--source` forces source-build mode and `--prebuilt-only` fails instead of falling back to source-build
+- source fallback fetches from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
+- source fallback uses `SPIO_STYIO_SOURCE_REF` when set, otherwise `main` for `latest`; explicit `styio@<ref>` maps to that source revision when prebuilt install is skipped or unavailable
+- source fallback defaults to non-interactive fetch approval so fresh machines can bootstrap with one command
+- both prebuilt and source installs validate the resulting compiler through the same compatibility matrix as `spio tool install` before promoting it to `SPIO_HOME/tools/styio/current/`
 - `spio tool install` installs only local self-contained `styio` executables in the current native core
 - `spio tool install` must validate the compiler through `styio --machine-info=json` plus the published compatibility matrix before writing managed state
 - `spio tool install` writes managed compiler state under `SPIO_HOME/tools/styio/`

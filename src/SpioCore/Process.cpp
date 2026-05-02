@@ -14,6 +14,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#include <crt_externs.h>
+#endif
+
 namespace
 {
 
@@ -68,11 +72,34 @@ void AppendOutputChunk(
   }
 }
 
+void ClearChildEnvironment()
+{
+#if defined(__APPLE__)
+  while (true)
+  {
+    char **environment = *_NSGetEnviron();
+    if (environment == nullptr || environment[0] == nullptr)
+    {
+      return;
+    }
+    const std::string entry(environment[0]);
+    const size_t separator = entry.find('=');
+    if (separator == std::string::npos)
+    {
+      return;
+    }
+    unsetenv(entry.substr(0, separator).c_str());
+  }
+#else
+  clearenv();
+#endif
+}
+
 void ApplyChildEnvironment(const spio::ProcessRequest &request)
 {
   if (request.clear_environment)
   {
-    clearenv();
+    ClearChildEnvironment();
   }
   for (const auto &[name, value] : request.environment_overrides)
   {

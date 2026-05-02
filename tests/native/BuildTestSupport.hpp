@@ -119,6 +119,11 @@ inline void WriteFakeCompilePlanStyio(const fs::path &path)
       "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
       "  exit 0\n"
       "fi\n" +
+          std::string(
+              "if [ \"$1\" = \"--version\" ]; then\n"
+              "  printf '%s\\n' 'styio 0.0.5'\n"
+              "  exit 0\n"
+              "fi\n") +
           FakeCompilePlanConsumerBody() +
           "echo unexpected invocation >&2\n"
           "exit 64\n");
@@ -139,6 +144,10 @@ inline void WriteFakeSourceToolchain(const fs::path &root)
       "#!/bin/sh\n"
       "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
       "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  exit 0\n"
+      "fi\n"
+      "if [ \"$1\" = \"--version\" ]; then\n"
+      "  printf '%s\\n' 'styio 0.0.5'\n"
       "  exit 0\n"
       "fi\n"
       + FakeCompilePlanConsumerBody() +

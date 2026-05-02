@@ -104,6 +104,12 @@ inline void WriteFakeStyio(
           "\"}'\n"
           "  exit 0\n"
           "fi\n"
+          "if [ \"$1\" = \"--version\" ]; then\n"
+          "  printf '%s\\n' 'styio " +
+          version +
+          "'\n"
+          "  exit 0\n"
+          "fi\n"
           "echo unexpected invocation >&2\n"
           "exit 64\n");
 }

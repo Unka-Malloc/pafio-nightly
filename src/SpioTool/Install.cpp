@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -72,9 +73,57 @@ void WriteTextFile(const fs::path &path, const std::string &content)
   }
 }
 
-json BuildInstallMetadata(const spio::CompatibilityReport &report, const fs::path &source_binary, const fs::path &managed_binary)
+fs::path ManagedStyioRealBinaryPath(const fs::path &root)
 {
-  return {
+  return spio::CanonicalAbsolutePath(root / "bin" / "styio-real");
+}
+
+std::string ShellSingleQuote(const std::string &value)
+{
+  std::string quoted = "'";
+  for (const char ch : value)
+  {
+    if (ch == '\'')
+    {
+      quoted += "'\\''";
+    }
+    else
+    {
+      quoted.push_back(ch);
+    }
+  }
+  quoted += "'";
+  return quoted;
+}
+
+void WriteManagedStyioWrapper(const fs::path &path, const std::string &compiler_version)
+{
+  std::ostringstream script;
+  script
+      << "#!/usr/bin/env sh\n"
+      << "set -eu\n"
+      << "SELF_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\n"
+      << "REAL_STYIO=\"$SELF_DIR/styio-real\"\n"
+      << "if [ \"${1:-}\" = \"--version\" ]; then\n"
+      << "  printf '%s\\n' " << ShellSingleQuote("styio " + compiler_version) << "\n"
+      << "  exit 0\n"
+      << "fi\n"
+      << "exec \"$REAL_STYIO\" \"$@\"\n";
+  WriteTextFile(path, script.str());
+  fs::permissions(
+      path,
+      fs::perms::owner_read | fs::perms::owner_write | fs::perms::owner_exec | fs::perms::group_read |
+          fs::perms::group_exec | fs::perms::others_read | fs::perms::others_exec,
+      fs::perm_options::replace);
+}
+
+json BuildInstallMetadata(
+    const spio::CompatibilityReport &report,
+    const fs::path &source_binary,
+    const fs::path &managed_binary,
+    const std::optional<fs::path> &real_binary)
+{
+  json payload = {
       {"tool", "styio"},
       {"install_kind", "local-executable"},
       {"source_binary", source_binary.string()},
@@ -86,6 +135,11 @@ json BuildInstallMetadata(const spio::CompatibilityReport &report, const fs::pat
       {"supported_compile_plan_versions", report.supported_compile_plan_versions},
       {"capabilities", report.capabilities},
   };
+  if (real_binary.has_value())
+  {
+    payload["real_binary"] = real_binary->string();
+  }
+  return payload;
 }
 
 json LoadJsonFile(const fs::path &path)
@@ -127,13 +181,27 @@ spio::ManagedToolchainStatus BuildManagedToolchainStatus(
 
 void RefreshManagedCurrentRoot(
     const spio::CompatibilityReport &report,
-    const fs::path &source_binary,
+    const fs::path &source_root,
     const fs::path &current_root)
 {
   const fs::path managed_binary_path = spio::ManagedStyioBinaryPath(current_root);
   const fs::path current_metadata_path = spio::ManagedStyioMetadataPath(current_root);
-  CopyExecutableFile(source_binary, managed_binary_path);
-  WriteJsonFile(current_metadata_path, BuildInstallMetadata(report, source_binary, managed_binary_path));
+  const fs::path source_real_binary_path = ManagedStyioRealBinaryPath(source_root);
+  const fs::path current_real_binary_path = ManagedStyioRealBinaryPath(current_root);
+  const fs::path source_wrapper_path = spio::ManagedStyioBinaryPath(source_root);
+  if (fs::exists(source_real_binary_path))
+  {
+    CopyExecutableFile(source_real_binary_path, current_real_binary_path);
+    WriteManagedStyioWrapper(managed_binary_path, report.compiler_version);
+    WriteJsonFile(
+        current_metadata_path,
+        BuildInstallMetadata(report, source_wrapper_path, managed_binary_path, current_real_binary_path));
+  }
+  else
+  {
+    CopyExecutableFile(source_wrapper_path, managed_binary_path);
+    WriteJsonFile(current_metadata_path, BuildInstallMetadata(report, source_wrapper_path, managed_binary_path, std::nullopt));
+  }
 }
 
 struct InstalledManagedCompiler
@@ -307,16 +375,18 @@ ToolInstallResult InstallManagedStyio(const ToolInstallRequest &request)
 
   const fs::path install_root = ManagedStyioInstallRoot(spio_home, report.compiler_channel, report.compiler_version);
   const fs::path install_binary_path = ManagedStyioBinaryPath(install_root);
+  const fs::path install_real_binary_path = ManagedStyioRealBinaryPath(install_root);
   const fs::path install_metadata_path = ManagedStyioMetadataPath(install_root);
 
   const fs::path current_root = ManagedStyioCurrentRoot(spio_home);
   const fs::path managed_binary_path = ManagedStyioBinaryPath(current_root);
   const fs::path current_metadata_path = ManagedStyioMetadataPath(current_root);
 
-  CopyExecutableFile(source_binary, install_binary_path);
-  WriteJsonFile(install_metadata_path, BuildInstallMetadata(report, source_binary, install_binary_path));
+  CopyExecutableFile(source_binary, install_real_binary_path);
+  WriteManagedStyioWrapper(install_binary_path, report.compiler_version);
+  WriteJsonFile(install_metadata_path, BuildInstallMetadata(report, source_binary, install_binary_path, install_real_binary_path));
 
-  RefreshManagedCurrentRoot(report, install_binary_path, current_root);
+  RefreshManagedCurrentRoot(report, install_root, current_root);
 
   return ToolInstallResult{
       .source_binary = source_binary,
@@ -343,7 +413,7 @@ ToolUseResult UseManagedStyio(const ToolUseRequest &request)
 
   const CompatibilityReport report = CheckCompilerCompatibility(selected.install_binary_path);
   const fs::path current_root = ManagedStyioCurrentRoot(spio_home);
-  RefreshManagedCurrentRoot(report, selected.install_binary_path, current_root);
+  RefreshManagedCurrentRoot(report, selected.install_root, current_root);
 
   return ToolUseResult{
       .spio_home = spio_home,

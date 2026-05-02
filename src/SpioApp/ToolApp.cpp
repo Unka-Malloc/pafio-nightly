@@ -6,6 +6,7 @@
 #include "SpioManifest/Manifest.hpp"
 #include "SpioTool/Contract.hpp"
 #include "SpioTool/Install.hpp"
+#include "SpioTool/PrebuiltInstall.hpp"
 #include "SpioToolchain/SourceBuild.hpp"
 #include "SpioToolchain/State.hpp"
 
@@ -177,12 +178,15 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
 
   std::optional<fs::path> source_root;
   std::optional<std::string> source_revision;
+  std::optional<std::string> release_root;
   std::string channel = std::string(kChannelStable);
   std::string build_mode = std::string(kBuildModeMinimal);
   bool allow_fetch = true;
   bool offline = false;
   bool assume_yes = true;
   bool non_interactive = true;
+  bool force_source = false;
+  bool prebuilt_only = false;
 
   for (size_t index = 1; index < args.size(); ++index)
   {
@@ -201,6 +205,14 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
         return EmitError({"UsageError", kExitUsage, "--source-rev requires a value", "install"}, as_json);
       }
       source_revision = args[index];
+    }
+    else if (args[index] == "--release-root")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--release-root requires a value", "install"}, as_json);
+      }
+      release_root = args[index];
     }
     else if (args[index] == "--channel")
     {
@@ -240,6 +252,14 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
       offline = true;
       allow_fetch = false;
     }
+    else if (args[index] == "--source")
+    {
+      force_source = true;
+    }
+    else if (args[index] == "--prebuilt-only")
+    {
+      prebuilt_only = true;
+    }
     else if (args[index] == "--non-interactive")
     {
       non_interactive = true;
@@ -250,24 +270,94 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
     }
   }
 
-  if (!source_revision.has_value() && requested != "latest")
+  if (prebuilt_only && force_source)
   {
-    source_revision = requested;
-  }
-  if (!source_revision.has_value())
-  {
-    if (const char *explicit_ref = std::getenv("SPIO_STYIO_SOURCE_REF"); explicit_ref != nullptr && explicit_ref[0] != '\0')
-    {
-      source_revision = explicit_ref;
-    }
-    else
-    {
-      source_revision = "main";
-    }
+    return EmitError({"UsageError", kExitUsage, "--prebuilt-only cannot be combined with --source", "install"}, as_json);
   }
 
   try
   {
+    std::optional<std::string> prebuilt_error;
+    const bool source_requested = force_source || source_root.has_value() || source_revision.has_value();
+    const bool can_attempt_prebuilt = !offline && allow_fetch && !source_requested;
+    if (can_attempt_prebuilt)
+    {
+      if (const std::optional<ResolvedToolReleaseRoot> resolved_release_root = ResolveStyioToolReleaseRoot(release_root);
+          resolved_release_root.has_value())
+      {
+        try
+        {
+          const PrebuiltStyioInstallResult prebuilt = InstallPrebuiltStyio({
+              .release_root = *resolved_release_root,
+              .requested = requested,
+              .release_channel = channel,
+          });
+          const ToolInstallResult &install = prebuilt.install;
+          return EmitSuccess(
+              {
+                  {"command", "install"},
+                  {"message", "installed styio " + requested + " from prebuilt release " + prebuilt.release_version + ": " + install.managed_binary_path.string()},
+                  {"package", "styio"},
+                  {"requested", requested},
+                  {"install_mode", "prebuilt"},
+                  {"channel", install.compiler_channel},
+                  {"release_channel", prebuilt.release_channel},
+                  {"release_version", prebuilt.release_version},
+                  {"release_platform", prebuilt.platform},
+                  {"release_root", prebuilt.release_root},
+                  {"release_root_source", prebuilt.release_root_source},
+                  {"binary_url", prebuilt.binary_url},
+                  {"sha256_url", prebuilt.sha256_url},
+                  {"sha256", prebuilt.sha256},
+                  {"downloaded_binary_path", prebuilt.downloaded_binary_path.string()},
+                  {"spio_home", install.spio_home.string()},
+                  {"install_root", install.install_root.string()},
+                  {"install_binary_path", install.install_binary_path.string()},
+                  {"managed_binary_path", install.managed_binary_path.string()},
+                  {"compiler_version", install.compiler_version},
+                  {"edition_max", install.compiler_edition_max},
+                  {"integration_phase", install.integration_phase},
+                  {"supported_compile_plan_versions", install.supported_compile_plan_versions},
+                  {"capabilities", install.capabilities},
+              },
+              as_json);
+        }
+        catch (const ToolError &err)
+        {
+          if (prebuilt_only || resolved_release_root->explicit_root)
+          {
+            throw;
+          }
+          prebuilt_error = err.what();
+        }
+      }
+      else if (prebuilt_only)
+      {
+        throw ToolError(
+            "prebuilt styio install requires --release-root, SPIO_STYIO_RELEASE_ROOT, SPIO_TOOL_RELEASE_ROOT, or SPIO_HOME/config/tool-release-root");
+      }
+    }
+    else if (prebuilt_only)
+    {
+      throw ToolError("--prebuilt-only requires network fetch and cannot be combined with source-build-only options");
+    }
+
+    if (!source_revision.has_value() && requested != "latest")
+    {
+      source_revision = requested;
+    }
+    if (!source_revision.has_value())
+    {
+      if (const char *explicit_ref = std::getenv("SPIO_STYIO_SOURCE_REF"); explicit_ref != nullptr && explicit_ref[0] != '\0')
+      {
+        source_revision = explicit_ref;
+      }
+      else
+      {
+        source_revision = "main";
+      }
+    }
+
     const SourceBuildResult source_result = EnsureSourceBuiltStyio({
         .channel = channel,
         .build_mode = build_mode,
@@ -279,29 +369,35 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
         .non_interactive = non_interactive,
     });
     const ToolInstallResult install = InstallManagedStyio({.styio_binary = source_result.compiler_binary});
+    json payload = {
+        {"command", "install"},
+        {"message", "installed styio " + requested + ": " + install.managed_binary_path.string()},
+        {"package", "styio"},
+        {"requested", requested},
+        {"install_mode", "source-build"},
+        {"channel", install.compiler_channel},
+        {"build_mode", source_result.build_mode},
+        {"source_root", source_result.source_root.string()},
+        {"source_revision", source_result.source_revision},
+        {"source_fetched", source_result.fetched},
+        {"source_built", source_result.built},
+        {"compiler_binary", source_result.compiler_binary.string()},
+        {"spio_home", install.spio_home.string()},
+        {"install_root", install.install_root.string()},
+        {"install_binary_path", install.install_binary_path.string()},
+        {"managed_binary_path", install.managed_binary_path.string()},
+        {"compiler_version", install.compiler_version},
+        {"edition_max", install.compiler_edition_max},
+        {"integration_phase", install.integration_phase},
+        {"supported_compile_plan_versions", install.supported_compile_plan_versions},
+        {"capabilities", install.capabilities},
+    };
+    if (prebuilt_error.has_value())
+    {
+      payload["prebuilt_error"] = *prebuilt_error;
+    }
     return EmitSuccess(
-        {
-            {"command", "install"},
-            {"message", "installed styio " + requested + ": " + install.managed_binary_path.string()},
-            {"package", "styio"},
-            {"requested", requested},
-            {"channel", install.compiler_channel},
-            {"build_mode", source_result.build_mode},
-            {"source_root", source_result.source_root.string()},
-            {"source_revision", source_result.source_revision},
-            {"source_fetched", source_result.fetched},
-            {"source_built", source_result.built},
-            {"compiler_binary", source_result.compiler_binary.string()},
-            {"spio_home", install.spio_home.string()},
-            {"install_root", install.install_root.string()},
-            {"install_binary_path", install.install_binary_path.string()},
-            {"managed_binary_path", install.managed_binary_path.string()},
-            {"compiler_version", install.compiler_version},
-            {"edition_max", install.compiler_edition_max},
-            {"integration_phase", install.integration_phase},
-            {"supported_compile_plan_versions", install.supported_compile_plan_versions},
-            {"capabilities", install.capabilities},
-        },
+        payload,
         as_json);
   }
   catch (const ValidationError &err)

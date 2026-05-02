@@ -57,7 +57,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio set risk [as] <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]`
 - `spio set lane [as] <isolated|warm-shared> [--manifest-path <path>]`
 - `spio set security [as] <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]`
-- `spio install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]`
+- `spio install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]`
 - `spio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]`
 - `spio add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]`
 - `spio remove <alias-or-package> [--dev] [--manifest-path <path>]`
@@ -993,7 +993,7 @@ Behavior summary:
 Canonical surface:
 
 ```text
-spio install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]
+spio install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]
 ```
 
 Arguments:
@@ -1001,7 +1001,16 @@ Arguments:
 - `styio` or `styio@latest`
   - required
   - defaults to stable latest
-  - `styio@<ref>` is accepted as a source revision while hosted package distribution is unavailable
+- `--release-root <url>`
+  - optional
+  - platform static read root containing `tools/styio/channel/<channel>/<platform>/version`
+  - falls back to `SPIO_STYIO_RELEASE_ROOT`, `SPIO_TOOL_RELEASE_ROOT`, then `SPIO_HOME/config/tool-release-root`
+- `--source`
+  - optional
+  - skips prebuilt release lookup and uses the source-build path
+- `--prebuilt-only`
+  - optional
+  - fails instead of falling back to source-build when no prebuilt release can be installed
 - `--source-root <path>`
   - optional
   - uses an existing local source checkout instead of fetching
@@ -1029,12 +1038,18 @@ Arguments:
 
 Behavior summary:
 
-- fetches source from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
-- uses `SPIO_STYIO_SOURCE_REF` when set; otherwise `latest` maps to `main`
-- builds the `styio` target through the source-build path
-- validates the resulting compiler through `styio --machine-info=json` and the compatibility matrix
+- attempts prebuilt install first when a release root is passed, exported, or persisted by `install-spio.sh`
+- resolves `styio@latest` through `tools/styio/channel/<stable|nightly>/<platform>/version`
+- downloads `tools/styio/releases/<version>/<platform>/styio` and verifies `styio.sha256`
+- validates the downloaded compiler through `styio --machine-info=json` and the compatibility matrix
+- installs a managed wrapper that answers `styio --version` from the compatibility metadata and delegates other commands to the real compiler
+- falls back to source-build when the prebuilt release root is unavailable and prebuilt-only mode is not requested
+- source fallback fetches source from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
+- source fallback uses `SPIO_STYIO_SOURCE_REF` when set; otherwise `latest` maps to `main`
+- source fallback builds the `styio` target through the source-build path
 - promotes the compiler into the managed current root under `SPIO_HOME/tools/styio/current/`
-- returns the same managed compiler fields as `tool install` plus source-root, source-revision, fetched, and built flags
+- returns `install_mode = "prebuilt"` plus release URL/checksum fields for prebuilt installs
+- returns `install_mode = "source-build"` plus source-root, source-revision, fetched, and built flags for source fallback
 
 ### `tool install`
 
@@ -1170,6 +1185,12 @@ Behavior:
 Canonical form:
 
 ```text
+curl -fsSL <release-root>/tools/spio/install-spio.sh | sh -s -- --base-url <release-root> [--install-dir <dir>]
+```
+
+Legacy direct-binary form:
+
+```text
 curl -fsSL <base-url>/install-spio.sh | sh -s -- --base-url <base-url> [--install-dir <dir>]
 ```
 
@@ -1177,10 +1198,24 @@ Arguments:
 
 - `--base-url <url>`
   - optional when `--binary-url` is provided
-  - directory containing a `spio` binary
+  - platform release root containing `tools/spio/channel/<channel>/<platform>/version`
+  - falls back to a directory containing a direct `spio` binary when the default channel pointer is absent
+- `--channel <name>`
+  - optional
+  - release channel to resolve under `tools/spio/channel/`
+  - defaults to `latest`
+- `--version <value>`
+  - optional
+  - exact release version; skips channel lookup
 - `--binary-url <url>`
   - optional
   - exact URL for the `spio` binary
+- `--sha256-url <url>`
+  - optional
+  - exact URL for the expected sha256 text
+- `--platform <value>`
+  - optional
+  - defaults to `uname`-based detection such as `linux-aarch64`, `linux-x86_64`, `darwin-aarch64`, or `darwin-x86_64`
 - `--install-dir <dir>`
   - optional
   - defaults to `/usr/local/bin`
@@ -1190,9 +1225,16 @@ Arguments:
 - `--no-styio-shim`
   - optional
   - skips installing the companion `styio` shim
+- `--no-release-root-config`
+  - optional
+  - skips writing `SPIO_HOME/config/tool-release-root`
 
 Behavior:
 
+- resolves the selected channel through `tools/spio/channel/<channel>/<platform>/version`
+- downloads `tools/spio/releases/<version>/<platform>/spio` and verifies `spio.sha256`
+- avoids requiring Python or JSON parsing on the user's machine
+- writes `SPIO_HOME/config/tool-release-root` when installed from a platform release root so later `spio install styio@latest` can reuse the same root
 - downloads the `spio` binary with `curl`
 - installs it into a PATH directory, using passwordless `sudo` when needed
 - installs a companion `styio` shim that forwards to `SPIO_HOME/tools/styio/current/bin/styio`

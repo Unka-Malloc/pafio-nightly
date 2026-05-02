@@ -56,7 +56,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "install",
-        "usage: spio install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n",
+        "usage: spio install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n",
     },
     UsageCommandEntry{
         "use",
@@ -209,7 +209,7 @@ int PrintGlobalHelp()
       << "  cloud plan --json <build|run|test> [...]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
-      << "  install styio[@latest] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n"
+      << "  install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n"
       << "  use <binary|build> [--manifest-path <path>]\n"
       << "  set channel [as] <stable|nightly> [--manifest-path <path>]\n"
       << "  set build [as] <minimal> [--manifest-path <path>]\n"

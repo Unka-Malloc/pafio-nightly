@@ -77,6 +77,42 @@ std::string Trim(std::string text)
   return text.substr(start);
 }
 
+bool ProgramExistsOnPath(const std::string &program)
+{
+  const char *path_value = std::getenv("PATH");
+  if (path_value == nullptr)
+  {
+    return false;
+  }
+  std::stringstream stream(path_value);
+  std::string entry;
+  while (std::getline(stream, entry, ':'))
+  {
+    if (entry.empty())
+    {
+      continue;
+    }
+    const fs::path candidate = fs::path(entry) / program;
+    if (access(candidate.c_str(), X_OK) == 0)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<std::string> CMakeConfigureArgs(const fs::path &source_root, const fs::path &build_root)
+{
+  std::vector<std::string> args{"-S", source_root.string(), "-B", build_root.string()};
+  if (ProgramExistsOnPath("ninja"))
+  {
+    args.push_back("-G");
+    args.push_back("Ninja");
+  }
+  args.push_back("-DCMAKE_BUILD_TYPE=Release");
+  return args;
+}
+
 std::string OfficialSourceOrigin()
 {
   if (const char *explicit_origin = std::getenv("SPIO_STYIO_SOURCE_ORIGIN"); explicit_origin != nullptr && explicit_origin[0] != '\0')
@@ -280,7 +316,7 @@ SourceBuildResult EnsureSourceBuiltStyio(const SourceBuildRequest &request)
     fs::create_directories(build_root);
     RunChecked(
         "cmake",
-        {"-S", source_root.string(), "-B", build_root.string(), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"},
+        CMakeConfigureArgs(source_root, build_root),
         std::nullopt,
         "cmake configure",
         spio::kExternalProcessBuildTimeout);
