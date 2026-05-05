@@ -22,6 +22,7 @@ struct PrebuiltStyioInstallRequest
   std::string requested = "latest";
   std::string release_channel = "stable";
   std::optional<std::string> platform;
+  std::optional<std::string> release_target;
 };
 
 struct PrebuiltStyioInstallResult
@@ -31,6 +32,7 @@ struct PrebuiltStyioInstallResult
   std::string release_root_source;
   std::string release_channel;
   std::string release_version;
+  std::string release_target;
   std::string platform;
   std::string binary_url;
   std::string sha256_url;
@@ -41,6 +43,7 @@ struct PrebuiltStyioInstallResult
 std::optional<ResolvedToolReleaseRoot> ResolveStyioToolReleaseRoot(
     const std::optional<std::string> &explicit_release_root);
 std::string DetectToolReleasePlatform();
+std::string DetectStyioClientReleaseTarget(const std::string &platform);
 PrebuiltStyioInstallResult InstallPrebuiltStyio(const PrebuiltStyioInstallRequest &request);
 
 }  // namespace spio

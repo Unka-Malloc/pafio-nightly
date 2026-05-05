@@ -303,6 +303,7 @@ int HandleInstall(const std::vector<std::string> &args, bool as_json)
                   {"channel", install.compiler_channel},
                   {"release_channel", prebuilt.release_channel},
                   {"release_version", prebuilt.release_version},
+                  {"release_target", prebuilt.release_target},
                   {"release_platform", prebuilt.platform},
                   {"release_root", prebuilt.release_root},
                   {"release_root_source", prebuilt.release_root_source},

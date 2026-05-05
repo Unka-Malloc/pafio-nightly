@@ -1,6 +1,7 @@
 #include "SpioCLI/CLI.hpp"
 
 #include "SpioApp/CloudApp.hpp"
+#include "SpioApp/DoctorApp.hpp"
 #include "SpioApp/PackageApp.hpp"
 #include "SpioApp/ToolApp.hpp"
 #include "SpioApp/WorkflowApp.hpp"
@@ -29,6 +30,7 @@ enum class ToolSubcommand
 enum class TopLevelCommand
 {
   MachineInfo,
+  Doctor,
   ProjectGraph,
   Cloud,
   New,
@@ -79,6 +81,10 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   if (raw == "machine-info")
   {
     return TopLevelCommand::MachineInfo;
+  }
+  if (raw == "doctor")
+  {
+    return TopLevelCommand::Doctor;
   }
   if (raw == "project-graph")
   {
@@ -279,6 +285,8 @@ int RunCli(const std::vector<std::string> &argv)
       }
       std::cout << BuildMachineInfoPayload().dump() << '\n';
       return kExitSuccess;
+    case TopLevelCommand::Doctor:
+      return HandleDoctor(args, global_json);
     case TopLevelCommand::ProjectGraph:
       return HandleProjectGraph(args, global_json);
     case TopLevelCommand::Cloud:

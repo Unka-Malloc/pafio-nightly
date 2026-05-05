@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-03
 
 ## Mission
 
@@ -24,7 +24,7 @@ without letting any path drift into undocumented behavior.
 ## Daily Workflow
 
 1. Treat published compiler interaction as a machine contract, not an internal source dependency.
-2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, installer bootstrap semantics, and platform compatibility semantics, and keep machine-readable sync/graph/tool-status/cloud-plan entrypoints aligned with that contract vocabulary.
+2. Treat source-build mode as a separate documented contract with explicit source origin, branch-channel mapping, revision, cache rules, installer bootstrap semantics, release-target namespace rules, and platform compatibility semantics, and keep machine-readable sync/graph/tool-status/doctor/cloud-plan entrypoints aligned with that contract vocabulary.
 3. Keep handoff docs and interface gates aligned in the same checkpoint.
 4. Use `--styio-bin` health legs when validating the published binary path.
 5. Treat compile-plan v1 as live only when `styio --machine-info=json`, `contracts/compat/styio-support.toml`, and the black-box interop gate all agree.
@@ -39,6 +39,10 @@ without letting any path drift into undocumented behavior.
 11. Keep `registryDescriptor` as the client/server trust handoff operation:
     `styio-platform` owns descriptor issuance and `styio-spio` owns descriptor
     import, pin storage, and remote fetch enforcement.
+12. Keep Styio prebuilt install docs aligned with client release targets:
+    `styio-linux`, `styio-macos-cli`, and `styio-windows-cli` are CLI-facing
+    namespaces; GUI, desktop, and mobile targets are platform release namespaces
+    until the client owns a concrete install flow for them.
 
 ## Change Classes
 

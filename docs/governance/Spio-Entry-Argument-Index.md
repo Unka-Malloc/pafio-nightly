@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the single entrypoint index for user-visible `spio` arguments, repository-maintainer script arguments, and public environment variables so parameter lists do not drift across code, scripts, and contract documents.
 
-**Last updated:** 2026-04-20
+**Last updated:** 2026-05-03
 
 ## 1. Ownership
 
@@ -46,6 +46,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 ### Implemented Native Commands
 
 - `spio machine-info [--json]`
+- `spio doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]`
 - `spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]`
 - `spio cloud status --json [--manifest-path <path>]`
 - `spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]`
@@ -92,6 +93,39 @@ Rules:
 - output is machine-readable JSON in the current native core
 - `--json` is accepted as the explicit compatibility spelling
 - no other command-specific arguments are valid
+
+### `doctor`
+
+Canonical form:
+
+```text
+spio doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]
+```
+
+Arguments:
+
+- `--json`
+  - optional
+  - emits the machine-readable diagnostic payload
+- `--manifest-path <path>`
+  - optional
+  - validates the selected manifest and includes project-local toolchain state
+- `--release-root <url>`
+  - optional
+  - overrides release-root discovery for diagnostics without downloading a release
+- `--channel <stable|nightly>`
+  - optional
+  - selects the channel used when rendering expected Styio prebuilt channel URLs
+  - defaults to `stable`
+
+Behavior summary:
+
+- reports the detected release platform such as `darwin-aarch64`, `linux-x86_64`, or `linux-musl-aarch64`
+- reports the derived Styio client release target such as `styio-linux` or `styio-macos-cli`
+- reports whether the release root came from `--release-root`, `SPIO_STYIO_RELEASE_ROOT`, `SPIO_TOOL_RELEASE_ROOT`, or `SPIO_HOME/config/tool-release-root`
+- checks `curl`, `install`, `sha256sum`/`shasum`, `git`, `cmake`, and the `styio` PATH shim
+- reports managed compiler state using the same payload shape as `spio tool status --json`
+- returns exit `18` when a blocking diagnostic is an error
 
 ### `project-graph`
 
@@ -1003,7 +1037,7 @@ Arguments:
   - defaults to stable latest
 - `--release-root <url>`
   - optional
-  - platform static read root containing `tools/styio/channel/<channel>/<platform>/version`
+  - platform static read root containing `tools/<release-target>/channel/<channel>/<platform>/version`
   - falls back to `SPIO_STYIO_RELEASE_ROOT`, `SPIO_TOOL_RELEASE_ROOT`, then `SPIO_HOME/config/tool-release-root`
 - `--source`
   - optional
@@ -1039,8 +1073,13 @@ Arguments:
 Behavior summary:
 
 - attempts prebuilt install first when a release root is passed, exported, or persisted by `install-spio.sh`
-- resolves `styio@latest` through `tools/styio/channel/<stable|nightly>/<platform>/version`
-- downloads `tools/styio/releases/<version>/<platform>/styio` and verifies `styio.sha256`
+- derives the Styio client release target from the detected platform:
+  - `linux-*` and `linux-musl-*` use `styio-linux`
+  - `darwin-*` uses `styio-macos-cli`
+  - `windows-*` uses `styio-windows-cli`
+- resolves `styio@latest` through `tools/<release-target>/channel/<stable|nightly>/<platform>/version`
+- downloads `tools/<release-target>/releases/<version>/<platform>/styio` and verifies `styio.sha256`
+- falls back to legacy `tools/styio/...` channel and release paths only for compatibility with older release roots
 - validates the downloaded compiler through `styio --machine-info=json` and the compatibility matrix
 - installs a managed wrapper that answers `styio --version` from the compatibility metadata and delegates other commands to the real compiler
 - falls back to source-build when the prebuilt release root is unavailable and prebuilt-only mode is not requested
@@ -1215,7 +1254,7 @@ Arguments:
   - exact URL for the expected sha256 text
 - `--platform <value>`
   - optional
-  - defaults to `uname`-based detection such as `linux-aarch64`, `linux-x86_64`, `darwin-aarch64`, or `darwin-x86_64`
+  - defaults to `uname`-based detection such as `linux-aarch64`, `linux-x86_64`, `linux-musl-aarch64`, `linux-musl-x86_64`, `darwin-aarch64`, or `darwin-x86_64`
 - `--install-dir <dir>`
   - optional
   - defaults to `/usr/local/bin`
@@ -1228,12 +1267,19 @@ Arguments:
 - `--no-release-root-config`
   - optional
   - skips writing `SPIO_HOME/config/tool-release-root`
+- `--print-platform`
+  - optional
+  - prints the detected release platform and exits
+- `--print-adapter`
+  - optional
+  - prints the detected Linux distro family, package manager, libc, release platform, and prerequisite install command, then exits
 
 Behavior:
 
 - resolves the selected channel through `tools/spio/channel/<channel>/<platform>/version`
 - downloads `tools/spio/releases/<version>/<platform>/spio` and verifies `spio.sha256`
 - avoids requiring Python or JSON parsing on the user's machine
+- adapts prerequisite hints for Ubuntu/Debian, Fedora/CentOS Stream/Alma Linux/Rocky Linux/RHEL, Arch Linux/Manjaro, openSUSE, and Alpine Linux
 - writes `SPIO_HOME/config/tool-release-root` when installed from a platform release root so later `spio install styio@latest` can reuse the same root
 - downloads the `spio` binary with `curl`
 - installs it into a PATH directory, using passwordless `sudo` when needed

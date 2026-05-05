@@ -2,7 +2,7 @@
 
 **Purpose:** `spio` is the local-first package manager and project workflow client for Styio. It is designed to work offline when packages are available locally and to use `styio-platform` only as an optional service foundation.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-05-03
 
 ## Scope
 
@@ -92,6 +92,30 @@ Those documents are the migration knowledge pack for working against `styio` wit
 
 Start repo bootstrap and common build/test commands from [docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md).
 
+## Alpha User Bootstrap
+
+The v0.1.0-alpha install flow is intended to be a prebuilt-first path:
+
+```sh
+curl -fsSL https://packages.styio.dev/tools/spio/install-spio.sh | sh -s -- --base-url https://packages.styio.dev && spio install styio@latest && styio --version
+```
+
+`install-spio.sh` installs `spio`, writes `SPIO_HOME/config/tool-release-root`
+when installed from a platform release root, and installs a companion `styio`
+shim. `spio install styio@latest` then resolves the current platform to a
+client release target such as `styio-linux` or `styio-macos-cli`, downloads the
+platform-hosted prebuilt compiler, verifies its SHA-256 checksum, and promotes it
+under `SPIO_HOME/tools/styio/current/`.
+
+The first alpha artifact set covers `darwin-aarch64`, `linux-aarch64`, and
+`linux-musl-aarch64`. x86_64 Linux artifacts and fully self-contained runtime
+archives are still release-engineering follow-ups.
+
+Use `spio doctor` when a fresh machine fails to bootstrap. It reports the
+detected release platform, the resolved Styio client release target, release-root
+configuration, required shell tools, `SPIO_HOME`, and managed `styio` status in
+one place.
+
 Project-local workflow mode selection now uses:
 
 - `./scripts/spio use binary`
@@ -103,6 +127,7 @@ Project-local workflow mode selection now uses:
 - `./scripts/spio set lane as isolated|warm-shared`
 - `./scripts/spio set security as sandbox-default|partner-restricted|trusted-warm`
 - `./scripts/spio project-graph --json`
+- `./scripts/spio doctor --json`
 - `./scripts/spio cloud status --json`
 - `./scripts/spio cloud plan --json build minimal`
 - `./scripts/cloud-compile-stress.py --require-hot-replacement --summary-json /tmp/spio-cloud-stress-summary.json --events-jsonl /tmp/spio-cloud-stress-events.jsonl`

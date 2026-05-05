@@ -112,6 +112,52 @@ std::optional<std::string> NonEmptyEnv(const char *name)
   return std::nullopt;
 }
 
+std::string Lowercase(std::string value)
+{
+  std::transform(value.begin(), value.end(), value.begin(), [](const unsigned char ch) {
+    return static_cast<char>(std::tolower(ch));
+  });
+  return value;
+}
+
+bool LinuxUsesMusl()
+{
+  if (const std::optional<std::string> libc = NonEmptyEnv("SPIO_TOOL_RELEASE_LIBC"); libc.has_value())
+  {
+    const std::string normalized = Lowercase(*libc);
+    if (normalized == "musl")
+    {
+      return true;
+    }
+    if (normalized == "glibc")
+    {
+      return false;
+    }
+    throw spio::ToolError("unsupported SPIO_TOOL_RELEASE_LIBC value: " + *libc);
+  }
+
+  if (fs::exists("/etc/alpine-release"))
+  {
+    return true;
+  }
+
+  static const std::vector<fs::path> musl_loaders = {
+      "/lib/ld-musl-aarch64.so.1",
+      "/lib/ld-musl-x86_64.so.1",
+      "/lib/ld-musl-armhf.so.1",
+      "/lib/ld-musl-armv7.so.1",
+  };
+  for (const fs::path &loader : musl_loaders)
+  {
+    if (fs::exists(loader))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 std::optional<std::string> ReadConfiguredReleaseRoot()
 {
   const fs::path config_path = spio::ResolveSpioHome() / "config" / "tool-release-root";
@@ -228,9 +274,13 @@ void FetchUrlToFile(const std::string &url, const fs::path &path)
   }
 }
 
-fs::path ToolReleaseDownloadPath(const fs::path &spio_home, const std::string &platform, const std::string &version)
+fs::path ToolReleaseDownloadPath(
+    const fs::path &spio_home,
+    const std::string &release_target,
+    const std::string &platform,
+    const std::string &version)
 {
-  return spio_home / "cache" / "tool-releases" / "styio" / platform / version / "styio";
+  return spio_home / "cache" / "tool-releases" / release_target / platform / version / "styio";
 }
 
 void MarkExecutable(const fs::path &path)
@@ -299,12 +349,8 @@ std::string DetectToolReleasePlatform()
   }
   std::string os = info.sysname;
   std::string arch = info.machine;
-  std::transform(os.begin(), os.end(), os.begin(), [](const unsigned char ch) {
-    return static_cast<char>(std::tolower(ch));
-  });
-  std::transform(arch.begin(), arch.end(), arch.begin(), [](const unsigned char ch) {
-    return static_cast<char>(std::tolower(ch));
-  });
+  os = Lowercase(os);
+  arch = Lowercase(arch);
 
   if (os == "darwin")
   {
@@ -312,7 +358,7 @@ std::string DetectToolReleasePlatform()
   }
   else if (os == "linux")
   {
-    os = "linux";
+    os = LinuxUsesMusl() ? "linux-musl" : "linux";
   }
   else
   {
@@ -334,12 +380,34 @@ std::string DetectToolReleasePlatform()
   return os + "-" + arch;
 }
 
+std::string DetectStyioClientReleaseTarget(const std::string &platform)
+{
+  if (StartsWith(platform, "linux-") || StartsWith(platform, "linux-musl-"))
+  {
+    return "styio-linux";
+  }
+  if (StartsWith(platform, "darwin-"))
+  {
+    return "styio-macos-cli";
+  }
+  if (StartsWith(platform, "windows-"))
+  {
+    return "styio-windows-cli";
+  }
+  throw ToolError("unsupported styio client release target for platform: " + platform);
+}
+
 PrebuiltStyioInstallResult InstallPrebuiltStyio(const PrebuiltStyioInstallRequest &request)
 {
   const std::string platform = request.platform.value_or(DetectToolReleasePlatform());
   if (!IsSafePathSegment(platform))
   {
     throw ToolError("invalid tool release platform: " + platform);
+  }
+  const std::string release_target = request.release_target.value_or(DetectStyioClientReleaseTarget(platform));
+  if (!IsSafePathSegment(release_target))
+  {
+    throw ToolError("invalid styio release target: " + release_target);
   }
 
   std::string version = request.requested;
@@ -356,24 +424,54 @@ PrebuiltStyioInstallResult InstallPrebuiltStyio(const PrebuiltStyioInstallReques
 
   if (version == "latest")
   {
-    const std::string version_url = JoinUrl(root, "tools/styio/channel/" + release_channel + "/" + platform + "/version");
-    version = FetchTextFirstField(version_url);
+    const std::string version_url =
+        JoinUrl(root, "tools/" + release_target + "/channel/" + release_channel + "/" + platform + "/version");
+    try
+    {
+      version = FetchTextFirstField(version_url);
+    }
+    catch (const ToolError &)
+    {
+      if (release_target == "styio")
+      {
+        throw;
+      }
+      const std::string legacy_version_url =
+          JoinUrl(root, "tools/styio/channel/" + release_channel + "/" + platform + "/version");
+      version = FetchTextFirstField(legacy_version_url);
+    }
   }
   if (!IsSafePathSegment(version))
   {
     throw ToolError("invalid styio release version: " + version);
   }
 
-  const std::string binary_url = JoinUrl(root, "tools/styio/releases/" + version + "/" + platform + "/styio");
-  const std::string sha256_url = binary_url + ".sha256";
-  const std::string expected_sha256 = FetchTextFirstField(sha256_url);
+  std::string resolved_release_target = release_target;
+  std::string binary_url = JoinUrl(root, "tools/" + resolved_release_target + "/releases/" + version + "/" + platform + "/styio");
+  std::string sha256_url = binary_url + ".sha256";
+  std::string expected_sha256;
+  try
+  {
+    expected_sha256 = FetchTextFirstField(sha256_url);
+  }
+  catch (const ToolError &)
+  {
+    if (release_target == "styio")
+    {
+      throw;
+    }
+    resolved_release_target = "styio";
+    binary_url = JoinUrl(root, "tools/styio/releases/" + version + "/" + platform + "/styio");
+    sha256_url = binary_url + ".sha256";
+    expected_sha256 = FetchTextFirstField(sha256_url);
+  }
   if (!IsSha256Hex(expected_sha256))
   {
     throw ToolError("styio release sha256 is invalid for " + sha256_url);
   }
 
   const fs::path spio_home = ResolveSpioHome();
-  const fs::path downloaded_binary_path = ToolReleaseDownloadPath(spio_home, platform, version);
+  const fs::path downloaded_binary_path = ToolReleaseDownloadPath(spio_home, resolved_release_target, platform, version);
   FetchUrlToFile(binary_url, downloaded_binary_path);
   const std::string actual_sha256 = Sha256File(downloaded_binary_path);
   if (actual_sha256 != expected_sha256)
@@ -390,6 +488,7 @@ PrebuiltStyioInstallResult InstallPrebuiltStyio(const PrebuiltStyioInstallReques
       .release_root_source = request.release_root.source,
       .release_channel = release_channel,
       .release_version = version,
+      .release_target = resolved_release_target,
       .platform = platform,
       .binary_url = binary_url,
       .sha256_url = sha256_url,

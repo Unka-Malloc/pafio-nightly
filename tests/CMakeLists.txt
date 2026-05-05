@@ -13,6 +13,7 @@ add_executable(spio_native_tests
   native/BuildCloudTests.cpp
   native/BuildPlanTests.cpp
   native/BuildWorkflowCliTests.cpp
+  native/DoctorTests.cpp
   native/LockTests.cpp
   native/ManifestTests.cpp
   native/PackTests.cpp
@@ -49,6 +50,11 @@ add_test(
 add_test(
   NAME spio_cli_machine_info_rejects_unknown_flag
   COMMAND bash -c "out_file=\$(mktemp) && err_file=\$(mktemp) && trap 'rm -f \"\$out_file\" \"\$err_file\"' EXIT && ! \"$<TARGET_FILE:spio>\" machine-info --bogus >\"\$out_file\" 2>\"\$err_file\" && grep -q 'machine-info accepts only --json' \"\$err_file\""
+)
+
+add_test(
+  NAME spio_cli_doctor_help
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" doctor --help | grep -q '^usage: spio doctor \\[--json\\] \\[--manifest-path <path>\\] \\[--release-root <url>\\] \\[--channel <stable\\|nightly>\\]$'"
 )
 
 add_test(
@@ -119,6 +125,11 @@ add_test(
 add_test(
   NAME spio_installer_channel_smoke
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/spio-installer-channel-smoke.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_installer_adapter_smoke
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/spio-installer-adapter-smoke.sh"
 )
 
 add_test(

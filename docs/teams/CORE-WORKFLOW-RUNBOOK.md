@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, offline package paths, local import/export, and build/test flow.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-03
 
 ## Mission
 
@@ -28,8 +28,8 @@ compiler contracts.
 
 1. Start from [../BUILD-AND-DEV-ENV.md](../BUILD-AND-DEV-ENV.md).
 2. Keep native build/test behavior behind `scripts/checkpoint-health.sh`.
-3. Treat `spio use`, `spio set`, `spio sync`, `spio project-graph --json`, `spio tool status --json`, `spio build minimal`, local import/export, offline package use, and `spio-toolchain.lock` as owned workflow surface.
-4. Keep the bootstrap path `curl ... install-spio.sh | sh`, `spio install styio@latest`, and the managed `styio` shim runnable on a fresh VM before claiming installer closure.
+3. Treat `spio use`, `spio set`, `spio sync`, `spio doctor`, `spio project-graph --json`, `spio tool status --json`, `spio build minimal`, local import/export, offline package use, and `spio-toolchain.lock` as owned workflow surface.
+4. Keep the bootstrap path `curl ... install-spio.sh | sh`, `spio doctor`, `spio install styio@latest`, and the managed `styio` shim runnable on a fresh VM before claiming installer closure.
 5. Update CLI or workflow docs when public behavior changes.
 6. Keep `src/SpioCLI/CLI.cpp` thin. New payload builders, workflow validation rules, and private process helpers belong in domain or infrastructure modules, not in the CLI router.
 7. Keep `src/SpioToolchain/` vocabulary and project-local state terminology aligned with docs. When source-build, channel, risk, lane, or security terms change in code, update the owning governance and delivery docs in the same checkpoint.
@@ -55,6 +55,7 @@ compiler contracts.
 ctest --test-dir build-codex -R spio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
 ./build-codex/bin/spio_native_tests --gtest_filter='SecurityTests.*'
+./build-codex/bin/spio_native_tests --gtest_filter='DoctorTests.*'
 ./build-codex/bin/spio_native_tests --gtest_filter='ToolInstallTests.*'
 ```
 

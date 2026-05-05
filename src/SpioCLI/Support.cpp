@@ -37,6 +37,10 @@ constexpr std::array kUsageCommands = {
         "usage: spio machine-info [--json]\n",
     },
     UsageCommandEntry{
+        "doctor",
+        "usage: spio doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]\n",
+    },
+    UsageCommandEntry{
         "project-graph",
         "usage: spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]\n",
     },
@@ -204,6 +208,7 @@ int PrintGlobalHelp()
       << "  spio [--help] [--version] [--json] <command> [command-args...]\n\n"
       << "commands:\n"
       << "  machine-info [--json]\n"
+      << "  doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]\n"
       << "  project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  cloud status [--json] [--manifest-path <path>]\n"
       << "  cloud plan --json <build|run|test> [...]\n"

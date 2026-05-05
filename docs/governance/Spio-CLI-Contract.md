@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the command surface, exit code ranges, and machine-readable output rules for the `spio` bootstrap phase so later implementations can evolve behind a stable interface.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-05-03
 
 ## 1. Command Surface
 
@@ -14,6 +14,7 @@ The intended public command set is:
 
 - `spio new`
 - `spio init`
+- `spio doctor`
 - `spio install`
 - `spio project-graph`
 - `spio cloud`
@@ -63,6 +64,18 @@ Resolver-backed project graph introspection is also part of the active command s
 ```text
 spio project-graph --json --manifest-path path/to/spio.toml
 ```
+
+Fresh-machine diagnostics are also part of the active command surface:
+
+```text
+spio doctor
+spio doctor --json
+spio doctor --manifest-path path/to/spio.toml --release-root https://packages.styio.dev
+```
+
+`spio doctor` reports local prerequisites, `SPIO_HOME`, managed compiler state,
+the detected tool release platform, the Styio client release target, and the
+release-root source that `spio install styio@latest` would reuse.
 
 Project-local vendored snapshot materialization is also part of the active command surface:
 
@@ -178,19 +191,27 @@ Compile-plan publication rule:
 - owning `contracts/compile-plan/` schema files still does not authorize future versions by itself
 - every advertised compile-plan version must have a matching `styio --compile-plan <path>` consumer and an interop gate
 
-### 3.1 `spio project-graph --json`
+### 3.1 `spio doctor`
+
+- `spio doctor` publishes `doctor v1`
+- the payload includes `ok`, `spio_home`, `platform`, `release_root`, `checks`, and `tool_status`
+- each check has a stable `name`, `status`, and `message`
+- missing managed `styio` and missing source-build helpers are warnings
+- unsupported release platforms, malformed release roots, missing `curl`, invalid manifests, or broken managed toolchain state are errors
+
+### 3.2 `spio project-graph --json`
 
 - `spio project-graph --json` publishes `project_graph v1`
 - `project_graph v1` includes at least `packages`, `dependencies`, `targets`, `toolchain`, `managed_toolchains`, `lock_state`, `vendor_state`, `notes`, `package_distribution`, and `source_state`
 
-### 3.2 `spio tool status --json`
+### 3.3 `spio tool status --json`
 
 - `spio tool status --json` publishes `toolchain_state v1`
 - `project_pin`
 - `current_compiler`
 - `managed_toolchains`
 
-### 3.3 `spio --json build/run/test`
+### 3.4 `spio --json build/run/test`
 
 - `workflow_success_payloads v1`
 - `receipt.json`
@@ -198,7 +219,7 @@ Compile-plan publication rule:
 - captured stdout/stderr
 - resolved `cloud_execution_policy v1`
 
-### 3.4 `spio cloud status --json`
+### 3.5 `spio cloud status --json`
 
 - `spio cloud status --json` publishes `cloud_execution_policy v1`
 - project-local persisted values include:
@@ -214,7 +235,7 @@ Compile-plan publication rule:
   - `cache_policy`
   - `worker_pool_key`
 
-### 3.5 `spio cloud plan --json`
+### 3.6 `spio cloud plan --json`
 
 - `spio cloud plan --json` publishes `build_job_request v1`
 - the payload freezes the normalized request body shape for `POST /api/styio-platform/v1/jobs`
@@ -227,7 +248,7 @@ Compile-plan publication rule:
   - `source`
   - resolved `cloud` policy
 
-### 3.6 Supporting JSON Success Commands
+### 3.7 Supporting JSON Success Commands
 
 - spio --json fetch --manifest-path path/to/spio.toml ...
 - spio --json sync --manifest-path path/to/spio.toml ...
@@ -261,6 +282,8 @@ Compile-plan publication rule:
 - `31` recognized but not implemented in bootstrap
 
 `31` is a bootstrap-only code. It should disappear once the command is fully implemented.
+
+`18` is also used by `spio doctor` when a blocking local tool-management prerequisite is missing or invalid.
 
 `21` is also used when the external compiler handshake is outside the published compatibility matrix.
 
@@ -343,8 +366,13 @@ Optional keys:
 - resolver-backed `fetch` materializes registry `config`, namespace targets, append-only package indexes, immutable source artifacts, and extracted snapshots under `SPIO_HOME/registry/`
 - `spio install styio` and `spio install styio@latest` default to stable latest and prefer a platform-hosted prebuilt compiler when a release root is configured
 - prebuilt install resolves the release root from `--release-root`, `SPIO_STYIO_RELEASE_ROOT`, `SPIO_TOOL_RELEASE_ROOT`, or `SPIO_HOME/config/tool-release-root`
-- prebuilt install reads `tools/styio/channel/<stable|nightly>/<platform>/version`, downloads `tools/styio/releases/<version>/<platform>/styio`, verifies `styio.sha256`, and promotes the compiler to `SPIO_HOME/tools/styio/current/`
-- managed installs write a `styio` wrapper that answers `styio --version` from compatibility metadata and delegates all other invocations to the real compiler binary
+- prebuilt install derives a Styio client release target from the platform:
+  - `linux-*` and `linux-musl-*` map to `styio-linux`
+  - `darwin-*` maps to `styio-macos-cli`
+  - `windows-*` maps to `styio-windows-cli`
+- prebuilt install reads `tools/<release-target>/channel/<stable|nightly>/<platform>/version`, downloads `tools/<release-target>/releases/<version>/<platform>/styio`, verifies `styio.sha256`, and promotes the compiler to `SPIO_HOME/tools/styio/current/`
+- prebuilt install accepts legacy `tools/styio/...` channel and release paths only as a compatibility fallback
+- `install-spio.sh` writes a `styio` wrapper that delegates to the managed compiler under `SPIO_HOME/tools/styio/current/bin/styio`; the compiler itself must answer `styio --version`
 - `--source` forces source-build mode and `--prebuilt-only` fails instead of falling back to source-build
 - source fallback fetches from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
 - source fallback uses `SPIO_STYIO_SOURCE_REF` when set, otherwise `main` for `latest`; explicit `styio@<ref>` maps to that source revision when prebuilt install is skipped or unavailable
