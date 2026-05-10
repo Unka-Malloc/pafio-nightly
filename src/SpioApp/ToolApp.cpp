@@ -154,6 +154,46 @@ json BuildProjectToolchainStatePayload(
   return payload;
 }
 
+json BuildToolListPayload(const ToolStatusResult &status)
+{
+  json payload = {
+      {"command", "tool list"},
+      {"spio_home", status.spio_home.string()},
+      {"managed_toolchains", json::array()},
+  };
+  if (status.current_compiler.has_value())
+  {
+    payload["current_compiler"] = BuildManagedToolchainPayload(*status.current_compiler);
+  }
+  else
+  {
+    payload["current_compiler"] = nullptr;
+  }
+  for (const ManagedToolchainStatus &toolchain : status.managed_toolchains)
+  {
+    payload["managed_toolchains"].push_back(BuildManagedToolchainPayload(toolchain));
+  }
+  return payload;
+}
+
+void PrintToolList(const ToolStatusResult &status)
+{
+  if (status.managed_toolchains.empty())
+  {
+    std::cout << "no managed styio compilers installed\n";
+    return;
+  }
+
+  std::cout << "styio managed compilers:\n";
+  for (const ManagedToolchainStatus &toolchain : status.managed_toolchains)
+  {
+    std::cout << (toolchain.current ? "* " : "  ")
+              << toolchain.compiler_channel << "/"
+              << toolchain.compiler_version << "  "
+              << toolchain.install_binary_path.string() << '\n';
+  }
+}
+
 }  // namespace
 
 int HandleInstall(const std::vector<std::string> &args, bool as_json)
@@ -568,6 +608,41 @@ int HandleSet(const std::vector<std::string> &args, bool as_json)
   }
 }
 
+int HandleToolList(const std::vector<std::string> &args, bool as_json)
+{
+  bool local_json = as_json;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--json")
+    {
+      local_json = true;
+    }
+    else
+    {
+      return EmitError({"UsageError", kExitUsage, "unexpected argument for tool list: " + args[index], "tool list"}, as_json);
+    }
+  }
+
+  try
+  {
+    const ToolStatusResult result = QueryToolStatus();
+    if (local_json)
+    {
+      return EmitSuccess(BuildToolListPayload(result), true);
+    }
+    PrintToolList(result);
+    return kExitSuccess;
+  }
+  catch (const ToolError &err)
+  {
+    return EmitError({"ToolError", kExitToolInstall, err.what(), "tool list"}, as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitError({"CacheError", kExitCache, err.what(), "tool list"}, as_json);
+  }
+}
+
 int HandleToolStatus(const std::vector<std::string> &args, bool as_json)
 {
   bool local_json = as_json;
@@ -688,6 +763,197 @@ int HandleToolInstall(const std::vector<std::string> &args, bool as_json)
   catch (const CacheError &err)
   {
     return EmitError({"CacheError", kExitCache, err.what(), "tool install"}, as_json);
+  }
+}
+
+int HandleToolUpdate(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool update [styio[@latest]] [--release-root <url>] [--channel <stable|nightly>]\n";
+    return kExitSuccess;
+  }
+
+  std::string requested = "latest";
+  std::optional<std::string> release_root;
+  std::string channel = std::string(kChannelStable);
+  bool target_seen = false;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--release-root")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--release-root requires a value", "tool update"}, as_json);
+      }
+      release_root = args[index];
+    }
+    else if (args[index] == "--channel")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--channel requires a value", "tool update"}, as_json);
+      }
+      channel = NormalizeSetKeyword(args[index]);
+      if (!IsSupportedChannel(channel))
+      {
+        return EmitError({"UsageError", kExitUsage, "--channel must be stable or nightly", "tool update"}, as_json);
+      }
+    }
+    else if (args[index] == "--prebuilt-only")
+    {
+      // tool update is intentionally prebuilt-only; accept the flag for symmetry with install.
+    }
+    else if (!args[index].empty() && args[index][0] != '-')
+    {
+      if (target_seen)
+      {
+        return EmitError({"UsageError", kExitUsage, "tool update accepts at most one target", "tool update"}, as_json);
+      }
+      target_seen = true;
+      const std::string target = args[index];
+      const size_t at = target.find('@');
+      const std::string tool = at == std::string::npos ? target : target.substr(0, at);
+      requested = at == std::string::npos ? "latest" : target.substr(at + 1);
+      if (tool != "styio" || requested.empty())
+      {
+        return EmitError({"UsageError", kExitUsage, "tool update supports only styio[@latest]", "tool update"}, as_json);
+      }
+    }
+    else
+    {
+      return EmitError({"UsageError", kExitUsage, "unexpected argument for tool update: " + args[index], "tool update"}, as_json);
+    }
+  }
+
+  try
+  {
+    const std::optional<ResolvedToolReleaseRoot> resolved_release_root = ResolveStyioToolReleaseRoot(release_root);
+    if (!resolved_release_root.has_value())
+    {
+      throw ToolError(
+          "tool update requires --release-root, SPIO_STYIO_RELEASE_ROOT, SPIO_TOOL_RELEASE_ROOT, or SPIO_HOME/config/tool-release-root");
+    }
+
+    const PrebuiltStyioInstallResult prebuilt = InstallPrebuiltStyio({
+        .release_root = *resolved_release_root,
+        .requested = requested,
+        .release_channel = channel,
+    });
+    const ToolInstallResult &install = prebuilt.install;
+    return EmitSuccess(
+        {
+            {"command", "tool update"},
+            {"message", "updated styio " + requested + " from prebuilt release " + prebuilt.release_version + ": " + install.managed_binary_path.string()},
+            {"package", "styio"},
+            {"requested", requested},
+            {"install_mode", "prebuilt"},
+            {"channel", install.compiler_channel},
+            {"release_channel", prebuilt.release_channel},
+            {"release_version", prebuilt.release_version},
+            {"release_target", prebuilt.release_target},
+            {"release_platform", prebuilt.platform},
+            {"release_root", prebuilt.release_root},
+            {"release_root_source", prebuilt.release_root_source},
+            {"binary_url", prebuilt.binary_url},
+            {"sha256_url", prebuilt.sha256_url},
+            {"sha256", prebuilt.sha256},
+            {"downloaded_binary_path", prebuilt.downloaded_binary_path.string()},
+            {"spio_home", install.spio_home.string()},
+            {"install_root", install.install_root.string()},
+            {"install_binary_path", install.install_binary_path.string()},
+            {"managed_binary_path", install.managed_binary_path.string()},
+            {"compiler_version", install.compiler_version},
+            {"edition_max", install.compiler_edition_max},
+            {"integration_phase", install.integration_phase},
+            {"supported_compile_plan_versions", install.supported_compile_plan_versions},
+            {"capabilities", install.capabilities},
+        },
+        as_json);
+  }
+  catch (const ToolError &err)
+  {
+    return EmitError({"ToolError", kExitToolInstall, err.what(), "tool update"}, as_json);
+  }
+  catch (const CompilerProbeError &err)
+  {
+    return EmitError({"CompilerSpawnError", kExitCompilerSpawn, err.what(), "tool update"}, as_json);
+  }
+  catch (const CompatibilityError &err)
+  {
+    return EmitError({"ContractError", kExitContract, err.what(), "tool update"}, as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitError({"CacheError", kExitCache, err.what(), "tool update"}, as_json);
+  }
+}
+
+int HandleToolUninstall(const std::vector<std::string> &args, bool as_json)
+{
+  if (args.size() == 1 && args.front() == "--help")
+  {
+    std::cout << "usage: spio tool uninstall --version <compiler-version> [--channel <channel>]\n";
+    return kExitSuccess;
+  }
+
+  std::optional<std::string> compiler_version;
+  std::optional<std::string> compiler_channel;
+  for (size_t index = 0; index < args.size(); ++index)
+  {
+    if (args[index] == "--version")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--version requires a value", "tool uninstall"}, as_json);
+      }
+      compiler_version = args[index];
+    }
+    else if (args[index] == "--channel")
+    {
+      if (++index >= args.size())
+      {
+        return EmitError({"UsageError", kExitUsage, "--channel requires a value", "tool uninstall"}, as_json);
+      }
+      compiler_channel = args[index];
+    }
+    else
+    {
+      return EmitError({"UsageError", kExitUsage, "unexpected argument for tool uninstall: " + args[index], "tool uninstall"}, as_json);
+    }
+  }
+
+  if (!compiler_version.has_value())
+  {
+    return EmitError({"UsageError", kExitUsage, "tool uninstall requires --version <compiler-version>", "tool uninstall"}, as_json);
+  }
+
+  try
+  {
+    const ToolUninstallResult result = UninstallManagedStyio({
+        .compiler_version = *compiler_version,
+        .compiler_channel = compiler_channel,
+    });
+    return EmitSuccess(
+        {
+            {"command", "tool uninstall"},
+            {"message", "uninstalled managed styio compiler: " + result.compiler_channel + "/" + result.compiler_version},
+            {"spio_home", result.spio_home.string()},
+            {"install_root", result.install_root.string()},
+            {"current_root", result.current_root.string()},
+            {"compiler_version", result.compiler_version},
+            {"channel", result.compiler_channel},
+            {"removed_current", result.removed_current},
+        },
+        as_json);
+  }
+  catch (const ToolError &err)
+  {
+    return EmitError({"ToolError", kExitToolInstall, err.what(), "tool uninstall"}, as_json);
+  }
+  catch (const CacheError &err)
+  {
+    return EmitError({"CacheError", kExitCache, err.what(), "tool uninstall"}, as_json);
   }
 }
 

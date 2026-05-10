@@ -86,9 +86,26 @@ def _build_parser() -> argparse.ArgumentParser:
     tool_sub = tool.add_subparsers(dest="tool_command")
     tool_install = tool_sub.add_parser("install")
     tool_install.add_argument("--styio-bin")
+    tool_list = tool_sub.add_parser("list")
+    tool_list.add_argument("--json", action="store_true")
+    tool_status = tool_sub.add_parser("status")
+    tool_status.add_argument("--json", action="store_true")
+    tool_status.add_argument("--manifest-path")
+    tool_update = tool_sub.add_parser("update")
+    tool_update.add_argument("target", nargs="?")
+    tool_update.add_argument("--release-root")
+    tool_update.add_argument("--channel")
+    tool_uninstall = tool_sub.add_parser("uninstall")
+    tool_uninstall.add_argument("--version", dest="tool_version")
+    tool_uninstall.add_argument("--channel")
     tool_use = tool_sub.add_parser("use")
     tool_use.add_argument("--version", dest="tool_version")
     tool_use.add_argument("--channel")
+    tool_pin = tool_sub.add_parser("pin")
+    tool_pin.add_argument("--version", dest="tool_version")
+    tool_pin.add_argument("--channel")
+    tool_pin.add_argument("--manifest-path")
+    tool_pin.add_argument("--clear", action="store_true")
 
     return parser
 
@@ -256,9 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         return _handle_check(args, as_json)
     if args.command == "tool":
-        if args.tool_command == "install":
-            return _bootstrap_not_implemented("tool install", as_json)
-        if args.tool_command == "use":
-            return _bootstrap_not_implemented("tool use", as_json)
+        if args.tool_command in {"install", "list", "status", "update", "uninstall", "use", "pin"}:
+            return _bootstrap_not_implemented(f"tool {args.tool_command}", as_json)
         return _bootstrap_not_implemented("tool", as_json)
     return _bootstrap_not_implemented(args.command, as_json)

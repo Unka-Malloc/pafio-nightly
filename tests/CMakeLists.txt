@@ -159,7 +159,7 @@ add_test(
 
 add_test(
   NAME spio_cli_tool_install_help
-  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" tool --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio tool install --styio-bin <path>$' && printf '%s\n' \"$out\" | grep -q '^  spio tool status --json \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool use --version <compiler-version> \\[--channel <channel>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool pin (--version <compiler-version> \\[--channel <channel>\\] | --clear) \\[--manifest-path <path>\\]$'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" tool --help\n) && printf '%s\n' \"$out\" | grep -q '^  spio tool install --styio-bin <path>$' && printf '%s\n' \"$out\" | grep -q '^  spio tool list \\[--json\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool status --json \\[--manifest-path <path>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool update \\[styio\\[@latest\\]\\] \\[--release-root <url>\\] \\[--channel <stable|nightly>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool uninstall --version <compiler-version> \\[--channel <channel>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool use --version <compiler-version> \\[--channel <channel>\\]$' && printf '%s\n' \"$out\" | grep -q '^  spio tool pin (--version <compiler-version> \\[--channel <channel>\\] | --clear) \\[--manifest-path <path>\\]$'"
 )
 
 add_test(

@@ -137,7 +137,10 @@ constexpr std::array kUsageCommands = {
         "tool",
         "usage:\n"
         "  spio tool install --styio-bin <path>\n"
+        "  spio tool list [--json]\n"
         "  spio tool status --json [--manifest-path <path>]\n"
+        "  spio tool update [styio[@latest]] [--release-root <url>] [--channel <stable|nightly>]\n"
+        "  spio tool uninstall --version <compiler-version> [--channel <channel>]\n"
         "  spio tool use --version <compiler-version> [--channel <channel>]\n"
         "  spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n",
     },
@@ -237,7 +240,10 @@ int PrintGlobalHelp()
       << "  registry trust import <descriptor-url|descriptor-file>\n"
       << "  registry trust status --json\n"
       << "  tool install --styio-bin <path>\n"
+      << "  tool list [--json]\n"
       << "  tool status --json [--manifest-path <path>]\n"
+      << "  tool update [styio[@latest]] [--release-root <url>] [--channel <stable|nightly>]\n"
+      << "  tool uninstall --version <compiler-version> [--channel <channel>]\n"
       << "  tool use --version <compiler-version> [--channel <channel>]\n"
       << "  tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
   return kExitSuccess;

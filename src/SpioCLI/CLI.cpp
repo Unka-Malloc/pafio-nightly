@@ -22,7 +22,10 @@ namespace
 enum class ToolSubcommand
 {
   Install,
+  List,
   Status,
+  Update,
+  Uninstall,
   Use,
   Pin,
 };
@@ -61,9 +64,21 @@ std::optional<ToolSubcommand> ParseToolSubcommand(std::string_view raw)
   {
     return ToolSubcommand::Install;
   }
+  if (raw == "list")
+  {
+    return ToolSubcommand::List;
+  }
   if (raw == "status")
   {
     return ToolSubcommand::Status;
+  }
+  if (raw == "update")
+  {
+    return ToolSubcommand::Update;
+  }
+  if (raw == "uninstall")
+  {
+    return ToolSubcommand::Uninstall;
   }
   if (raw == "use")
   {
@@ -186,7 +201,7 @@ int HandleToolCommand(const std::vector<std::string> &args, bool as_json)
   if (args.empty())
   {
     return spio::EmitError(
-        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'status', 'use', or 'pin' subcommand", "tool"},
+        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
         as_json);
   }
 
@@ -196,7 +211,7 @@ int HandleToolCommand(const std::vector<std::string> &args, bool as_json)
   if (!parsed_subcommand.has_value())
   {
     return spio::EmitError(
-        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'status', 'use', or 'pin' subcommand", "tool"},
+        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
         as_json);
   }
 
@@ -204,6 +219,8 @@ int HandleToolCommand(const std::vector<std::string> &args, bool as_json)
   {
     case ToolSubcommand::Install:
       return spio::HandleToolInstall(tail, as_json);
+    case ToolSubcommand::List:
+      return spio::HandleToolList(tail, as_json);
     case ToolSubcommand::Status:
     {
       if (tail.size() == 1 && tail.front() == "--help")
@@ -212,13 +229,17 @@ int HandleToolCommand(const std::vector<std::string> &args, bool as_json)
       }
       return spio::HandleToolStatus(tail, as_json);
     }
+    case ToolSubcommand::Update:
+      return spio::HandleToolUpdate(tail, as_json);
+    case ToolSubcommand::Uninstall:
+      return spio::HandleToolUninstall(tail, as_json);
     case ToolSubcommand::Use:
       return spio::HandleToolUse(tail, as_json);
     case ToolSubcommand::Pin:
       return spio::HandleToolPin(tail, as_json);
   }
   return spio::EmitError(
-      {"UsageError", spio::kExitUsage, "tool requires the 'install', 'status', 'use', or 'pin' subcommand", "tool"},
+      {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
       as_json);
 }
 

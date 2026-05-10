@@ -54,6 +54,22 @@ struct ToolUseResult
   std::vector<std::string> capabilities;
 };
 
+struct ToolUninstallRequest
+{
+  std::string compiler_version;
+  std::optional<std::string> compiler_channel;
+};
+
+struct ToolUninstallResult
+{
+  std::filesystem::path spio_home;
+  std::filesystem::path install_root;
+  std::filesystem::path current_root;
+  std::string compiler_version;
+  std::string compiler_channel;
+  bool removed_current = false;
+};
+
 struct ToolPinRequest
 {
   std::filesystem::path manifest_path = "spio.toml";
@@ -105,6 +121,7 @@ struct ToolStatusResult
 
 ToolInstallResult InstallManagedStyio(const ToolInstallRequest &request);
 ToolUseResult UseManagedStyio(const ToolUseRequest &request);
+ToolUninstallResult UninstallManagedStyio(const ToolUninstallRequest &request);
 ToolPinResult PinManagedStyio(const ToolPinRequest &request);
 ToolStatusResult QueryToolStatus(const std::optional<std::filesystem::path> &manifest_path = std::nullopt);
 

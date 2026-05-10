@@ -10,6 +10,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -311,25 +312,29 @@ std::optional<spio::ProjectToolchainPinStatus> LoadProjectToolchainPinStatus(con
   };
 }
 
-InstalledManagedCompiler SelectInstalledManagedCompiler(const fs::path &spio_home, const spio::ToolUseRequest &request)
+InstalledManagedCompiler SelectInstalledManagedCompiler(
+    const fs::path &spio_home,
+    const std::string &compiler_version,
+    const std::optional<std::string> &compiler_channel,
+    std::string_view command_name)
 {
-  if (request.compiler_version.empty())
+  if (compiler_version.empty())
   {
-    throw spio::ToolError("tool use requires a non-empty --version <compiler-version>");
+    throw spio::ToolError(std::string(command_name) + " requires a non-empty --version <compiler-version>");
   }
-  if (request.compiler_channel.has_value() && request.compiler_channel->empty())
+  if (compiler_channel.has_value() && compiler_channel->empty())
   {
-    throw spio::ToolError("tool use --channel must be a non-empty string");
+    throw spio::ToolError(std::string(command_name) + " --channel must be a non-empty string");
   }
 
   std::vector<InstalledManagedCompiler> matches;
   for (const InstalledManagedCompiler &candidate : CollectInstalledManagedCompilers(spio_home))
   {
-    if (candidate.compiler_version != request.compiler_version)
+    if (candidate.compiler_version != compiler_version)
     {
       continue;
     }
-    if (request.compiler_channel.has_value() && candidate.compiler_channel != *request.compiler_channel)
+    if (compiler_channel.has_value() && candidate.compiler_channel != *compiler_channel)
     {
       continue;
     }
@@ -340,17 +345,22 @@ InstalledManagedCompiler SelectInstalledManagedCompiler(const fs::path &spio_hom
   {
     throw spio::ToolError(
         "managed styio compiler is not installed: " +
-        (request.compiler_channel.has_value()
-             ? *request.compiler_channel + "/" + request.compiler_version
-             : request.compiler_version));
+        (compiler_channel.has_value()
+             ? *compiler_channel + "/" + compiler_version
+             : compiler_version));
   }
   if (matches.size() > 1U)
   {
     throw spio::ToolError(
         "managed styio compiler version is ambiguous across installed channels; select --channel <channel>: " +
-        request.compiler_version);
+        compiler_version);
   }
   return matches.front();
+}
+
+InstalledManagedCompiler SelectInstalledManagedCompiler(const fs::path &spio_home, const spio::ToolUseRequest &request)
+{
+  return SelectInstalledManagedCompiler(spio_home, request.compiler_version, request.compiler_channel, "tool use");
 }
 
 std::string RenderProjectToolchainPin(const InstalledManagedCompiler &selected)
@@ -429,6 +439,59 @@ ToolUseResult UseManagedStyio(const ToolUseRequest &request)
       .integration_phase = report.integration_phase,
       .supported_compile_plan_versions = report.supported_compile_plan_versions,
       .capabilities = report.capabilities,
+  };
+}
+
+ToolUninstallResult UninstallManagedStyio(const ToolUninstallRequest &request)
+{
+  const fs::path spio_home = ResolveSpioHome();
+  const InstalledManagedCompiler selected = SelectInstalledManagedCompiler(
+      spio_home,
+      request.compiler_version,
+      request.compiler_channel,
+      "tool uninstall");
+  const fs::path current_root = ManagedStyioCurrentRoot(spio_home);
+
+  bool removed_current = false;
+  if (fs::exists(ManagedStyioMetadataPath(current_root)) && fs::exists(ManagedStyioBinaryPath(current_root)))
+  {
+    const ManagedToolchainStatus current = BuildManagedToolchainStatus(
+        current_root,
+        ManagedStyioBinaryPath(current_root),
+        ManagedStyioMetadataPath(current_root),
+        true);
+    if (current.compiler_version == selected.compiler_version && current.compiler_channel == selected.compiler_channel)
+    {
+      std::error_code ec;
+      fs::remove_all(current_root, ec);
+      if (ec)
+      {
+        throw ToolError("failed to remove current managed styio compiler: " + current_root.string());
+      }
+      removed_current = true;
+    }
+  }
+
+  std::error_code ec;
+  fs::remove_all(selected.install_root, ec);
+  if (ec)
+  {
+    throw ToolError("failed to remove managed styio compiler: " + selected.install_root.string());
+  }
+
+  const fs::path channel_root = selected.install_root.parent_path();
+  if (fs::exists(channel_root) && fs::is_empty(channel_root, ec) && !ec)
+  {
+    fs::remove(channel_root, ec);
+  }
+
+  return ToolUninstallResult{
+      .spio_home = spio_home,
+      .install_root = selected.install_root,
+      .current_root = current_root,
+      .compiler_version = selected.compiler_version,
+      .compiler_channel = selected.compiler_channel,
+      .removed_current = removed_current,
   };
 }
 
