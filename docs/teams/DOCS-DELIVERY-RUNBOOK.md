@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` docs tree, repo hygiene, docs gate, and delivery-facing workflow documentation.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-13
 
 ## Mission
 
@@ -49,7 +49,7 @@ without redefining planning, registry, compiler, or service contract semantics.
 10. Keep `docs/planning/Spio-Platform-Migration-Handoff.md` aligned with downstream `styio-platform` docs when server/platform ownership moves.
 11. Keep `docs/governance/Spio-Local-Offline-Package-Contract.md` aligned with README and registry docs when offline package or local import/export wording changes.
 12. Keep top-level Apache-2.0 license, source-distribution policy, and dependency usage-boundary evidence aligned with `styio-audit`.
-13. Treat regenerated `docs/audit/` reports as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
+13. Treat regenerated `docs/audit/` reports and tracked `docs/audit/defects/*.md` records as evidence snapshots: update ownership metadata and indexes when they move, but leave defect status changes to code/test gate evidence.
 14. Keep [../specs/TECHNOLOGY-COMPONENT-INVENTORY.md](../specs/TECHNOLOGY-COMPONENT-INVENTORY.md) aligned with `styio-audit` whenever the technology stack, internal components, open-source components, dependency manifests, Apache-2.0 evidence, or commercial-risk boundaries change.
 15. For registry-management documentation changes, require explicit coverage of publish, verify, mirror handoff, offline behavior, cache reuse, and public/private security boundary before closing docs/audit work.
 16. Maintain GitHub merge gates through Rulesets rather than legacy classic branch protection; audit effective branch rules when required status-check governance changes, and keep `local-ci-gate` as the spio repository's own CI status-check surface rather than treating it as the shared upstream `styio-ci-gate` ecosystem resource gate.

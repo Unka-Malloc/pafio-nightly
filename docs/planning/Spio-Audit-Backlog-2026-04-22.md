@@ -2,11 +2,11 @@
 
 **Purpose:** Preserve the 2026-04-22 `styio-spio` external audit findings as durable tracked work after removing the ignored temporary defect ledger.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-13
 
 ## Scope
 
-This backlog migrates the ignored `docs/audit/defects/STYIO-SPIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifier, owner stream, closure rule, and verification gate so the external `styio-audit` defect queue can be empty while real work remains visible.
+This backlog migrated the former ignored `docs/audit/defects/STYIO-SPIO-2026-04-22.md` record into tracked planning ownership. The migration does not claim unresolved defects are fixed. It gives each finding a stable identifier, owner stream, closure rule, and verification gate so that audit scope can stay clear while real work remains visible.
 
 ## Closure Rules
 
@@ -45,7 +45,7 @@ The temporary defect ledger has been moved here instead of being marked closed. 
 3. `docs/audit/agent-findings/spio-core-process-2026-04-22.md`
 4. `docs/audit/agent-findings/spio-subprocess-timeouts-2026-04-22.md`
 
-The durable backlog state is complete only when the ignored `docs/audit/defects/` queue is empty and external `styio-audit` reports zero blocking findings.
+The durable backlog state is complete only when this migrated audit scope has no open defect queue records and external `styio-audit` reports zero blocking findings.
 
 ## 2026-05-02 Registry Trust Closure Evidence
 

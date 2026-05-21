@@ -2,11 +2,11 @@
 
 **Purpose:** Define the repository-local audit queue for security, correctness, and design defects discovered before they are converted into normal tracked work.
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-05-13
 
 ## Defect Queue
 
-Active audit records live under ignored `docs/audit/defects/` so large exploratory audits can be written locally without committing open defect notes.
+Active audit records live under `docs/audit/defects/`. Markdown defect records are tracked when they represent deliberate repository-owned work; large exploratory audit scratch output should stay out of this directory unless it is ready to block the audit gate.
 
 Generated inventory: [INDEX.md](./INDEX.md).
 

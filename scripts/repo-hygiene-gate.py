@@ -37,7 +37,6 @@ FORBIDDEN_GLOBS = [
     "dist/*",
     ".spio",
     ".spio/*",
-    "docs/audit/defects/*",
 ]
 REQUIRED_GITIGNORE_PATTERNS = [
     ".DS_Store",
@@ -57,7 +56,8 @@ REQUIRED_GITIGNORE_PATTERNS = [
     "tmp/",
     "*.tmp",
     "*.log",
-    "docs/audit/defects/",
+    "docs/audit/defects/*",
+    "!docs/audit/defects/*.md",
     "!docs/**/build/",
     "!docs/**/build/**",
     "!docs/**/build-*/",
@@ -126,6 +126,8 @@ def tracked_files() -> list[str]:
 
 
 def match_forbidden(path: str) -> str | None:
+    if path.startswith("docs/audit/defects/") and not path.endswith(".md"):
+        return "docs/audit/defects/<non-md>"
     for pattern in FORBIDDEN_GLOBS:
         if fnmatch.fnmatch(path, pattern):
             return pattern
