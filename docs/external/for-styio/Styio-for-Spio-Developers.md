@@ -8,7 +8,7 @@ Read this after:
 
 - [Styio-External-Interface-Requirement-Spec.md](./Styio-External-Interface-Requirement-Spec.md)
 - [Styio-Public-Interface-Roadmap.md](./Styio-Public-Interface-Roadmap.md)
-- [Spio-Future-Direction-and-Styio-Coordination.md](../../planning/Spio-Future-Direction-and-Styio-Coordination.md)
+- [Spio-Future-Direction-and-Styio-Coordination.md](../../plan/repository-delivery-convergence/Evidence.md)
 
 ## 1. Mental Model
 

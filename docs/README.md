@@ -7,11 +7,11 @@
 ## Entry Points
 
 1. Build and dev environment: [BUILD-AND-DEV-ENV.md](./BUILD-AND-DEV-ENV.md)
-2. Planning roadmap: [planning/Spio-Master-Plan.md](./planning/Spio-Master-Plan.md)
-3. Stage review and future direction: [planning/Spio-Stage-Review-and-Future-Features.md](./planning/Spio-Stage-Review-and-Future-Features.md)
+2. Planning roadmap: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
+3. Stage review and future direction: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
 4. Version-decoupling rules: [governance/Spio-Version-Decoupling-Constraints.md](./governance/Spio-Version-Decoupling-Constraints.md)
 5. Local offline package contract: [governance/Spio-Local-Offline-Package-Contract.md](./governance/Spio-Local-Offline-Package-Contract.md)
-6. Platform migration handoff: [planning/Spio-Platform-Migration-Handoff.md](./planning/Spio-Platform-Migration-Handoff.md)
+6. Platform migration handoff: [plan/repository-delivery-convergence/Evidence.md](./plan/repository-delivery-convergence/Evidence.md)
 7. Package-manager verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
 7. Verification matrix: [operations/Spio-Verification-Matrix.md](./operations/Spio-Verification-Matrix.md)
 8. External compiler knowledge pack: [external/for-styio/Styio-for-Spio-Developers.md](./external/for-styio/Styio-for-Spio-Developers.md)
@@ -32,9 +32,9 @@
 ## Recommended Reading Order
 
 1. `BUILD-AND-DEV-ENV.md`
-2. `planning/Spio-Master-Plan.md`
-3. `planning/Spio-Stage-Review-and-Future-Features.md`
-4. `planning/Spio-Future-Direction-and-Styio-Coordination.md`
+2. `plan/repository-delivery-convergence/Evidence.md`
+3. `plan/repository-delivery-convergence/Evidence.md`
+4. `plan/repository-delivery-convergence/Evidence.md`
 5. `governance/Spio-Version-Decoupling-Constraints.md`
 6. `adr/INDEX.md`
 7. `governance/Spio-Cloud-Control-Plane-Contract.md`
@@ -48,9 +48,9 @@
 15. `security/Spio-Private-Security-Module-Contract.md`
 16. `registry/Spio-Registry-Client-Contract.md`
 17. `registry/Spio-Registry-Deployment-Baseline.md`
-18. `planning/Spio-Workstreams-and-TODOs.md`
+18. `plan/repository-delivery-convergence/Evidence.md`
 19. `operations/Spio-Verification-Matrix.md`
-20. `planning/Spio-Platform-Migration-Handoff.md`
+20. `plan/repository-delivery-convergence/Evidence.md`
 21. `operations/Spio-Repo-Split-Runbook.md`
 22. `external/for-styio/Styio-External-Interface-Requirement-Spec.md`
 23. `external/for-styio/Styio-for-Spio-Developers.md`

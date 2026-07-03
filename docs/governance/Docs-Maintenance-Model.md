@@ -63,7 +63,7 @@ Must not:
 - redefine operational gate commands
 - embed deployment-specific secrets or credentials
 
-### `docs/planning/`
+### `docs/plan/`
 
 Owns:
 
@@ -117,17 +117,17 @@ Must not:
 - registry client contract: `docs/registry/Spio-Registry-Client-Contract.md`
 - registry deployment baseline: `docs/registry/Spio-Registry-Deployment-Baseline.md`
 - design and implementation decision records: `docs/adr/INDEX.md`
-- overall roadmap: `docs/planning/Spio-Master-Plan.md`
-- stage review and future feature priorities: `docs/planning/Spio-Stage-Review-and-Future-Features.md`
-- future direction and cross-team coordination: `docs/planning/Spio-Future-Direction-and-Styio-Coordination.md`
-- workstream TODOs: `docs/planning/Spio-Workstreams-and-TODOs.md`
-- bootstrap summary: `docs/planning/Spio-Bootstrap-Checklist.md`
+- overall roadmap: `docs/plan/repository-delivery-convergence/Evidence.md`
+- stage review and future feature priorities: `docs/plan/repository-delivery-convergence/Evidence.md`
+- future direction and cross-team coordination: `docs/plan/repository-delivery-convergence/Evidence.md`
+- workstream TODOs: `docs/plan/repository-delivery-convergence/Evidence.md`
+- bootstrap summary: `docs/plan/repository-delivery-convergence/Evidence.md`
 - gate definitions and commands: `docs/operations/Spio-Verification-Matrix.md`
 - registry server operational validation: `docs/operations/Spio-Registry-Server-Runbook.md`
 - split procedure: `docs/operations/Spio-Repo-Split-Runbook.md`
 - `styio` developer knowledge: `docs/external/for-styio/Styio-for-Spio-Developers.md`
 - `styio` handoff interface spec: `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md`
-- `styio` public interface expectations: `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
+- `styio` public interface expectations: `docs/plan/repository-delivery-convergence/Evidence.md`
 
 ## 3. Drift Prevention Rules
 

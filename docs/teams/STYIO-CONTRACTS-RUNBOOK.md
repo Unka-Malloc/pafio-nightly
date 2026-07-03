@@ -18,7 +18,7 @@ without letting any path drift into undocumented behavior.
 3. `docs/governance/Spio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
-6. `docs/planning/Spio-Platform-Migration-Handoff.md`
+6. `docs/plan/repository-delivery-convergence/Evidence.md`
 7. `docs/governance/Spio-Local-Offline-Package-Contract.md`
 
 ## Daily Workflow

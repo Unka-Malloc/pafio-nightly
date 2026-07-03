@@ -33,7 +33,7 @@ The normative split is defined in
 
 The source-level ownership summary lives in
 [`src/README.md`](src/README.md) and the planning note for the split lives in
-[`docs/planning/Spio-Native-Target-Split.md`](docs/planning/Spio-Native-Target-Split.md).
+[`docs/plan/repository-delivery-convergence/Evidence.md`](docs/plan/repository-delivery-convergence/Evidence.md).
 
 ## Independence Rules
 
@@ -83,7 +83,7 @@ Python remains in-tree only where it owns repository automation, contract gates,
 Before moving this subtree into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, `spio` developers should read:
 
 - `docs/external/for-styio/Styio-for-Spio-Developers.md`
-- `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
+- `docs/plan/repository-delivery-convergence/Evidence.md`
 - `docs/governance/Spio-Version-Decoupling-Constraints.md`
 
 Those documents are the migration knowledge pack for working against `styio` without creating hidden source-level dependencies.
@@ -154,9 +154,9 @@ Current source-build and platform boundary:
 
 For the full implementation and migration plan, start with:
 
-- `docs/planning/Spio-Master-Plan.md`
-- `docs/planning/Spio-Stage-Review-and-Future-Features.md`
-- `docs/planning/Spio-Workstreams-and-TODOs.md`
+- `docs/plan/repository-delivery-convergence/Evidence.md`
+- `docs/plan/repository-delivery-convergence/Evidence.md`
+- `docs/plan/repository-delivery-convergence/Evidence.md`
 - `docs/operations/Spio-Verification-Matrix.md`
 - `docs/operations/Spio-Repo-Split-Runbook.md`
 - `docs/governance/Spio-Local-Offline-Package-Contract.md`

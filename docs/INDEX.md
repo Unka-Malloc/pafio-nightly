@@ -18,7 +18,7 @@
 | `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative spio rules. These files define stable contracts, policy, and compatibility constraints. |
 | `history/` | [History Index](./history/INDEX.md) | Hold active daily recovery notes for spio; these files track interrupted checkpoints, recovery commands, and rollback points before older provenance moves to docs/archive/history/. |
 | `operations/` | [Operations Index](./operations/INDEX.md) | Hold executable verification and migration procedures for spio. |
-| `planning/` | [Planning Index](./planning/INDEX.md) | Hold delivery phases, workstreams, and planning summaries for spio. |
+| `planning/` | [Planning Index](./plan/repository-delivery-convergence/Evidence.md) | Hold delivery phases, workstreams, and planning summaries for spio. |
 | `registry/` | [Registry Index](./registry/INDEX.md) | Separate local package-manager registry client and offline package rules from server-side package distribution and registry control-plane ownership now moved to styio-platform. |
 | `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for spio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
 | `security/` | [Security Index](./security/INDEX.md) | Define the public/private boundary for security-sensitive spio code so registry auth, account policy, and trust decisions do not leak into the open-source tree. |

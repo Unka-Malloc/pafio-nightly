@@ -41,10 +41,10 @@ Styio / Contracts -> styio-platform handoff
 
 ## Escalation Rules
 
-1. If implementation and planning disagree, escalate to `docs/planning/`.
+1. If implementation and planning disagree, escalate to `docs/plan/`.
 2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/external/for-styio/`.
 3. If registry delivery shape disagrees, escalate to `docs/registry/`.
-4. If platform service ownership disagrees, escalate to `docs/planning/Spio-Platform-Migration-Handoff.md` and the downstream `styio-platform` docs.
+4. If platform service ownership disagrees, escalate to `docs/plan/repository-delivery-convergence/Evidence.md` and the downstream `styio-platform` docs.
 5. If workflow or delivery process disagrees, escalate to `docs/assets/workflow/`.
 
 ## Checkpoint Policy
