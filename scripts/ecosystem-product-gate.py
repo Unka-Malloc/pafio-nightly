@@ -19,8 +19,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_SPIO = ROOT / "scripts" / "spio"
 SAMPLE_GATE = ROOT / "scripts" / "ecosystem-sample-workflow-gate.py"
 HOSTED_SERVER = ROOT / "scripts" / "spio-hosted-serve.py"
-VIEW_APP_ROOT = ROOT.parent / "styio-view" / "frontend" / "styio_view_app"
-PRODUCT_REPORT_MARKER = "STYIO_VIEW_PRODUCT_REPORT "
+VIEW_APP_ROOT = ROOT.parent / "vityo-nightly" / "frontend" / "vityo_app"
+PRODUCT_REPORT_MARKER = "VITYO_PRODUCT_REPORT "
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 
@@ -573,48 +573,48 @@ def main(argv: list[str] | None = None) -> int:
             local_view_env = os.environ.copy()
             local_view_env.update(
                 {
-                    "STYIO_VIEW_PRODUCT_GATE": "1",
-                    "STYIO_VIEW_PRODUCT_WORKSPACE_ROOT": str(workspace_root_local),
-                    "STYIO_VIEW_PRODUCT_MANIFEST_PATH": str(manifest_path_local),
-                    "STYIO_VIEW_PRODUCT_WORKSPACE2_ROOT": str(
+                    "VITYO_PRODUCT_GATE": "1",
+                    "VITYO_PRODUCT_WORKSPACE_ROOT": str(workspace_root_local),
+                    "VITYO_PRODUCT_MANIFEST_PATH": str(manifest_path_local),
+                    "VITYO_PRODUCT_WORKSPACE2_ROOT": str(
                         workspace_root_local_multi
                     ),
-                    "STYIO_VIEW_PRODUCT_MANIFEST2_PATH": str(
+                    "VITYO_PRODUCT_MANIFEST2_PATH": str(
                         manifest_path_local_multi
                     ),
-                    "STYIO_VIEW_PRODUCT_WORKSPACE3_ROOT": str(
+                    "VITYO_PRODUCT_WORKSPACE3_ROOT": str(
                         workspace_root_local_failure
                     ),
-                    "STYIO_VIEW_PRODUCT_MANIFEST3_PATH": str(
+                    "VITYO_PRODUCT_MANIFEST3_PATH": str(
                         manifest_path_local_failure
                     ),
-                    "STYIO_VIEW_PRODUCT_WORKSPACE4_ROOT": str(
+                    "VITYO_PRODUCT_WORKSPACE4_ROOT": str(
                         workspace_root_local_registry_publish
                     ),
-                    "STYIO_VIEW_PRODUCT_MANIFEST4_PATH": str(
+                    "VITYO_PRODUCT_MANIFEST4_PATH": str(
                         manifest_path_local_registry_publish
                     ),
-                    "STYIO_VIEW_PRODUCT_WORKSPACE5_ROOT": str(
+                    "VITYO_PRODUCT_WORKSPACE5_ROOT": str(
                         workspace_root_local_registry_consume
                     ),
-                    "STYIO_VIEW_PRODUCT_MANIFEST5_PATH": str(
+                    "VITYO_PRODUCT_MANIFEST5_PATH": str(
                         manifest_path_local_registry_consume
                     ),
-                    "STYIO_VIEW_PRODUCT_WORKSPACE6_ROOT": str(
+                    "VITYO_PRODUCT_WORKSPACE6_ROOT": str(
                         workspace_root_local_registry_missing
                     ),
-                    "STYIO_VIEW_PRODUCT_MANIFEST6_PATH": str(
+                    "VITYO_PRODUCT_MANIFEST6_PATH": str(
                         manifest_path_local_registry_missing
                     ),
-                    "STYIO_VIEW_PRODUCT_REGISTRY_ROOT": str(registry_root_local),
-                    "STYIO_VIEW_SPIO_BIN": str(spio_bin),
-                    "STYIO_VIEW_PRODUCT_STYIO_BIN": str(styio_bin),
-                    "STYIO_VIEW_PRODUCT_STYIO_ALT_BIN": str(alternate_styio_bin),
+                    "VITYO_PRODUCT_REGISTRY_ROOT": str(registry_root_local),
+                    "VITYO_SPIO_BIN": str(spio_bin),
+                    "VITYO_PRODUCT_STYIO_BIN": str(styio_bin),
+                    "VITYO_PRODUCT_STYIO_ALT_BIN": str(alternate_styio_bin),
                     "SPIO_HOME": str(local_spio_home),
                 }
             )
             local_view_step = run_step(
-                "view-local-product-workflow",
+                "vityo-local-product-workflow",
                 [
                     "flutter",
                     "test",
@@ -632,7 +632,7 @@ def main(argv: list[str] | None = None) -> int:
             local_report_step_ok = bool(local_reports)
             steps.append(
                 {
-                    "name": "view-local-product-report",
+                    "name": "vityo-local-product-report",
                     "kind": "report",
                     "command": ["extract-product-report", local_view_step["name"]],
                     "returncode": 0 if local_report_step_ok else 1,
@@ -751,45 +751,45 @@ def main(argv: list[str] | None = None) -> int:
             flutter_env = os.environ.copy()
             flutter_env.update(
                 {
-                    "STYIO_VIEW_PRODUCT_GATE": "1",
-                    "STYIO_VIEW_HOSTED_URL": str(ready["base_url"]),
-                    "STYIO_VIEW_HOSTED_WORKSPACE_ROOT": str(workspace_root),
-                    "STYIO_VIEW_HOSTED_MANIFEST_PATH": str(manifest_path),
-                    "STYIO_VIEW_HOSTED_WORKSPACE_ID": str(workspace_id or ""),
-                    "STYIO_VIEW_HOSTED_WORKSPACE2_ROOT": str(workspace_root_multi),
-                    "STYIO_VIEW_HOSTED_MANIFEST2_PATH": str(manifest_path_multi),
-                    "STYIO_VIEW_HOSTED_WORKSPACE2_ID": str(workspace_id_multi or ""),
-                    "STYIO_VIEW_HOSTED_WORKSPACE3_ROOT": str(workspace_root_failure),
-                    "STYIO_VIEW_HOSTED_MANIFEST3_PATH": str(manifest_path_failure),
-                    "STYIO_VIEW_HOSTED_WORKSPACE3_ID": str(
+                    "VITYO_PRODUCT_GATE": "1",
+                    "VITYO_HOSTED_URL": str(ready["base_url"]),
+                    "VITYO_HOSTED_WORKSPACE_ROOT": str(workspace_root),
+                    "VITYO_HOSTED_MANIFEST_PATH": str(manifest_path),
+                    "VITYO_HOSTED_WORKSPACE_ID": str(workspace_id or ""),
+                    "VITYO_HOSTED_WORKSPACE2_ROOT": str(workspace_root_multi),
+                    "VITYO_HOSTED_MANIFEST2_PATH": str(manifest_path_multi),
+                    "VITYO_HOSTED_WORKSPACE2_ID": str(workspace_id_multi or ""),
+                    "VITYO_HOSTED_WORKSPACE3_ROOT": str(workspace_root_failure),
+                    "VITYO_HOSTED_MANIFEST3_PATH": str(manifest_path_failure),
+                    "VITYO_HOSTED_WORKSPACE3_ID": str(
                         workspace_id_failure or ""
                     ),
-                    "STYIO_VIEW_HOSTED_WORKSPACE4_ROOT": str(
+                    "VITYO_HOSTED_WORKSPACE4_ROOT": str(
                         workspace_root_registry_publish
                     ),
-                    "STYIO_VIEW_HOSTED_MANIFEST4_PATH": str(
+                    "VITYO_HOSTED_MANIFEST4_PATH": str(
                         manifest_path_registry_publish
                     ),
-                    "STYIO_VIEW_HOSTED_WORKSPACE5_ROOT": str(
+                    "VITYO_HOSTED_WORKSPACE5_ROOT": str(
                         workspace_root_registry_consume
                     ),
-                    "STYIO_VIEW_HOSTED_MANIFEST5_PATH": str(
+                    "VITYO_HOSTED_MANIFEST5_PATH": str(
                         manifest_path_registry_consume
                     ),
-                    "STYIO_VIEW_HOSTED_WORKSPACE6_ROOT": str(
+                    "VITYO_HOSTED_WORKSPACE6_ROOT": str(
                         workspace_root_registry_missing
                     ),
-                    "STYIO_VIEW_HOSTED_MANIFEST6_PATH": str(
+                    "VITYO_HOSTED_MANIFEST6_PATH": str(
                         manifest_path_registry_missing
                     ),
-                    "STYIO_VIEW_PRODUCT_REGISTRY_ROOT": str(registry_root_hosted),
-                    "STYIO_VIEW_PRODUCT_STYIO_BIN": str(styio_bin),
-                    "STYIO_VIEW_PRODUCT_STYIO_ALT_BIN": str(alternate_styio_bin),
-                    "STYIO_VIEW_FORCE_HOSTED_ROUTE": "1",
+                    "VITYO_PRODUCT_REGISTRY_ROOT": str(registry_root_hosted),
+                    "VITYO_PRODUCT_STYIO_BIN": str(styio_bin),
+                    "VITYO_PRODUCT_STYIO_ALT_BIN": str(alternate_styio_bin),
+                    "VITYO_FORCE_HOSTED_ROUTE": "1",
                 }
             )
             view_step = run_step(
-                "view-hosted-product-workflow",
+                "vityo-hosted-product-workflow",
                 [
                     "flutter",
                     "test",
@@ -807,7 +807,7 @@ def main(argv: list[str] | None = None) -> int:
             hosted_report_step_ok = bool(hosted_reports)
             steps.append(
                 {
-                    "name": "view-hosted-product-report",
+                    "name": "vityo-hosted-product-report",
                     "kind": "report",
                     "command": ["extract-product-report", view_step["name"]],
                     "returncode": 0 if hosted_report_step_ok else 1,

@@ -107,5 +107,5 @@ Rules:
 
 - frontend and backend may share vocabulary, but they do not share implementation
 - repository hosting and cloud platform may share security policy and deployment ownership inside `styio-platform`, but `spio` should consume them through contracts
-- `styio-view` may consume the same backend planes through product-owned adapters; `spio` must not fork backend semantics to suit a single frontend
+- `vityo-nightly` may consume the same backend planes through product-owned adapters; `spio` must not fork backend semantics to suit a single frontend
 - the control console must keep a consumer map of every backend interaction instead of relying on page-local assumptions

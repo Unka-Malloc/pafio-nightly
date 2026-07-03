@@ -39,12 +39,12 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
           path: styio-nightly
 
-      - name: Checkout styio-view sibling repository
+      - name: Checkout Vityo sibling repository
         uses: actions/checkout@v5
         with:
-          repository: Unka-Malloc/styio-view
-          ref: nightly
-          path: styio-view
+          repository: Unka-Malloc/vityo-nightly
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
+          path: vityo-nightly
 
       - name: Set up standardized Python
         uses: actions/setup-python@v6
