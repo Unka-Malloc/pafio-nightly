@@ -9,6 +9,7 @@ CONTROL_LOG="$ROOT/control-plane.log"
 STATIC_LOG="$ROOT/static-server.log"
 CONTROL_PID=""
 STATIC_PID=""
+AUTH_TOKEN="interop-control-token"
 
 cleanup() {
   if [[ -n "$CONTROL_PID" ]]; then
@@ -59,6 +60,7 @@ python3 "$REPO_ROOT/scripts/registry-v2-control-plane-server.py" \
   --spio-bin "$SPIO_BIN" \
   --read-root-url "$REGISTRY_URL" \
   --control-plane-base-url "$CONTROL_BASE" \
+  --auth-token "$AUTH_TOKEN" \
   --bind 127.0.0.1 \
   --port "$CONTROL_PORT" >"$CONTROL_LOG" 2>&1 &
 CONTROL_PID="$!"
@@ -97,7 +99,12 @@ cat >"$ROOT/publish/util/src/lib.styio" <<'EOF'
 # util
 EOF
 
-PUBLISH_JSON="$("$SPIO_BIN" --json publish --manifest-path "$ROOT/publish/util/spio.toml" --registry "$CONTROL_BASE")"
+PUBLISH_JSON="$(
+  "$SPIO_BIN" --json publish \
+    --manifest-path "$ROOT/publish/util/spio.toml" \
+    --registry "$CONTROL_BASE" \
+    --registry-header "Authorization: Bearer ${AUTH_TOKEN}"
+)"
 python3 - "$PUBLISH_JSON" <<'PY'
 import json
 import sys
@@ -117,7 +124,7 @@ PY
 
 curl -fsS "${REGISTRY_URL}/config.json" >/dev/null
 curl -fsS "${REGISTRY_URL}/index/acme/util.jsonl" >/dev/null
-"$SPIO_BIN" --json registry trust import "${CONTROL_BASE}/descriptor" >/dev/null
+"$SPIO_BIN" --json registry trust import --dev "${CONTROL_BASE}/descriptor" >/dev/null
 
 cat >"$ROOT/spio.toml" <<EOF
 [spio]
@@ -150,7 +157,10 @@ assert payload["registry_packages"] == 1
 assert payload["packages"] == 2
 PY
 
-if "$SPIO_BIN" publish --manifest-path "$ROOT/publish/util/spio.toml" --registry "$CONTROL_BASE" >/dev/null 2>&1; then
+if "$SPIO_BIN" publish \
+  --manifest-path "$ROOT/publish/util/spio.toml" \
+  --registry "$CONTROL_BASE" \
+  --registry-header "Authorization: Bearer ${AUTH_TOKEN}" >/dev/null 2>&1; then
   echo "duplicate remote publish unexpectedly succeeded" >&2
   exit 1
 fi

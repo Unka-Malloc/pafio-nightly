@@ -2,7 +2,7 @@
 
 **Purpose:** Record the v1 manifest and lock conventions that remain authoritative through the current minimal resolver phase.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-07-11
 
 ## Phase 2 Core and Phase 3 Minimal Resolver
 
@@ -13,6 +13,7 @@ The current native implementation freezes:
 - workspace membership rules
 - `workspace`, `path`, pinned `git`, and registry dependencies
 - `single-version-v1` resolution across workspace, path, pinned git, and registry sources
+- exact-version-only pins (`x.y.z`) with no semver ranges
 
 ## Manifest
 
@@ -29,7 +30,7 @@ The current native implementation freezes:
 If `[package]` is present:
 
 - `package.name` must match `namespace/name`
-- `package.version` must be strict semver `x.y.z`
+- `package.version` must be exact semver `x.y.z` (numeric triple only; no prerelease, no `^`/`~`/`>=` ranges)
 - `package.edition` must be an explicit string
 - `package.publish` is optional and defaults to `false`
 - `[toolchain]` is required
@@ -65,9 +66,27 @@ If `[package]` is present:
 - `git` dependencies require `rev`
 - registry dependencies require:
   - `package = "namespace/name"`
-  - `version = "x.y.z"`
+  - `version = "x.y.z"` (exact pin, not a range)
   - `registry = "<url>"`
 - registry roots must use `file://`, `http://`, or `https://`
+
+### Version Policy (single-version-v1)
+
+**Decision:** keep exact-version-only pins. Package and registry dependency versions must match `^\d+\.\d+\.\d+$`.
+
+**Rationale:**
+
+- lock IDs and resolution stay deterministic without a SAT solver
+- local-first workflows stay simple: every edge is an exact pin
+- the registry index stays small because it does not need range metadata
+
+**Rejected forms** (parse-time `ValidationError` / resolve-time `ResolutionError`):
+
+- caret/tilde/comparator ranges: `^1.0.0`, `~1.2.0`, `>=1.0.0`
+- prerelease or build metadata: `1.0.0-beta`, `1.0.0+build`
+- shortened or prefixed forms: `1.0`, `v1.0.0`
+
+Semver ranges remain deferred. Introducing them requires a requirements update and lock/registry contract changes; they are not part of `single-version-v1`.
 
 ## Lockfile
 
@@ -97,6 +116,8 @@ If `[package]` is present:
 - the manifest at the pinned git revision is authoritative for package name, version, and transitive dependencies
 - the manifest inside the registry package snapshot is authoritative for package name, version, and transitive dependencies
 - `single-version-v1` allows one effective package version and one effective source fingerprint per package name
+- the dependency graph must be acyclic; cycles fail with a diagnostic naming the full lock-id path (`A -> B -> A`)
+- version or source conflicts fail with both requirement chains (`required by: ...`) so callers can fix the right manifest
 - git-sourced `path` dependencies must stay within the pinned snapshot instead of escaping onto host-local paths
 - registry packages are fetched by immutable blob digest and extracted under `SPIO_HOME/registry/checkouts/`
 - the lockfile path is fixed to the adjacent `spio.lock` next to the selected manifest
@@ -194,3 +215,4 @@ Fixture classes include:
 - These conventions freeze a subset before the full implementation exists.
 - Validation-first scaffolding can feel slow compared with writing the resolver directly.
 - TOML does not have a universally adopted schema system, so semantic validation still needs custom code.
+- Exact-version-only pins trade expressiveness for determinism; range support is intentionally deferred rather than partially implemented.

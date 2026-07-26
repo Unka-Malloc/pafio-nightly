@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
@@ -35,7 +35,10 @@ class RoleKey:
 
 def normalize_local_root(value: str) -> pathlib.Path:
     parsed = urlsplit(value)
-    if parsed.scheme and parsed.scheme != "file":
+    # Windows drive paths like "T:\\registry" are parsed as scheme="T" by urlsplit.
+    if parsed.scheme and parsed.scheme != "file" and not (
+        len(parsed.scheme) == 1 and parsed.scheme.isalpha() and (value[1:3] in (":\\", ":/") or value[1:2] == ":")
+    ):
         raise RegistryV2Error("registry v2 tools support only local paths or file:// roots")
     if parsed.scheme == "file":
         path = pathlib.Path(unquote(parsed.path))
@@ -201,7 +204,7 @@ def parse_semver_key(version: str) -> tuple[int, int, int, str]:
 
 
 def utc_now() -> datetime:
-    return datetime.now(tz=UTC)
+    return datetime.now(tz=timezone.utc)
 
 
 def expires_in(days: int) -> str:

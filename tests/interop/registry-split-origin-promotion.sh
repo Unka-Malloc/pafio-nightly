@@ -136,10 +136,12 @@ import hashlib
 import json
 import pathlib
 import sys
+from datetime import datetime, timedelta, timezone
 
 registry_url = sys.argv[1]
 root_metadata = pathlib.Path(sys.argv[2]).read_bytes()
 descriptor_path = pathlib.Path(sys.argv[3])
+issued_at = datetime.now(timezone.utc)
 descriptor_path.write_text(
     json.dumps(
         {
@@ -148,8 +150,8 @@ descriptor_path.write_text(
             "registry_root": registry_url,
             "control_plane_base_url": "split-origin-local-fixture",
             "root_sha256": hashlib.sha256(root_metadata).hexdigest(),
-            "issued_at": "2026-05-02T00:00:00Z",
-            "expires": "2026-06-02T00:00:00Z",
+            "issued_at": issued_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "expires": (issued_at + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         },
         sort_keys=True,
     )
@@ -157,7 +159,7 @@ descriptor_path.write_text(
     encoding="utf-8",
 )
 PY
-"$SPIO_BIN" --json registry trust import "$TMP_ROOT/registry-descriptor.json" >/dev/null
+"$SPIO_BIN" --json registry trust import --dev "$TMP_ROOT/registry-descriptor.json" >/dev/null
 
 FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"
 python3 - "$FETCH_JSON" <<'PY'

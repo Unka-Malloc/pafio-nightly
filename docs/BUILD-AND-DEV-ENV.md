@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-07-11
 
 ## Who This Is For
 
@@ -127,6 +127,23 @@ Run source-build mode without a published external compiler:
 ./scripts/spio use build --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml
 ./scripts/spio build minimal --manifest-path tests/unit/fixtures/manifests/ok-single-package/spio.toml --yes
 ```
+
+## Repository-Local Developer Cache
+
+Use the repository-root `.cache/` directory for project-specific development
+materials that are useful locally but must not be committed. Suitable contents
+include downloaded source archives or checkouts, reusable installers, portable
+developer tools, and expensive download caches.
+
+The cache is optional and reconstructible. Do not place canonical source,
+configuration, credentials, release evidence, or the only copy of an artifact
+under `.cache/`. Scripts that consume cached material must resolve the directory
+relative to the repository root, create missing subdirectories, and either
+re-download missing inputs or report a clear recovery action.
+
+Normal CMake output and FetchContent state keep their established locations
+under `build/`; they are not moved into `.cache/`. The root `.gitignore`
+excludes `.cache/` from commits.
 
 ## Subsystem-Specific Follow-Ups
 

@@ -1,8 +1,11 @@
 #include "SpioApp/PackageApp.hpp"
 
 #include "SpioCLI/Support.hpp"
+#include "SpioCore/AtomicFile.hpp"
+#include "SpioCore/FileLock.hpp"
 #include "SpioCore/Paths.hpp"
 #include "SpioCore/Process.hpp"
+#include "SpioCore/ToolPaths.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioPack/Pack.hpp"
@@ -168,9 +171,9 @@ json RunRegistryV2ControlPlanePublish(
   args.push_back(request_body.dump());
 
   const spio::ProcessResult result = spio::RunProcess<spio::PublishError>({
-      .program = "curl",
+      .program = spio::ResolvedCurlPath(),
       .args = args,
-      .search_path = true,
+      .search_path = false,
       .timeout = spio::kExternalProcessStepTimeout,
       .error_context = "registry control-plane publish request",
   });
@@ -285,16 +288,9 @@ json BuildHttpPublishPayload(
 
 void WriteCanonicalLockfile(const fs::path &lockfile_path, const std::string &rendered)
 {
-  std::ofstream out(lockfile_path);
-  if (!out)
-  {
-    throw std::runtime_error("failed to open lockfile for write: " + lockfile_path.string());
-  }
-  out << rendered;
-  if (!out.good())
-  {
-    throw std::runtime_error("failed to write lockfile: " + lockfile_path.string());
-  }
+  const fs::path project_state = lockfile_path.parent_path();
+  const spio::FileLockGuard lock = spio::AcquireFileLock(project_state, spio::FileLockScope::kProject);
+  spio::AtomicWriteFile(lockfile_path, rendered);
 }
 
 }  // namespace
@@ -1419,18 +1415,45 @@ int HandleRegistry(const std::vector<std::string> &args, bool as_json)
     const fs::path spio_home = ResolveSpioHome();
     if (action == "import")
     {
-      if (args.size() != 3)
+      bool allow_dev = false;
+      std::string source;
+      for (size_t index = 2; index < args.size(); ++index)
+      {
+        if (args[index] == "--dev")
+        {
+          allow_dev = true;
+          continue;
+        }
+        if (!source.empty())
+        {
+          return EmitError(
+              {"UsageError",
+               kExitUsage,
+               "registry trust import accepts [--dev] <descriptor-url|descriptor-file>",
+               "registry"},
+              as_json);
+        }
+        source = args[index];
+      }
+      if (source.empty())
       {
         return EmitError(
-            {"UsageError", kExitUsage, "registry trust import requires <descriptor-url|descriptor-file>", "registry"},
+            {"UsageError",
+             kExitUsage,
+             "registry trust import accepts [--dev] <descriptor-url|descriptor-file>",
+             "registry"},
             as_json);
       }
-      const RegistryTrustPin pin = ImportRegistryTrustDescriptor(spio_home, args[2]);
+      const RegistryTrustPin pin = ImportRegistryTrustDescriptor(
+          spio_home,
+          source,
+          RegistryTrustImportOptions{.allow_dev_unsigned = allow_dev});
       return EmitSuccess(
           {
               {"command", "registry trust import"},
               {"message", "imported registry trust descriptor for " + pin.registry_root},
               {"spio_home", spio_home.string()},
+              {"dev_unsigned", allow_dev},
               {"pin", SerializeRegistryTrustPin(pin)},
           },
           as_json);
