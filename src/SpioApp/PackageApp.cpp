@@ -5,11 +5,13 @@
 #include "SpioCore/FileLock.hpp"
 #include "SpioCore/Paths.hpp"
 #include "SpioCore/Process.hpp"
+#include "SpioCore/Sha256.hpp"
 #include "SpioCore/ToolPaths.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioPack/Pack.hpp"
 #include "SpioPublish/Publish.hpp"
+#include "SpioResolve/ResolutionContract.hpp"
 #include "SpioResolve/Resolver.hpp"
 #include "SpioSecurity/RegistrySecurity.hpp"
 #include "SpioSecurity/RegistryTrust.hpp"
@@ -834,43 +836,111 @@ int HandleSync(const std::vector<std::string> &args, bool as_json)
   }
 
   const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "sync", workflow_flags, resolve_options);
-      lock_policy_error.has_value())
+  const fs::path requested_lockfile_path = manifest_path.parent_path() / "spio.lock";
+  if (workflow_flags.locked && !fs::exists(requested_lockfile_path))
   {
-    return EmitError(*lock_policy_error, as_json);
+    return EmitError(
+        {
+            "LockfileError",
+            kExitLock,
+            "lockfile missing: " + requested_lockfile_path.string(),
+            "sync",
+        },
+        as_json);
   }
 
   try
   {
-    const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
-    const std::string rendered = SerializeLockfileCanonical(generated.lockfile);
+    const ResolvedGraphResult graph =
+        ResolveSingleVersionGraph(manifest_path, resolve_options);
+    const std::string rendered = SerializeLockfileCanonical(graph.lockfile);
+    const std::string manifest_bytes =
+        SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+    const std::string manifest_sha256 = Sha256Text(manifest_bytes);
+    const std::string lock_sha256 = Sha256Text(rendered);
+    const std::string resolution_bytes =
+        SerializeResolutionCanonical(graph, manifest_sha256, lock_sha256);
+    const fs::path resolution_path =
+        ProjectStateRootForManifest(graph.manifest_path) / "resolution-v1.json";
     std::string lockfile_mode = workflow_flags.locked ? "locked" : "unchanged";
 
-    if (!workflow_flags.locked)
+    size_t git_package_count = 0;
+    size_t registry_package_count = 0;
+    for (const ResolvedPackage &package : graph.packages)
     {
-      bool write_lockfile = true;
-      if (fs::exists(generated.lockfile_path))
+      if (package.source_kind == "git")
       {
-        write_lockfile = ReadFile(generated.lockfile_path) != rendered;
+        ++git_package_count;
       }
+      else if (package.source_kind == "registry")
+      {
+        ++registry_package_count;
+      }
+    }
+
+    const FileLockGuard project_lock =
+        AcquireFileLock(graph.lockfile_path.parent_path(), FileLockScope::kProject);
+    const std::string current_manifest_bytes =
+        SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+    if (Sha256Text(current_manifest_bytes) != manifest_sha256)
+    {
+      throw ValidationError(
+          "manifest changed while sync was preparing: " + graph.manifest_path.string());
+    }
+
+    if (workflow_flags.locked)
+    {
+      if (!fs::exists(graph.lockfile_path))
+      {
+        return EmitError(
+            {
+                "LockfileError",
+                kExitLock,
+                "lockfile missing: " + graph.lockfile_path.string(),
+                "sync",
+            },
+            as_json);
+      }
+      if (ReadFile(graph.lockfile_path) != rendered)
+      {
+        return EmitError(
+            {
+                "LockfileError",
+                kExitLock,
+                "lockfile is stale: " + graph.lockfile_path.string(),
+                "sync",
+            },
+            as_json);
+      }
+    }
+    else
+    {
+      const bool write_lockfile =
+          !fs::exists(graph.lockfile_path) ||
+          ReadFile(graph.lockfile_path) != rendered;
       if (write_lockfile)
       {
-        WriteCanonicalLockfile(generated.lockfile_path, rendered);
+        AtomicWriteFile(graph.lockfile_path, rendered);
         lockfile_mode = "write";
       }
     }
 
-    const FetchCommandResult fetched = FetchDependencies(manifest_path, resolve_options);
+    if (!fs::exists(resolution_path) ||
+        ReadFile(resolution_path) != resolution_bytes)
+    {
+      AtomicWriteFile(resolution_path, resolution_bytes);
+    }
+
     return EmitSuccess(
         {
             {"command", "sync"},
-            {"message", "synced project dependencies for " + std::to_string(generated.lockfile.packages.size()) + " package(s)"},
-            {"manifest_path", generated.manifest_path.string()},
-            {"lockfile_path", generated.lockfile_path.string()},
+            {"message", "synced project dependencies for " + std::to_string(graph.packages.size()) + " package(s)"},
+            {"manifest_path", graph.manifest_path.string()},
+            {"lockfile_path", graph.lockfile_path.string()},
             {"lockfile_mode", lockfile_mode},
-            {"packages", generated.lockfile.packages.size()},
-            {"git_packages", fetched.git_package_count},
-            {"registry_packages", fetched.registry_package_count},
+            {"packages", graph.packages.size()},
+            {"git_packages", git_package_count},
+            {"registry_packages", registry_package_count},
             {"locked", workflow_flags.locked},
             {"offline", workflow_flags.offline},
         },

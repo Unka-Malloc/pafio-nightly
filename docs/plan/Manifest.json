@@ -17,7 +17,7 @@
   },
   {
     "id": "4456363d-f34c-4332-bd10-fbf3bb68b993",
-    "status": "in_progress",
+    "status": "deferred",
     "title": "Spio Package Manager Roadmap",
     "directory": "package-manager-roadmap",
     "source_files": [
@@ -30,5 +30,20 @@
     "goal": "Deliver the audited spio security, resolution, cache, concurrency, error-handling, workflow, and IDE-integration roadmap with per-label adversarial validation.",
     "description": "Product roadmap graph for the Styio package manager. Complements the repository-delivery-convergence meta-plan: convergence owns planning-workspace consolidation, this plan owns the security-first product completion (native TUF parity, control-plane auth, extraction prescan, signed descriptors, store locking, atomic writes, resolver/cache contract closure, receipts and Vityo payloads).",
     "checkpoints": "package-manager-roadmap/Checkpoints.json"
+  },
+  {
+    "id": "da2b8636-e716-4dcb-a3da-ddf89cc57c1c",
+    "status": "completed",
+    "title": "Pafio Thin Package Core",
+    "directory": "pafio-thin-core",
+    "source_files": [
+      "docs/plan/pafio-thin-core/Requirements.md",
+      "docs/plan/pafio-thin-core/Evidence.md",
+      "docs/plan/pafio-thin-core/Architecture.md",
+      "docs/plan/pafio-thin-core/Validation.md"
+    ],
+    "goal": "Converge Pafio on one trustworthy manifest-to-resolution package-consumption loop for Styio.",
+    "description": "A boundary-first replacement for the unfinished broad roadmap: preserve completed supply-chain hardening, close deterministic sync plus verified CAS plus a minimal Styio resolution contract, and defer compiler workflow, toolchain, cloud, IDE, registry-service, producer, solver-expansion, and naming work to separately accepted capabilities.",
+    "checkpoints": "pafio-thin-core/Checkpoints.json"
   }
 ]

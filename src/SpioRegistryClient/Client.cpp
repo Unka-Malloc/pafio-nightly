@@ -1,8 +1,11 @@
 #include "SpioRegistryClient/Client.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -24,6 +27,13 @@
 #include "SpioSecurity/RegistrySecurity.hpp"
 #include "SpioSecurity/RegistryTrust.hpp"
 #include "SpioSecurity/TufVerifier.hpp"
+
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
@@ -38,6 +48,27 @@ enum class RegistryRemoteObjectKind
   kMetadata,
   kArtifact,
 };
+
+uint64_t
+ProcessId() {
+#if defined(_WIN32)
+  return static_cast<uint64_t>(::_getpid());
+#else
+  return static_cast<uint64_t>(::getpid());
+#endif
+}
+
+fs::path
+UniqueTemporaryPath(const fs::path &path, const std::string_view label) {
+  static std::atomic<uint64_t> sequence{0};
+  const uint64_t nonce = static_cast<uint64_t>(
+    std::chrono::steady_clock::now().time_since_epoch().count()
+  );
+  return path.parent_path() /
+    (path.filename().string() + ".tmp." + std::string(label) + "." +
+     std::to_string(ProcessId()) + "." + std::to_string(nonce) + "." +
+     std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
+}
 
 std::string
 NormalizeRegistryRoot(std::string value) {
@@ -296,51 +327,59 @@ FetchUrlToFile(
   const RegistryRemoteObjectKind object_kind
 ) {
   fs::create_directories(path.parent_path());
-  const fs::path temp_path = path.parent_path() / (path.filename().string() + ".tmp");
-  const fs::path headers_path = path.parent_path() / (path.filename().string() + ".headers.tmp");
-  std::vector<std::string> args{"-fsSL", "-D", headers_path.string()};
-  const std::vector<std::string> policy_args = CurlReadPolicyArgs(static_cast<size_t>(max_bytes));
-  args.insert(args.end(), policy_args.begin(), policy_args.end());
-  for (const std::string &header : request_headers) {
-    args.push_back("-H");
-    args.push_back(header);
-  }
-  args.push_back("-o");
-  args.push_back(temp_path.string());
-  args.push_back(url);
-  const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
-    .program = spio::ResolvedCurlPath(),
-    .args = args,
-    .search_path = false,
-    .timeout = spio::kExternalProcessStepTimeout,
-    .error_context = "registry process",
-  });
-  if (result.exit_code != 0) {
+  const fs::path temp_path = UniqueTemporaryPath(path, "download");
+  const fs::path headers_path = UniqueTemporaryPath(path, "headers");
+  const auto cleanup = [&]() noexcept {
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     fs::remove(headers_path, ignored);
-    throw spio::FetchError(
-      "failed to fetch registry object '" + url + "': " + spio::DescribeProcessFailure(result)
-    );
+  };
+  try {
+    std::vector<std::string> args{"-fsSL", "-D", headers_path.string()};
+    const std::vector<std::string> policy_args = CurlReadPolicyArgs(static_cast<size_t>(max_bytes));
+    args.insert(args.end(), policy_args.begin(), policy_args.end());
+    for (const std::string &header : request_headers) {
+      args.push_back("-H");
+      args.push_back(header);
+    }
+    args.push_back("-o");
+    args.push_back(temp_path.string());
+    args.push_back(url);
+    const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
+      .program = spio::ResolvedCurlPath(),
+      .args = args,
+      .search_path = false,
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry process",
+    });
+    if (result.exit_code != 0) {
+      throw spio::FetchError(
+        "failed to fetch registry object '" + url + "': " + spio::DescribeProcessFailure(result)
+      );
+    }
+    const std::string media_type = ReadLastContentType(headers_path);
+    std::error_code ignored;
+    fs::remove(headers_path, ignored);
+    if (!IsAllowedRegistryMediaType(media_type, object_kind)) {
+      throw spio::FetchError(
+        "registry object has unsupported media type '" +
+        (media_type.empty() ? "<missing>" : media_type) + "': " + url
+      );
+    }
+    std::error_code size_error;
+    const uintmax_t downloaded_size = fs::file_size(temp_path, size_error);
+    if (size_error || downloaded_size > max_bytes) {
+      throw spio::FetchError("registry object exceeded response limit '" + url + "'");
+    }
+    std::error_code rename_error;
+    fs::rename(temp_path, path, rename_error);
+    if (rename_error) {
+      throw spio::CacheError("failed to finalize registry artifact cache: " + path.string());
+    }
   }
-  const std::string media_type = ReadLastContentType(headers_path);
-  std::error_code ignored;
-  fs::remove(headers_path, ignored);
-  if (!IsAllowedRegistryMediaType(media_type, object_kind)) {
-    fs::remove(temp_path, ignored);
-    throw spio::FetchError("registry object has unsupported media type '" + (media_type.empty() ? "<missing>" : media_type) + "': " + url);
-  }
-  std::error_code size_ec;
-  const uintmax_t downloaded_size = fs::file_size(temp_path, size_ec);
-  if (size_ec || downloaded_size > max_bytes) {
-    fs::remove(temp_path);
-    throw spio::FetchError("registry object exceeded response limit '" + url + "'");
-  }
-  std::error_code ec;
-  fs::rename(temp_path, path, ec);
-  if (ec) {
-    fs::remove(temp_path);
-    throw spio::CacheError("failed to finalize registry artifact cache: " + path.string());
+  catch (...) {
+    cleanup();
+    throw;
   }
 }
 
@@ -480,65 +519,6 @@ LoadEntry(
   throw spio::FetchError("registry v2 index does not contain package version: " + package_name + "@" + version);
 }
 
-void
-MaterializeArtifact(
-  const fs::path &spio_home,
-  const std::string &registry_root,
-  const std::vector<std::string> &request_headers,
-  const RegistryEntry &entry,
-  const bool offline
-) {
-  const fs::path blob_cache_path = BlobCachePath(spio_home, entry.sha256);
-  if (fs::exists(blob_cache_path)) {
-    const std::string actual_sha256 = spio::Sha256File(blob_cache_path);
-    if (actual_sha256 != entry.sha256) {
-      throw spio::CacheError("cached registry artifact sha256 mismatch: " + blob_cache_path.string());
-    }
-    std::error_code size_ec;
-    const uintmax_t cached_size = fs::file_size(blob_cache_path, size_ec);
-    if (size_ec || cached_size != entry.size_bytes) {
-      throw spio::CacheError("cached registry artifact size mismatch: " + blob_cache_path.string());
-    }
-    return;
-  }
-
-  const fs::path artifact_relative = NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
-  if (IsFileRegistry(registry_root)) {
-    const fs::path source_blob = FileUrlToPath(registry_root) / artifact_relative;
-    if (!fs::exists(source_blob)) {
-      throw spio::FetchError("registry v2 source artifact not found: " + source_blob.string());
-    }
-    fs::create_directories(blob_cache_path.parent_path());
-    std::error_code ec;
-    fs::copy_file(source_blob, blob_cache_path, fs::copy_options::overwrite_existing, ec);
-    if (ec) {
-      throw spio::CacheError("failed to cache registry v2 source artifact: " + blob_cache_path.string());
-    }
-  }
-  else {
-    if (offline) {
-      throw spio::FetchError("offline mode is missing cached registry artifact for " + entry.package + "@" + entry.version);
-    }
-    FetchUrlToFile(
-      JoinUrl(registry_root, artifact_relative.generic_string()),
-      blob_cache_path,
-      request_headers,
-      kRegistryArtifactMaxBytes,
-      RegistryRemoteObjectKind::kArtifact
-    );
-  }
-
-  std::error_code size_ec;
-  const uintmax_t actual_size = fs::file_size(blob_cache_path, size_ec);
-  if (size_ec || actual_size != entry.size_bytes) {
-    throw spio::FetchError("registry v2 source artifact size mismatch for " + entry.package + "@" + entry.version);
-  }
-  const std::string actual_sha256 = spio::Sha256File(blob_cache_path);
-  if (actual_sha256 != entry.sha256) {
-    throw spio::FetchError("registry v2 source artifact sha256 mismatch for " + entry.package + "@" + entry.version);
-  }
-}
-
 fs::path
 DetectSnapshotRoot(const fs::path &checkout_root) {
   if (fs::exists(checkout_root / "spio.toml")) {
@@ -602,42 +582,241 @@ ValidateTarListingPaths(const fs::path &blob_cache_path) {
 }
 
 fs::path
-EnsureCheckout(const fs::path &spio_home, const RegistryEntry &entry) {
-  const fs::path checkout_root = CheckoutPath(spio_home, entry.package, entry.version, entry.sha256);
+DigestLockRoot(const fs::path &spio_home, const std::string &sha256) {
+  return spio::RegistryCacheRoot(spio_home) / "locks" / "sha256" /
+    sha256.substr(0U, 2U) / sha256.substr(2U, 2U) / sha256;
+}
+
+std::string
+ReadyMarkerBytes(const std::string &sha256, const uintmax_t size_bytes) {
+  return json({
+    {"schema_version", 1},
+    {"sha256", sha256},
+    {"size_bytes", size_bytes},
+  }).dump(2) + '\n';
+}
+
+struct VerifiedCacheHit
+{
+  fs::path snapshot_root;
+  uintmax_t size_bytes = 0;
+};
+
+std::optional<VerifiedCacheHit>
+InspectVerifiedCache(
+  const fs::path &spio_home,
+  const std::string &package_name,
+  const std::string &version,
+  const std::string &sha256,
+  const std::optional<uintmax_t> expected_size,
+  std::string &failure
+) {
+  const fs::path blob_path = BlobCachePath(spio_home, sha256);
+  const fs::path checkout_root = CheckoutPath(spio_home, package_name, version, sha256);
   const fs::path ready_marker = checkout_root / ".spio-snapshot-ready";
-  if (fs::exists(ready_marker)) {
-    return DetectSnapshotRoot(checkout_root);
+
+  std::error_code status_error;
+  if (!fs::is_regular_file(blob_path, status_error) || status_error) {
+    failure = "verified blob is missing";
+    return std::nullopt;
+  }
+  const uintmax_t actual_size = fs::file_size(blob_path, status_error);
+  if (status_error) {
+    failure = "verified blob size is unreadable";
+    return std::nullopt;
+  }
+  if (expected_size.has_value() && actual_size != *expected_size) {
+    failure = "cached registry artifact size mismatch";
+    return std::nullopt;
+  }
+  try {
+    if (spio::Sha256File(blob_path) != sha256) {
+      failure = "cached registry artifact sha256 mismatch";
+      return std::nullopt;
+    }
+  }
+  catch (const std::exception &error) {
+    failure = std::string("cached registry artifact integrity check failed: ") + error.what();
+    return std::nullopt;
   }
 
-  const spio::FileLockGuard cache_lock =
-    spio::AcquireFileLock(spio::RegistryCacheRoot(spio_home), spio::FileLockScope::kCache);
-
-  if (fs::exists(ready_marker)) {
-    return DetectSnapshotRoot(checkout_root);
+  if (!fs::is_regular_file(ready_marker, status_error) || status_error) {
+    failure = "verified checkout marker is missing";
+    return std::nullopt;
+  }
+  try {
+    const json marker = ParseJsonObject(
+      ReadTextFile(ready_marker, "registry checkout marker"),
+      "registry checkout marker"
+    );
+    if (marker.size() != 3U ||
+        marker.value("schema_version", 0) != 1 ||
+        marker.value("sha256", "") != sha256 ||
+        !marker.contains("size_bytes") ||
+        !marker["size_bytes"].is_number_unsigned() ||
+        marker["size_bytes"].get<uintmax_t>() != actual_size) {
+      failure = "verified checkout marker does not match the cached artifact";
+      return std::nullopt;
+    }
+  }
+  catch (const std::exception &) {
+    failure = "verified checkout marker is invalid";
+    return std::nullopt;
   }
 
+  try {
+    return VerifiedCacheHit{
+      .snapshot_root = DetectSnapshotRoot(checkout_root),
+      .size_bytes = actual_size,
+    };
+  }
+  catch (const std::exception &error) {
+    failure = error.what();
+    return std::nullopt;
+  }
+}
+
+void
+RemoveDigestObject(
+  const fs::path &spio_home,
+  const std::string &package_name,
+  const std::string &version,
+  const std::string &sha256
+) {
   std::error_code ignored;
-  fs::remove_all(checkout_root, ignored);
-  fs::create_directories(checkout_root);
+  fs::remove(BlobCachePath(spio_home, sha256), ignored);
+  fs::remove_all(CheckoutPath(spio_home, package_name, version, sha256), ignored);
+}
 
-  const fs::path blob_cache_path = BlobCachePath(spio_home, entry.sha256);
-  ValidateTarListingPaths(blob_cache_path);
-  const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
-    .program = spio::ResolvedTarPath(),
-    .args = {"--no-same-owner", "--no-same-permissions", "-xf", blob_cache_path.string(), "-C", checkout_root.string()},
-    .search_path = false,
-    .timeout = spio::kExternalProcessStepTimeout,
-    .error_context = "registry process",
-  });
-  if (extract.exit_code != 0) {
+fs::path
+CommitRegistryEntry(
+  const fs::path &spio_home,
+  const std::string &registry_root,
+  const std::vector<std::string> &request_headers,
+  const RegistryEntry &entry,
+  const bool offline
+) {
+  std::string cache_failure;
+  if (const std::optional<VerifiedCacheHit> cached = InspectVerifiedCache(
+        spio_home,
+        entry.package,
+        entry.version,
+        entry.sha256,
+        entry.size_bytes,
+        cache_failure);
+      cached.has_value()) {
+    return cached->snapshot_root;
+  }
+  if (offline) {
     throw spio::CacheError(
-      "failed to extract registry artifact '" + blob_cache_path.string() + "': " + spio::DescribeProcessFailure(extract)
+      "offline registry cache integrity failure for " + entry.package + "@" +
+      entry.version + ": " + cache_failure
     );
   }
-  const fs::path snapshot_root = DetectSnapshotRoot(checkout_root);
 
-  spio::AtomicWriteFile(ready_marker, "ready\n");
-  return snapshot_root;
+  RemoveDigestObject(spio_home, entry.package, entry.version, entry.sha256);
+
+  const fs::path blob_path = BlobCachePath(spio_home, entry.sha256);
+  const fs::path blob_staging = UniqueTemporaryPath(blob_path, "artifact");
+  const fs::path checkout_root = CheckoutPath(spio_home, entry.package, entry.version, entry.sha256);
+  const fs::path checkout_staging = UniqueTemporaryPath(checkout_root, "checkout");
+  const fs::path artifact_relative =
+    NormalizeRelativeRegistryPath(entry.artifact_path, "registry v2 source artifact path");
+
+  fs::create_directories(blob_path.parent_path());
+  fs::create_directories(checkout_root.parent_path());
+  try {
+    if (IsFileRegistry(registry_root)) {
+      const fs::path source_blob = FileUrlToPath(registry_root) / artifact_relative;
+      if (!fs::exists(source_blob)) {
+        throw spio::FetchError(
+          "registry v2 source artifact not found: " + source_blob.string()
+        );
+      }
+      std::error_code copy_error;
+      fs::copy_file(source_blob, blob_staging, fs::copy_options::overwrite_existing, copy_error);
+      if (copy_error) {
+        throw spio::CacheError(
+          "failed to stage registry v2 source artifact: " + blob_staging.string()
+        );
+      }
+    }
+    else {
+      FetchUrlToFile(
+        JoinUrl(registry_root, artifact_relative.generic_string()),
+        blob_staging,
+        request_headers,
+        kRegistryArtifactMaxBytes,
+        RegistryRemoteObjectKind::kArtifact
+      );
+    }
+
+    std::error_code size_error;
+    const uintmax_t actual_size = fs::file_size(blob_staging, size_error);
+    if (size_error || actual_size != entry.size_bytes) {
+      throw spio::FetchError(
+        "registry v2 source artifact size mismatch for " + entry.package + "@" + entry.version
+      );
+    }
+    if (spio::Sha256File(blob_staging) != entry.sha256) {
+      throw spio::FetchError(
+        "registry v2 source artifact sha256 mismatch for " + entry.package + "@" + entry.version
+      );
+    }
+
+    ValidateTarListingPaths(blob_staging);
+    fs::create_directories(checkout_staging);
+    const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
+      .program = spio::ResolvedTarPath(),
+      .args = {
+        "--no-same-owner",
+        "--no-same-permissions",
+        "-xf",
+        blob_staging.string(),
+        "-C",
+        checkout_staging.string(),
+      },
+      .search_path = false,
+      .timeout = spio::kExternalProcessStepTimeout,
+      .error_context = "registry process",
+    });
+    if (extract.exit_code != 0) {
+      throw spio::CacheError(
+        "failed to extract registry artifact '" + blob_staging.string() +
+        "': " + spio::DescribeProcessFailure(extract)
+      );
+    }
+    const fs::path staged_snapshot_root = DetectSnapshotRoot(checkout_staging);
+    const fs::path snapshot_relative =
+      staged_snapshot_root.lexically_relative(checkout_staging);
+    spio::AtomicWriteFile(
+      checkout_staging / ".spio-snapshot-ready",
+      ReadyMarkerBytes(entry.sha256, entry.size_bytes)
+    );
+
+    std::error_code rename_error;
+    fs::rename(blob_staging, blob_path, rename_error);
+    if (rename_error) {
+      throw spio::CacheError(
+        "failed to finalize verified registry artifact: " + blob_path.string()
+      );
+    }
+    fs::rename(checkout_staging, checkout_root, rename_error);
+    if (rename_error) {
+      throw spio::CacheError(
+        "failed to finalize verified registry checkout: " + checkout_root.string()
+      );
+    }
+    return snapshot_relative.empty()
+      ? checkout_root
+      : checkout_root / snapshot_relative;
+  }
+  catch (...) {
+    std::error_code ignored;
+    fs::remove(blob_staging, ignored);
+    fs::remove_all(checkout_staging, ignored);
+    throw;
+  }
 }
 
 }  // namespace
@@ -650,7 +829,8 @@ MaterializeRegistryPackage(
   const std::string &registry_root,
   const std::string &package_name,
   const std::string &version,
-  const bool offline
+  const bool offline,
+  const std::optional<std::string> &locked_sha256
 ) {
   const RegistryReadSecurityDecision security = ResolveRegistryReadSecurity({
     .registry_root = registry_root,
@@ -669,6 +849,41 @@ MaterializeRegistryPackage(
       );
     }
     trusted_root_sha256 = trust_pin->root_sha256;
+  }
+
+  if (locked_sha256.has_value()) {
+    if (!IsRegistrySha256Digest(*locked_sha256)) {
+      throw FetchError(
+        "locked registry package digest must be a lowercase sha256 hex digest"
+      );
+    }
+    const FileLockGuard digest_lock = AcquireFileLock(
+      DigestLockRoot(spio_home, *locked_sha256),
+      FileLockScope::kCache
+    );
+    std::string cache_failure;
+    if (const std::optional<VerifiedCacheHit> cached = InspectVerifiedCache(
+          spio_home,
+          package_name,
+          version,
+          *locked_sha256,
+          std::nullopt,
+          cache_failure);
+        cached.has_value()) {
+      return {
+        .registry_root = security.registry_root,
+        .package_name = package_name,
+        .version = version,
+        .sha256 = *locked_sha256,
+        .snapshot_root = cached->snapshot_root,
+      };
+    }
+    if (offline) {
+      throw CacheError(
+        "offline registry cache integrity failure for " + package_name + "@" +
+        version + ": " + cache_failure
+      );
+    }
   }
 
   const RegistryConfig config = LoadConfig(spio_home, security.registry_root, security.request_headers, offline);
@@ -725,8 +940,24 @@ MaterializeRegistryPackage(
     LoadPackageMetadata(spio_home, security.registry_root, security.request_headers, config, package_name, version, offline);
   const RegistryEntry entry =
     LoadEntry(spio_home, security.registry_root, security.request_headers, package_name, version, metadata, offline);
-  MaterializeArtifact(spio_home, security.registry_root, security.request_headers, entry, offline);
-  const fs::path snapshot_root = EnsureCheckout(spio_home, entry);
+  if (locked_sha256.has_value() && entry.sha256 != *locked_sha256) {
+    throw FetchError(
+      "registry content digest changed for locked package " + package_name + "@" +
+      version + ": expected " + *locked_sha256 + " but registry declared " + entry.sha256
+    );
+  }
+
+  const FileLockGuard digest_lock = AcquireFileLock(
+    DigestLockRoot(spio_home, entry.sha256),
+    FileLockScope::kCache
+  );
+  const fs::path snapshot_root = CommitRegistryEntry(
+    spio_home,
+    security.registry_root,
+    security.request_headers,
+    entry,
+    offline
+  );
 
   return {
     .registry_root = security.registry_root,

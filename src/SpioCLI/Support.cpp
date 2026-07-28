@@ -424,6 +424,7 @@ ResolveOptions BuildResolveOptions(
 {
   ResolveOptions options;
   options.offline = flags.offline;
+  options.locked = flags.locked;
   if (vendor_root_override.has_value())
   {
     options.vendor_root = CanonicalAbsolutePath(*vendor_root_override);

@@ -32,6 +32,7 @@ set(SPIO_MANIFEST_SOURCES
 
 set(SPIO_RESOLUTION_SOURCES
     SpioRegistryClient/Client.cpp
+    SpioResolve/ResolutionContract.cpp
     SpioResolve/Resolver.cpp
     SpioSecurity/Ed25519.cpp
     SpioSecurity/PrescanArchive.cpp

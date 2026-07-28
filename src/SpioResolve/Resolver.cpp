@@ -18,6 +18,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 namespace fs = std::filesystem;
@@ -124,6 +125,23 @@ std::string SourceKindString(SourceKind kind)
       return "registry";
   }
   return "path";
+}
+
+std::string NormalizeRegistryRootForKey(std::string value)
+{
+  while (!value.empty() && value.back() == '/')
+  {
+    value.pop_back();
+  }
+  return value;
+}
+
+std::string RegistryLockHintKey(
+    const std::string &registry_root,
+    const std::string &package_name,
+    const std::string &version)
+{
+  return NormalizeRegistryRootForKey(registry_root) + '\n' + package_name + '\n' + version;
 }
 
 std::string SnapshotRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
@@ -424,6 +442,7 @@ public:
         options_(NormalizeOptions(root_manifest_path_, options)),
         git_cache_(spio::ResolveSpioHome(), options_.offline, options_.vendor_root)
   {
+    LoadLockedRegistryHints();
     BuildRootSeeds();
   }
 
@@ -534,6 +553,53 @@ private:
     std::vector<std::string> dependencies;
     std::vector<spio::ResolvedDependencyAlias> dependency_aliases;
   };
+
+  void LoadLockedRegistryHints()
+  {
+    const fs::path lockfile_path = root_manifest_path_.parent_path() / "spio.lock";
+    if (!fs::exists(lockfile_path))
+    {
+      return;
+    }
+
+    spio::LockfileDocument lockfile;
+    try
+    {
+      lockfile = spio::LoadLockfile(lockfile_path);
+    }
+    catch (const spio::ValidationError &)
+    {
+      if (options_.locked)
+      {
+        throw;
+      }
+      return;
+    }
+
+    std::unordered_set<std::string> ambiguous_keys;
+    for (const spio::LockPackage &package : lockfile.packages)
+    {
+      if (package.source_kind != "registry" ||
+          !package.registry.has_value() ||
+          !package.sha256.has_value())
+      {
+        continue;
+      }
+      const std::string key =
+          RegistryLockHintKey(*package.registry, package.name, package.version);
+      if (ambiguous_keys.contains(key))
+      {
+        continue;
+      }
+      const auto [existing, inserted] =
+          locked_registry_digests_.emplace(key, *package.sha256);
+      if (!inserted && existing->second != *package.sha256)
+      {
+        locked_registry_digests_.erase(existing);
+        ambiguous_keys.insert(key);
+      }
+    }
+  }
 
   void BuildRootSeeds()
   {
@@ -719,8 +785,28 @@ private:
           "' must declare version = \"x.y.z\" (exact semver only; ranges are not supported in single-version-v1)");
     }
 
+    const std::string hint_key =
+        RegistryLockHintKey(dependency.source, *dependency.package, *dependency.version);
+    std::optional<std::string> locked_sha256;
+    if (const auto hint = locked_registry_digests_.find(hint_key);
+        hint != locked_registry_digests_.end())
+    {
+      locked_sha256 = hint->second;
+    }
+    if (options_.locked && !locked_sha256.has_value())
+    {
+      throw spio::ResolutionError(
+          "locked registry dependency has no matching package digest in spio.lock: " +
+          *dependency.package + "@" + *dependency.version);
+    }
+
     const spio::RegistryMaterializationResult materialized =
-        spio::MaterializeRegistryPackage(dependency.source, *dependency.package, *dependency.version, options_.offline);
+        spio::MaterializeRegistryPackage(
+            dependency.source,
+            *dependency.package,
+            *dependency.version,
+            options_.offline,
+            locked_sha256);
     const SourceOrigin registry_origin{
         .kind = SourceKind::kRegistry,
         .registry_root = materialized.registry_root,
@@ -931,6 +1017,7 @@ private:
   std::vector<ManifestSelection> root_seeds_;
   std::set<std::string> top_level_workspace_dirs_;
   std::unordered_map<std::string, size_t> node_by_source_fingerprint_;
+  std::unordered_map<std::string, std::string> locked_registry_digests_;
   std::unordered_map<std::string, size_t> node_by_package_name_;
   std::unordered_map<size_t, VisitState> visit_state_by_index_;
   std::unordered_map<size_t, std::vector<std::string>> path_ids_by_index_;

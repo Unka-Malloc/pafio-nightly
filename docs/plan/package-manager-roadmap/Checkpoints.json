@@ -367,7 +367,7 @@
   },
   {
     "id": "6e8f869f-1792-4744-9e9d-274ab2d70f06",
-    "status": "pending",
+    "status": "deferred",
     "role": "implementation",
     "prerequisites": [
       "fc127204-b06f-4a9a-b772-9913b49751b2"
@@ -376,6 +376,94 @@
     "difficulty": "high",
     "goal": "Complete the content-addressed store contract: universal digest keying, verified reads, and offline vendoring closure.",
     "description": "Scope: src/SpioCore/Paths.cpp store layout, cache read/write paths in src/SpioRegistryClient/Client.cpp (~424-466, ~559-615) and src/SpioResolve/Resolver.cpp GitSourceCache (~64-70, ~194), src/SpioVendor/Vendor.cpp offline flows, and cache tests. Context: registry blobs are already content-addressed (registry/blobs/sha256/xx/yy/digest.tar) with digest verification on fetch, but git checkouts key by FNV-1a64 of the source string plus rev (collision-prone identity, no content digest), extracted checkout trees are not re-verifiable after extraction, and offline mode requires cache-or-vendor without a way to pre-populate the registry cache from a vendored export (REQ-CACHE upstream). Target: every cached artifact class carries a content digest in its metadata (git snapshots gain a recorded tree digest at materialization; FNV keys remain only as directory-name shortcuts, never as identity), cache reads verify digests lazily with a verified-marker to avoid rescan cost, corrupted entries self-heal by refetch (online) or fail with a precise diagnostic (offline), and vendor export/import round-trips registry packages so a vendored project syncs fully offline including registry deps. Design Considerations: digest-verify-on-first-read plus marker matches the perf gate budget; self-heal only deletes provably-corrupt entries (never on IO flakiness — distinguish read errors from digest mismatches); vendor import reuses the same prescan and digest checks as network acquisition. Design Value: makes the cache a trustworthy CAS instead of a best-effort directory tree, which the TUF chain and offline story both depend on. Constraints & Risks: existing caches must migrate lazily (absent metadata treated as unverified, verified on first read) without a flag-day; SPIO_HOME layout is user-visible so directory shape changes need the governance doc updated.",
+    "design": {
+      "artifact": "docs/plan/package-manager-roadmap/Architecture.md",
+      "owned_paths": [
+        "src/SpioCore/Paths.cpp",
+        "src/SpioRegistryClient/Client.cpp",
+        "src/SpioResolve/Resolver.cpp",
+        "src/SpioVendor/Vendor.cpp",
+        "docs/governance/Spio-Manifest-and-Lock-Conventions.md"
+      ],
+      "scaffold_paths": [
+        "src/SpioCore/Paths.cpp",
+        "src/SpioRegistryClient/Client.cpp",
+        "src/SpioResolve/Resolver.cpp",
+        "src/SpioVendor/Vendor.cpp"
+      ],
+      "acceptance_paths": [
+        "docs/plan/package-manager-roadmap/Validation.md",
+        "tests/native/SyncTests.cpp",
+        "tests/native/VendorTests.cpp",
+        "tests/native/SecurityTests.cpp"
+      ],
+      "symbols": [
+        {
+          "path": "src/SpioCore/Paths.cpp",
+          "kind": "module",
+          "name": "verified_content_store_layout",
+          "operation": "modify",
+          "signature": "SHA-256 addressed immutable artifact and checkout paths"
+        },
+        {
+          "path": "src/SpioResolve/Resolver.cpp",
+          "kind": "class",
+          "name": "GitSourceCache",
+          "operation": "modify",
+          "signature": "GitSourceCache::Materialize(source, revision) -> digest-identified snapshot"
+        },
+        {
+          "path": "src/SpioVendor/Vendor.cpp",
+          "kind": "module",
+          "name": "offline_vendor_round_trip",
+          "operation": "modify",
+          "signature": "verified registry and git cache export/import"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "verified cache read",
+          "producer": "src/SpioRegistryClient/Client.cpp",
+          "consumers": [
+            "src/SpioResolve/Resolver.cpp",
+            "src/SpioVendor/Vendor.cpp"
+          ],
+          "inputs": "source descriptor, expected digest and offline policy",
+          "outputs": "verified immutable checkout root",
+          "errors": [
+            "digest mismatch",
+            "unavailable offline object",
+            "non-recoverable IO failure"
+          ]
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "src/SpioRegistryClient/Client.cpp",
+          "to": "src/SpioCore/Paths.cpp",
+          "reason": "Registry artifacts use the shared digest-addressed layout."
+        },
+        {
+          "from": "src/SpioVendor/Vendor.cpp",
+          "to": "src/SpioRegistryClient/Client.cpp",
+          "reason": "Vendor import reuses registry verification and extraction rules."
+        }
+      ],
+      "decisions": {
+        "composition": "one shared verified-store contract across registry, git and vendor paths",
+        "algorithms": "SHA-256 verification on first trusted read with precise corruption recovery",
+        "data_structures": "digest-keyed immutable objects plus compact verification metadata",
+        "state": "cache objects are immutable; indexes and markers are atomic mutable metadata",
+        "isolation": "IO errors are distinct from proven digest corruption before self-heal",
+        "concurrency": "per-store locking protects mutation while immutable reads remain lock-free"
+      },
+      "test_seams": [
+        "corrupt object fixture",
+        "online repair versus offline fail",
+        "vendor export/import round trip",
+        "Git digest identity fixture"
+      ]
+    },
     "requirements": [
       "REQ-CACHE-001"
     ],
@@ -400,11 +488,12 @@
     },
     "next": [
       "c31d7f9f-9dd7-4770-b128-f376f4064820"
-    ]
+    ],
+    "status_reason": "Superseded by pafio-thin-core: verified registry CAS is narrowed into the consumer sync closure, while Git identity and vendor round-trip are removed from the critical path. Reactivate only if the thin-core plan is rejected and the former broad cache scope is explicitly restored."
   },
   {
     "id": "3ba86660-5f46-4003-a2af-e10ec9bdc8f1",
-    "status": "pending",
+    "status": "deferred",
     "role": "implementation",
     "prerequisites": [
       "fc127204-b06f-4a9a-b772-9913b49751b2"
@@ -413,6 +502,78 @@
     "difficulty": "high",
     "goal": "Emit structured workflow receipts and Vityo machine payloads, and record the platform support matrix decision.",
     "description": "Scope: src/SpioApp/WorkflowApp.cpp build/run/test receipt emission, src/SpioResolve/ProjectGraphContract.cpp payload emission (project_graph v1, toolchain_state v1), contracts/ schema files, docs platform-matrix statement, and the cross-repo mirror fixtures consumed by vityo-nightly gates. Context: Vityo currently infers project state from canonical files because spio does not yet emit the machine payloads its own contracts document (this is the supplier side of Vityo REQ-001), workflow commands succeed or fail without machine-readable receipts (REQ-WF upstream: live build/run/test receipts), and the POSIX-only Process layer (fork/exec in src/SpioCore/Process.cpp) leaves Windows support undecided rather than declared (audit P2 platform finding). Target: (1) spio build/run/test emit structured JSON receipts (schema-versioned: phases, exit status, artifact paths, timings) alongside human output, honoring the existing --json conventions; (2) spio project-graph and toolchain-state emit the documented v1 payloads with source-confidence fields, validated against contracts/ schemas in tests and mirrored into the fixture set the Vityo repo consumes; (3) the platform matrix is decided and documented: Linux/macOS native primary, Windows explicitly deferred-with-rationale or scoped via a Process port plan, recorded in README/BUILD docs and the conventions doc. Design Considerations: receipts and payloads are additive surfaces — CLI contract stays frozen for existing flags; schema versioning follows the same major-version fail-closed rule Vityo applies; fixture mirroring uses the existing cross-repo gate scripts rather than manual copies. Design Value: closes the IDE integration loop from the supplier side and turns the platform question from silence into a recorded decision. Constraints & Risks: payload fields must match what resolution actually knows (no invented confidence); Windows decision affects FileLock/Process design and must stay consistent with REQ-CON-001's recorded scope.",
+    "design": {
+      "artifact": "docs/plan/package-manager-roadmap/Architecture.md",
+      "owned_paths": [
+        "src/SpioApp/WorkflowApp.cpp",
+        "src/SpioResolve/ProjectGraphContract.cpp",
+        "docs/governance/Spio-CLI-Contract.md",
+        "docs/BUILD-AND-DEV-ENV.md"
+      ],
+      "scaffold_paths": [
+        "src/SpioApp/WorkflowApp.cpp",
+        "src/SpioResolve/ProjectGraphContract.cpp"
+      ],
+      "acceptance_paths": [
+        "docs/plan/package-manager-roadmap/Validation.md",
+        "tests/native/BuildWorkflowCliTests.cpp",
+        "tests/native/ProjectGraphTests.cpp",
+        "tests/native/RunAndTestCliTests.cpp"
+      ],
+      "symbols": [
+        {
+          "path": "src/SpioApp/WorkflowApp.cpp",
+          "kind": "module",
+          "name": "workflow_receipt_v1",
+          "operation": "modify",
+          "signature": "build/run/test result -> schema-versioned receipt"
+        },
+        {
+          "path": "src/SpioResolve/ProjectGraphContract.cpp",
+          "kind": "function",
+          "name": "BuildProjectGraphPayload",
+          "operation": "modify",
+          "signature": "BuildProjectGraphPayload(...) -> project_graph v1"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "workflow and project machine payloads",
+          "producer": "src/SpioApp/WorkflowApp.cpp",
+          "consumers": [
+            "src/SpioResolve/ProjectGraphContract.cpp",
+            "tests/native/BuildWorkflowCliTests.cpp"
+          ],
+          "inputs": "resolved graph, selected workflow and compiler result",
+          "outputs": "schema-versioned receipts and project/toolchain payloads",
+          "errors": [
+            "unsupported schema",
+            "missing execution evidence",
+            "unknown platform support state"
+          ]
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "src/SpioApp/WorkflowApp.cpp",
+          "to": "src/SpioResolve/ProjectGraphContract.cpp",
+          "reason": "Workflow payloads reuse resolved project and package facts."
+        }
+      ],
+      "decisions": {
+        "composition": "additive schema-versioned payload serialization on existing workflow results",
+        "algorithms": "linear projection of resolved package and execution state",
+        "data_structures": "ordered JSON objects and arrays derived from canonical graph state",
+        "state": "receipts are per-execution artifacts and platform support is documentation state",
+        "isolation": "payloads publish only observed source-confidence facts",
+        "concurrency": "receipt emission occurs after execution and uses atomic file publication"
+      },
+      "test_seams": [
+        "schema validation",
+        "cross-repository fixture mirror",
+        "unsupported platform decision check"
+      ]
+    },
     "requirements": [
       "REQ-WF-001",
       "REQ-IDE-001",
@@ -439,11 +600,12 @@
     },
     "next": [
       "c31d7f9f-9dd7-4770-b128-f376f4064820"
-    ]
+    ],
+    "status_reason": "Outside the Pafio thin package boundary: compiler workflow receipts belong to Styio, IDE payloads belong to Styio/LSP consumers, and platform support must follow the owning runtime. Reactivate only after an explicit decision to return those responsibilities to Pafio."
   },
   {
     "id": "c31d7f9f-9dd7-4770-b128-f376f4064820",
-    "status": "pending",
+    "status": "deferred",
     "role": "final_validation",
     "prerequisites": [
       "27447980-d270-4f68-8edc-f95b7dae79bd",
@@ -460,6 +622,67 @@
     "difficulty": "high",
     "goal": "Run the full Validation.md matrix including the adversarial security suite on one head commit and prove every requirement label.",
     "description": "Scope: execution and evidence recording only; failures route back to owning implementation nodes. Context: requirements and the validation matrix were defined before implementation; this node proves the same labels end to end on one commit, with special weight on negative-path security proof (forged metadata, unauthenticated publish, traversal archives, PATH hijack, torn writes, concurrent processes). Target: on one head commit run the delivery floor (scripts/delivery-gate.sh, scripts/native-check.sh, ctest native suites, Python unit suites, interop scripts, scripts/perf-gate.py against tests/perf/baseline.json, scripts/styio-interface-gate.py where the styio binary is available) plus every Validation.md-mapped adversarial fixture, record pass/fail per label (REQ-SEC-001..005, REQ-CON-001, REQ-ERR-001, REQ-RES-001, REQ-CACHE-001, REQ-WF-001, REQ-IDE-001, REQ-PLAT-001), and archive outputs as node evidence. Design Considerations: run in delivery-gate order so evidence matches CI; the adversarial suite must run on the same commit as the floor gates; cross-repo payload fixtures are verified against the vityo-nightly mirror gate where the sibling checkout exists. Design Value: converts nine node-level claims into one auditable security-and-product proof for the package manager. Constraints & Risks: interop layer is POSIX-bound (recorded under REQ-PLAT-001); perf-gate thresholds may need environment-noise re-runs per its documented policy; this node must not lower any acceptance target defined in Requirements.md.",
+    "design": {
+      "artifact": "docs/plan/package-manager-roadmap/Validation.md",
+      "owned_paths": [
+        "docs/plan/package-manager-roadmap/Checkpoints.json"
+      ],
+      "scaffold_paths": [
+        "docs/plan/package-manager-roadmap/Checkpoints.json"
+      ],
+      "acceptance_paths": [
+        "docs/plan/package-manager-roadmap/Validation.md",
+        "scripts/delivery-gate.sh",
+        "scripts/native-check.sh",
+        "scripts/perf-gate.py"
+      ],
+      "symbols": [
+        {
+          "path": "docs/plan/package-manager-roadmap/Checkpoints.json",
+          "kind": "module",
+          "name": "final_validation_receipt",
+          "operation": "modify",
+          "signature": "one-head-commit requirement-label evidence"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "final validation evidence",
+          "producer": "docs/plan/package-manager-roadmap/Checkpoints.json",
+          "consumers": [
+            "docs/plan/package-manager-roadmap/Validation.md"
+          ],
+          "inputs": "full gate and adversarial test outcomes from one commit",
+          "outputs": "per-requirement pass/fail evidence",
+          "errors": [
+            "gate failure",
+            "missing requirement evidence",
+            "cross-repository fixture unavailable"
+          ]
+        }
+      ],
+      "dependencies": [
+        {
+          "from": "docs/plan/package-manager-roadmap/Checkpoints.json",
+          "to": "docs/plan/package-manager-roadmap/Validation.md",
+          "reason": "The receipt must execute the frozen validation matrix without weakening it."
+        }
+      ],
+      "decisions": {
+        "composition": "one ordered full-regression pass after all implementation prerequisites",
+        "algorithms": "delivery-gate order with direct per-label result aggregation",
+        "data_structures": "checkpoint evidence entries keyed by canonical requirement label",
+        "state": "all evidence refers to one immutable head commit",
+        "isolation": "validation records outcomes and does not repair implementation",
+        "concurrency": "independent gates may run concurrently only when they do not mutate shared fixtures"
+      },
+      "test_seams": [
+        "delivery floor",
+        "adversarial security suite",
+        "cross-repository schema fixture gate",
+        "plan-state validation"
+      ]
+    },
     "requirements": [
       "REQ-SEC-001",
       "REQ-SEC-002",
@@ -489,6 +712,7 @@
       "message": "docs(plan): record spio roadmap final validation evidence",
       "target": "pafio-nightly working branch (nightly)"
     },
-    "next": []
+    "next": [],
+    "status_reason": "The former final matrix depends on deferred cache/workflow/IDE/platform scope and no longer represents the selected product boundary. Reactivate only if the broad package-manager roadmap is explicitly restored."
   }
 ]

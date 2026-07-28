@@ -14,6 +14,7 @@ namespace spio
 struct ResolveOptions
 {
   bool offline = false;
+  bool locked = false;
   std::optional<std::filesystem::path> vendor_root;
 };
 

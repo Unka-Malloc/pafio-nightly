@@ -19,6 +19,7 @@ add_executable(spio_native_tests
   native/PackTests.cpp
   native/ProcessTests.cpp
   native/PublishTests.cpp
+  native/ResolutionContractTests.cpp
   native/RunAndTestCliTests.cpp
   native/SecurityTests.cpp
   native/SyncTests.cpp
@@ -181,6 +182,11 @@ add_test(
 add_test(
   NAME spio_registry_http_fetch
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-http-fetch.sh" "$<TARGET_FILE:spio>"
+)
+
+add_test(
+  NAME spio_thin_core_contract
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/pafio-thin-core-contract.sh" "$<TARGET_FILE:spio>"
 )
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/src-private")
