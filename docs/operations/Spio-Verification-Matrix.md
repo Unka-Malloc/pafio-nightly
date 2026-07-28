@@ -2,7 +2,7 @@
 
 **Purpose:** Define the named gates, required commands, and pass conditions that close each `spio` implementation stream.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-06-28
 
 ## Gate Matrix
 
@@ -35,6 +35,28 @@ Pass conditions:
 Defect:
 
 - auto mode must infer the target branch base or fail before reporting success
+
+### `spio_platform_ci_gate`
+
+Objective:
+
+- keep the GitHub-hosted CI surface split across Linux, macOS, and Windows while platform adaptation is in progress
+
+Commands:
+
+```text
+.github/workflows/local-ci-gate.yml
+```
+
+Pass conditions:
+
+- `Linux / Debian 13 trixie gate` runs the blocking repository gate inside `debian:trixie`
+- `macOS / latest native smoke` configures, builds, and runs native CMake tests on `macos-latest`
+- `Windows / latest native smoke` attempts an x64 native CMake build on `windows-latest` and remains non-blocking until Windows support closes
+
+Defect:
+
+- Windows is still an adaptation signal because native process execution and some tests retain POSIX assumptions
 
 ### `spio_manifest_lock_gate`
 

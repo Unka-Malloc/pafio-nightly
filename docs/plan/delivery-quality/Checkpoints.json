@@ -1,0 +1,114 @@
+[
+  {
+    "id": "62eeddec-7979-4e79-85fb-b97c4693a151",
+    "status": "pending",
+    "prerequisites": [],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Make black-box package-manager gates the baseline.",
+    "description": "Replace placeholder or optional integration coverage with runnable black-box scenarios for install, resolve, lock, offline, registry, rollback, and workflow failure behavior.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "CTest and CI run the black-box package-manager scenarios without placeholder scripts."
+      },
+      {
+        "checked": false,
+        "text": "The scenarios create isolated project roots and SPIO_HOME directories and assert both success and failure payloads."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework delivery quality plan checkpoints",
+      "target": "docs/plan/delivery-quality and owning implementation files"
+    },
+    "next": [
+      "b4a2b113-9a75-42fb-8c90-36d7081464ba"
+    ]
+  },
+  {
+    "id": "b4a2b113-9a75-42fb-8c90-36d7081464ba",
+    "status": "pending",
+    "prerequisites": [
+      "62eeddec-7979-4e79-85fb-b97c4693a151"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Align CI and release gates around the same invariants.",
+    "description": "Make submit, delivery, health, docs, native, and interop gates prove equivalent package-manager invariants so a green PR cannot bypass release-critical checks.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "CI and release/checkpoint gate documentation reference the same invariant set."
+      },
+      {
+        "checked": false,
+        "text": "submit-gate, delivery-gate, docs-gate, native checks, and registry/workflow gates are wired or explicitly mapped to equivalent coverage."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework delivery quality plan checkpoints",
+      "target": "docs/plan/delivery-quality and owning implementation files"
+    },
+    "next": [
+      "8934b651-239f-4a56-a28a-a3b5af677993"
+    ]
+  },
+  {
+    "id": "8934b651-239f-4a56-a28a-a3b5af677993",
+    "status": "pending",
+    "prerequisites": [
+      "b4a2b113-9a75-42fb-8c90-36d7081464ba"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Verify advertised release artifacts on fresh machines.",
+    "description": "Make every advertised spio and styio artifact target installable, checksum-verified, discoverable by doctor, and removable or upgradeable through documented commands.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "The advertised artifact matrix is tested by fresh temporary install roots."
+      },
+      {
+        "checked": false,
+        "text": "spio doctor reports platform, release root, checksum, managed styio status, and actionable errors for each advertised target."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework delivery quality plan checkpoints",
+      "target": "docs/plan/delivery-quality and owning implementation files"
+    },
+    "next": [
+      "ea77c8fe-a678-46fb-8f19-1f3f9ce78715"
+    ]
+  },
+  {
+    "id": "ea77c8fe-a678-46fb-8f19-1f3f9ce78715",
+    "status": "pending",
+    "prerequisites": [
+      "8934b651-239f-4a56-a28a-a3b5af677993"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Keep docs lifecycle and generated indexes part of delivery quality.",
+    "description": "Ensure plan, ADR, governance, operations, and team docs stay indexed and lifecycle-checked as part of the package-manager delivery floor.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "docs-index, docs-lifecycle, docs-audit, and docs-gate pass after plan and owner-document changes."
+      },
+      {
+        "checked": false,
+        "text": "Documentation references point to functional plan directories and owner documents, not retired loose plan files."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework delivery quality plan checkpoints",
+      "target": "docs/plan/delivery-quality and owning implementation files"
+    },
+    "next": []
+  }
+]

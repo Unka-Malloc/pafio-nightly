@@ -2,13 +2,13 @@
 
 **Purpose:** Give future `spio` maintainers a migration-ready knowledge pack for the `styio` compiler project: what is stable, what is not, which documents matter, and which files must never become hidden dependencies.
 
-**Last updated:** 2026-04-23
+**Last updated:** 2026-06-28
 
 Read this after:
 
 - [Styio-External-Interface-Requirement-Spec.md](./Styio-External-Interface-Requirement-Spec.md)
 - [Styio-Public-Interface-Roadmap.md](./Styio-Public-Interface-Roadmap.md)
-- [Spio-Future-Direction-and-Styio-Coordination.md](../../plan/repository-delivery-convergence/Evidence.md)
+- [Workflow And Toolchain Plan](../../plan/workflow-toolchain/README.md)
 
 ## 1. Mental Model
 
@@ -35,12 +35,12 @@ The unsafe integration boundary is:
 
 Current local checkout references:
 
-- compiler CLI entry: [src/main.cpp](/Users/unka/DevSpace/Unka-Malloc/styio/src/main.cpp)
-- compilation session shell: [src/StyioSession/CompilationSession.hpp](/Users/unka/DevSpace/Unka-Malloc/styio/src/StyioSession/CompilationSession.hpp)
-- parser public header: [src/StyioParser/Parser.hpp](/Users/unka/DevSpace/Unka-Malloc/styio/src/StyioParser/Parser.hpp)
-- tokenizer public header: [src/StyioParser/Tokenizer.hpp](/Users/unka/DevSpace/Unka-Malloc/styio/src/StyioParser/Tokenizer.hpp)
-- pipeline test harness: [src/StyioTesting/PipelineCheck.cpp](/Users/unka/DevSpace/Unka-Malloc/styio/src/StyioTesting/PipelineCheck.cpp)
-- compiler tests: [tests/styio_test.cpp](/Users/unka/DevSpace/Unka-Malloc/styio/tests/styio_test.cpp)
+- compiler CLI entry: [src/main.cpp](https://github.com/SymPolicy/Styio/blob/main/src/main.cpp)
+- compilation session shell: [src/StyioSession/CompilationSession.hpp](https://github.com/SymPolicy/Styio/blob/main/src/StyioSession/CompilationSession.hpp)
+- parser public header: [src/StyioParser/Parser.hpp](https://github.com/SymPolicy/Styio/blob/main/src/StyioParser/Parser.hpp)
+- tokenizer public header: [src/StyioParser/Tokenizer.hpp](https://github.com/SymPolicy/Styio/blob/main/src/StyioParser/Tokenizer.hpp)
+- pipeline test harness: [src/StyioTesting/PipelineCheck.cpp](https://github.com/SymPolicy/Styio/blob/main/src/StyioTesting/PipelineCheck.cpp)
+- compiler tests: [tests/styio_test.cpp](https://github.com/SymPolicy/Styio/blob/main/tests/styio_test.cpp)
 
 When `spio` moves to its own repository, these should be interpreted as canonical paths inside the separate `styio` repository checkout, not as local sibling imports.
 
@@ -48,24 +48,24 @@ When `spio` moves to its own repository, these should be interpreted as canonica
 
 Language and syntax SSOT:
 
-- [docs/design/Styio-Language-Design.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-Language-Design.md)
-- [docs/design/Styio-EBNF.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-EBNF.md)
-- [docs/design/Styio-Symbol-Reference.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-Symbol-Reference.md)
+- [docs/design/Styio-Language-Design.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-Language-Design.md)
+- [docs/design/Styio-EBNF.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-EBNF.md)
+- [docs/design/Styio-Symbol-Reference.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-Symbol-Reference.md)
 
 Resource and standard-library model:
 
-- [docs/design/Styio-Resource-Topology.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-Resource-Topology.md)
-- [docs/design/Styio-Resource-Driver.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-Resource-Driver.md)
-- [docs/design/Styio-StdLib-Intrinsics.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/design/Styio-StdLib-Intrinsics.md)
+- [docs/design/Styio-Resource-Topology.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-Resource-Topology.md)
+- [docs/design/Styio-Resource-Driver.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-Resource-Driver.md)
+- [docs/design/Styio-StdLib-Intrinsics.md](https://github.com/SymPolicy/Styio/blob/main/docs/design/Styio-StdLib-Intrinsics.md)
 
 Known contradictions and implementation gaps:
 
-- [docs/review/Logic-Conflicts.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/review/Logic-Conflicts.md)
+- [docs/review/Logic-Conflicts.md](https://github.com/SymPolicy/Styio/blob/main/docs/review/Logic-Conflicts.md)
 
 Testing and workflow discipline:
 
-- [docs/assets/workflow/TEST-CATALOG.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/assets/workflow/TEST-CATALOG.md)
-- [docs/specs/AGENT-SPEC.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/specs/AGENT-SPEC.md)
+- [docs/assets/workflow/TEST-CATALOG.md](https://github.com/SymPolicy/Styio/blob/main/docs/assets/workflow/TEST-CATALOG.md)
+- [docs/specs/AGENT-SPEC.md](https://github.com/SymPolicy/Styio/blob/main/docs/specs/AGENT-SPEC.md)
 
 ## 4. Stable Things Spio May Rely On
 
@@ -129,7 +129,7 @@ That means `spio` developers should continue to treat compiler internals as a mo
 
 ## 7. Migration Guidance
 
-Before moving `spio` to `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, keep this document and update it to point at the standalone `styio` repository checkout location used by the team.
+Before moving `spio` to `pafio-repository`, keep this document and update it to point at the standalone `styio` repository checkout location used by the team.
 
 ## 8. Commands Spio Developers Should Know
 
@@ -166,14 +166,14 @@ ctest --test-dir build-codex -L styio_pipeline
 
 Useful supporting material for compatibility work:
 
-- [docs/adr/INDEX.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/adr/INDEX.md)
-- [docs/adr/ADR-0002-jsonl-diagnostics.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0002-jsonl-diagnostics.md)
-- [docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md)
-- [docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md](/Users/unka/DevSpace/Unka-Malloc/styio/docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md)
+- [docs/adr/INDEX.md](https://github.com/SymPolicy/Styio/blob/main/docs/adr/INDEX.md)
+- [docs/adr/ADR-0002-jsonl-diagnostics.md](https://github.com/SymPolicy/Styio/blob/main/docs/adr/ADR-0002-jsonl-diagnostics.md)
+- [docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md](https://github.com/SymPolicy/Styio/blob/main/docs/adr/ADR-0060-runtime-last-error-and-top-level-diagnostic-unification.md)
+- [docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md](https://github.com/SymPolicy/Styio/blob/main/docs/adr/ADR-0061-runtime-subcode-taxonomy-freeze.md)
 
 ## 9. Split-Repo Checklist
 
-Before the subtree moves to `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, confirm:
+Before the subtree moves to `pafio-repository`, confirm:
 
 - all `spio` compiler integration goes through explicit `--styio-bin`, `SPIO_STYIO_BIN`, project-local `spio-toolchain.toml`, or managed current compiler selection
 - no `spio` code reads `styio/src` or `styio/tests` directly

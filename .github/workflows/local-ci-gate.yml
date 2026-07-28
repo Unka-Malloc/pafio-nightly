@@ -16,9 +16,12 @@ permissions:
   contents: read
 
 jobs:
-  local-ci-gate:
-    name: local-ci-gate
-    runs-on: ubuntu-24.04
+  linux-debian-trixie:
+    name: Linux / Debian 13 trixie gate
+    # GitHub-hosted Linux runner is only the container host; toolchain commands run in Debian 13.
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
     timeout-minutes: 75
     env:
       STYIO_LLVM_MAJOR: "18"
@@ -26,11 +29,25 @@ jobs:
       STYIO_PYTHON_VERSION: "3.13.5"
 
     steps:
-      - name: Checkout styio-spio
+      - name: Install Debian checkout prerequisites
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            bash \
+            ca-certificates \
+            git
+
+      - name: Verify Debian trixie execution baseline
+        run: |
+          . /etc/os-release
+          test "$ID" = debian
+          test "$VERSION_ID" = 13
+
+      - name: Checkout pafio-nightly
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          path: styio-spio
+          path: pafio-nightly
 
       - name: Checkout styio-nightly sibling repository
         uses: actions/checkout@v5
@@ -46,26 +63,11 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
           path: vityo-nightly
 
-      - name: Set up standardized Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.STYIO_PYTHON_VERSION }}
-
-      - name: Install standardized CMake / CTest
+      - name: Bootstrap Debian trixie toolchain
+        working-directory: pafio-nightly
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --user "cmake==${STYIO_CMAKE_VERSION}"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install native dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ninja-build \
-            clang-${STYIO_LLVM_MAJOR} \
-            lld-${STYIO_LLVM_MAJOR} \
-            llvm-${STYIO_LLVM_MAJOR}-dev \
-            llvm-${STYIO_LLVM_MAJOR}-tools
+          ./scripts/bootstrap-dev-env.sh
+          echo "$HOME/.local/venvs/pafio-nightly-tools/bin" >> "$GITHUB_PATH"
 
       - name: Verify standardized toolchain
         run: |
@@ -78,7 +80,7 @@ jobs:
       - name: Resolve CI refs
         id: ci_refs
         shell: bash
-        working-directory: styio-spio
+        working-directory: pafio-nightly
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
@@ -107,8 +109,8 @@ jobs:
           echo "base_ref=${BASE_REF}" >> "$GITHUB_OUTPUT"
           echo "range=${RANGE}" >> "$GITHUB_OUTPUT"
 
-      - name: Run styio-spio local CI gate
-        working-directory: styio-spio
+      - name: Run pafio-nightly local CI gate
+        working-directory: pafio-nightly
         run: >
           ./scripts/delivery-gate.sh
           --mode push
@@ -118,5 +120,77 @@ jobs:
           --skip-health
 
       - name: Run unified submit gate
-        working-directory: styio-spio
+        working-directory: pafio-nightly
         run: python3 scripts/submit-gate.py --profile ci --json
+
+  macos-native-smoke:
+    name: macOS / latest native smoke
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout pafio-nightly
+        uses: actions/checkout@v5
+        with:
+          path: pafio-nightly
+
+      - name: Verify macOS host toolchain
+        run: |
+          sw_vers
+          uname -m
+          cmake --version | head -n1
+          python3 --version
+
+      - name: Configure native build
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-macos -DSPIO_BUILD_TESTS=ON
+
+      - name: Build native targets
+        run: cmake --build pafio-nightly/build-ci-macos --parallel 4
+
+      - name: Run native tests
+        run: ctest --test-dir pafio-nightly/build-ci-macos --output-on-failure
+
+  windows-native-smoke:
+    name: Windows / latest native smoke
+    runs-on: windows-latest
+    continue-on-error: true
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout pafio-nightly
+        uses: actions/checkout@v5
+        with:
+          path: pafio-nightly
+
+      - name: Verify Windows host toolchain
+        shell: pwsh
+        run: |
+          $PSVersionTable.PSVersion
+          cmake --version
+          where.exe cl
+          if ($LASTEXITCODE -ne 0) {
+            "cl.exe is not on PATH; CMake will query the Visual Studio toolchain installation."
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Configure native build
+        shell: pwsh
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DSPIO_BUILD_TESTS=OFF
+
+      - name: Build native CLI
+        shell: pwsh
+        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target spio --parallel 4
+
+      - name: Probe native CLI
+        shell: pwsh
+        run: |
+          $spio = "pafio-nightly/build-ci-windows/bin/Debug/spio.exe"
+          if (!(Test-Path $spio)) {
+            $match = Get-ChildItem -Path pafio-nightly/build-ci-windows -Filter spio.exe -Recurse | Select-Object -First 1
+            if ($null -eq $match) {
+              throw "spio.exe was not produced"
+            }
+            $spio = $match.FullName
+          }
+          & $spio --version
+          & $spio machine-info --json

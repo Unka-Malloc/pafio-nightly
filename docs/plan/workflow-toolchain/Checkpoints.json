@@ -1,0 +1,143 @@
+[
+  {
+    "id": "492f3992-9e02-4a9d-904e-f757d18998fe",
+    "status": "pending",
+    "prerequisites": [],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Release-harden build, run, and test execution.",
+    "description": "Make non-dry-run build, run, and test preserve compile-plan hashes, selected compiler identity, target identity, output roots, captured diagnostics, and receipt.json evidence.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Native workflow tests cover success and failure receipts for build, run, and test."
+      },
+      {
+        "checked": false,
+        "text": "workflow_success_payloads and receipt.json include compiler, plan, target, artifact, diagnostics, and timing evidence."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workflow and toolchain plan checkpoints",
+      "target": "docs/plan/workflow-toolchain and owning implementation files"
+    },
+    "next": [
+      "17a7a96f-a968-4f41-b367-bfff2f72ee25"
+    ]
+  },
+  {
+    "id": "17a7a96f-a968-4f41-b367-bfff2f72ee25",
+    "status": "pending",
+    "prerequisites": [
+      "492f3992-9e02-4a9d-904e-f757d18998fe"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add watch-mode and incremental feedback loops.",
+    "description": "Add build and test watch behavior plus artifact reuse keyed by graph, toolchain, target, profile, and source digest.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Watch commands restart work on source or manifest changes without corrupting project-local state."
+      },
+      {
+        "checked": false,
+        "text": "Cache hits and misses are visible in machine-readable output and covered by tests."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workflow and toolchain plan checkpoints",
+      "target": "docs/plan/workflow-toolchain and owning implementation files"
+    },
+    "next": [
+      "29123564-dbb3-4495-ac79-bc378bcd333f"
+    ]
+  },
+  {
+    "id": "29123564-dbb3-4495-ac79-bc378bcd333f",
+    "status": "pending",
+    "prerequisites": [
+      "17a7a96f-a968-4f41-b367-bfff2f72ee25"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Make build profiles user-configurable and compile-plan visible.",
+    "description": "Add profile schema, inheritance or override rules, target-specific fields, and compile-plan propagation for optimization, debug info, test behavior, and output directories.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Manifest and governance docs define profile fields and precedence."
+      },
+      {
+        "checked": false,
+        "text": "Compile-plan fixtures and native tests prove profile values reach build, run, and test payloads."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workflow and toolchain plan checkpoints",
+      "target": "docs/plan/workflow-toolchain and owning implementation files"
+    },
+    "next": [
+      "a7f487a4-3035-4084-861e-37f07b965992"
+    ]
+  },
+  {
+    "id": "a7f487a4-3035-4084-861e-37f07b965992",
+    "status": "pending",
+    "prerequisites": [
+      "29123564-dbb3-4495-ac79-bc378bcd333f"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add toolchain components and target metadata.",
+    "description": "Extend managed styio state with component, target triple, minimum compiler, and optional auto-install policy while preserving explicit project-local selection.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "tool status and project graph expose components, targets, and minimum compiler constraints."
+      },
+      {
+        "checked": false,
+        "text": "Missing component or target failures are deterministic, actionable, and covered by native tests."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workflow and toolchain plan checkpoints",
+      "target": "docs/plan/workflow-toolchain and owning implementation files"
+    },
+    "next": [
+      "f563f808-5f5a-4654-90ca-f875ba18a6be"
+    ]
+  },
+  {
+    "id": "f563f808-5f5a-4654-90ca-f875ba18a6be",
+    "status": "pending",
+    "prerequisites": [
+      "a7f487a4-3035-4084-861e-37f07b965992"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Define general configuration layering.",
+    "description": "Implement or document one precedence model across CLI, environment, project, workspace, user, and system scopes for registries, network, cache, toolchain, policy, and output settings.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "The entry argument index and CLI contract define configuration precedence."
+      },
+      {
+        "checked": false,
+        "text": "Tests prove precedence and redaction for at least registry, cache, network, and toolchain settings."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workflow and toolchain plan checkpoints",
+      "target": "docs/plan/workflow-toolchain and owning implementation files"
+    },
+    "next": []
+  }
+]

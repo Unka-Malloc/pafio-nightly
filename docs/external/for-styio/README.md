@@ -2,7 +2,7 @@
 
 **Purpose:** Hold the `styio` knowledge pack and public interface expectations required by `spio` developers.
 
-**Last updated:** 2026-04-19
+**Last updated:** 2026-06-28
 
 ## Scope
 
@@ -19,5 +19,5 @@ These files document the external compiler dependency. They must not become a ba
 
 1. `Styio-External-Interface-Requirement-Spec.md`
 2. `Styio-Public-Interface-Roadmap.md`
-3. `../../plan/repository-delivery-convergence/Evidence.md`
+3. `../../plan/workflow-toolchain/README.md`
 4. `Styio-for-Spio-Developers.md`

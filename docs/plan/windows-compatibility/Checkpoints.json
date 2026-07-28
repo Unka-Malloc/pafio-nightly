@@ -1,0 +1,188 @@
+[
+  {
+    "id": "5dbf16a0-a6a5-4399-bc5e-2c0f58101a00",
+    "status": "completed",
+    "prerequisites": [],
+    "platform": "windows",
+    "difficulty": "medium",
+    "goal": "Add GitHub-hosted Windows native CI smoke.",
+    "description": "Keep local-ci-gate running a windows-latest x64 native CMake build smoke so Windows build regressions are visible while the port is still converging.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "local-ci-gate has a windows-latest job that attempts a native x64 CMake build."
+      },
+      {
+        "checked": true,
+        "text": "Docs state that Windows CI is non-blocking until native Windows support closes."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Add Windows native CI smoke",
+      "target": ".github/workflows/local-ci-gate.yml and platform docs"
+    },
+    "next": [
+      "51a019f8-c58f-480c-9101-c2ab75ec279d"
+    ]
+  },
+  {
+    "id": "51a019f8-c58f-480c-9101-c2ab75ec279d",
+    "status": "pending",
+    "prerequisites": [
+      "5dbf16a0-a6a5-4399-bc5e-2c0f58101a00"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Make source-build and external tool discovery portable on Windows.",
+    "description": "Move PATH splitting, executable lookup, TTY checks, source-build compiler output paths, git/cmake invocation, and PATHEXT handling behind current helpers so source-build mode and external compiler discovery work on Windows without POSIX-only assumptions.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Source-build mode can locate git, cmake, ninja or the selected generator, and the produced styio executable on Windows."
+      },
+      {
+        "checked": false,
+        "text": "External tool lookup honors Windows PATH separators and executable suffixes while preserving Linux and macOS behavior."
+      },
+      {
+        "checked": false,
+        "text": "Windows tests cover binary-mode discovery and source-build path construction without requiring POSIX shell semantics."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Make tool discovery portable",
+      "target": "src/SpioToolchain, src/SpioCore, src/SpioTool, and tests"
+    },
+    "next": [
+      "8c39d6eb-9193-4707-aa8d-2d4c7922d416"
+    ]
+  },
+  {
+    "id": "8c39d6eb-9193-4707-aa8d-2d4c7922d416",
+    "status": "pending",
+    "prerequisites": [
+      "51a019f8-c58f-480c-9101-c2ab75ec279d"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Make the native package-manager core build and test on Windows x86_64.",
+    "description": "Implement the Windows native process backend, environment handling, timeout behavior, stdout/stderr capture, working-directory handling, and process termination semantics needed by spio commands and tests.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "A Windows x86_64 machine builds spio with CMake and runs the native test suite with SPIO_BUILD_TESTS=ON."
+      },
+      {
+        "checked": false,
+        "text": "Process execution tests cover stdout, stderr, stdin, environment overrides, working directory, timeout, nonzero exit, and command lookup on Windows."
+      },
+      {
+        "checked": false,
+        "text": "Linux and macOS process execution tests still pass after introducing the Windows backend."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Adapt native core for Windows x86",
+      "target": "src/SpioCore, src/SpioToolchain, tests/native, and CMake"
+    },
+    "next": [
+      "8d285ad3-42d8-4138-a6b0-b6630ba10b79"
+    ]
+  },
+  {
+    "id": "8d285ad3-42d8-4138-a6b0-b6630ba10b79",
+    "status": "pending",
+    "prerequisites": [
+      "8c39d6eb-9193-4707-aa8d-2d4c7922d416"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Add Windows x86_64 installer and managed styio validation.",
+    "description": "Add a first-class Windows installer path, windows-x86_64 release lookup, checksum verification, spio.exe installation, styio.exe managed install, and launcher behavior without POSIX shell requirements.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Windows installer installs spio.exe and configures the managed styio.exe path without requiring POSIX shell semantics."
+      },
+      {
+        "checked": false,
+        "text": "Windows release lookup downloads spio.exe and styio.exe from the documented tools/spio and tools/styio-windows-cli namespaces and verifies SHA-256 sidecars."
+      },
+      {
+        "checked": false,
+        "text": "Windows installer tests cover install directory selection, PATH guidance, SPIO_HOME release-root config, and launcher behavior."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Add Windows x86 installer validation",
+      "target": "installer, tool install, docs, and Windows evidence"
+    },
+    "next": [
+      "46cf4c9d-2918-4996-a6c6-9a5d0eefb333"
+    ]
+  },
+  {
+    "id": "46cf4c9d-2918-4996-a6c6-9a5d0eefb333",
+    "status": "pending",
+    "prerequisites": [
+      "8d285ad3-42d8-4138-a6b0-b6630ba10b79"
+    ],
+    "platform": "windows",
+    "difficulty": "high",
+    "goal": "Prove Windows x86_64 real-machine workflow support.",
+    "description": "Run build, native tests, installer, spio doctor, managed styio install, styio --version, and clean project workflow smoke on a Windows amd64 machine, then record evidence using the platform template.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "A Windows x86_64 machine records build, test, install, doctor, managed styio, and workflow smoke evidence."
+      },
+      {
+        "checked": false,
+        "text": "Windows evidence includes PowerShell version, Visual Studio or Build Tools version, CMake generator, installed paths, PATH guidance, and managed styio current path."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Validate Windows x86 platform support",
+      "target": "Windows evidence and affected docs/scripts"
+    },
+    "next": [
+      "179b66f7-d8d4-4da9-ac8d-6cffc7bf9b4b"
+    ]
+  },
+  {
+    "id": "179b66f7-d8d4-4da9-ac8d-6cffc7bf9b4b",
+    "status": "pending",
+    "prerequisites": [
+      "46cf4c9d-2918-4996-a6c6-9a5d0eefb333"
+    ],
+    "platform": "windows",
+    "difficulty": "medium",
+    "goal": "Close Windows artifact, support, and CI evidence.",
+    "description": "Publish or verify Windows spio.exe and managed styio.exe artifacts, then remove non-blocking CI status once Windows evidence is complete.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "windows-x86_64 has release artifacts or is explicitly excluded from public support claims."
+      },
+      {
+        "checked": false,
+        "text": "Windows release evidence uses the shared platform evidence template and records artifact URLs, checksums, installed paths, and launcher behavior."
+      },
+      {
+        "checked": false,
+        "text": "Windows CI no longer uses continue-on-error after native build, tests, installer, and workflow evidence are complete."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Close Windows platform support evidence",
+      "target": "Windows release docs, package roots, CI, and evidence records"
+    },
+    "next": []
+  }
+]

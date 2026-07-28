@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` core workflow maintainers covering the native CLI, manifests, lockfiles, resolver, offline package paths, local import/export, and build/test flow.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-06-28
 
 ## Mission
 
@@ -23,6 +23,7 @@ compiler contracts.
 7. offline resolver/cache behavior and future local import/export commands
 8. Temporary platform compatibility surfaces such as `spio cloud` until they are consumed from `styio-platform`
 9. Native registry read-plane security in `src/SpioRegistryClient/`, `src/SpioSecurity/`, and the local `src/spio_registry_v2/` compatibility helpers that keep offline package use safe while platform owns hosted service behavior
+10. Release platform adaptation surfaces in `scripts/install-spio.sh`, `src/SpioTool/PrebuiltInstall.cpp`, and `tests/interop/spio-installer-adapter-smoke.sh`
 
 ## Daily Workflow
 
@@ -40,6 +41,9 @@ compiler contracts.
 12. Treat remote HTTP registry trust as a core fetch invariant: public clients
     must import a platform descriptor and validate the pinned root metadata
     before materializing registry packages.
+13. When expanding the release platform matrix, update the platform adaptation
+    plan, release checklist, installer adapter smoke tests, and clean-machine
+    validation evidence together.
 
 ## Change Classes
 
@@ -52,6 +56,7 @@ compiler contracts.
 ```bash
 ./scripts/checkpoint-health.sh
 ./scripts/delivery-gate.sh --skip-audit --skip-health
+bash tests/interop/spio-installer-adapter-smoke.sh
 ctest --test-dir build-codex -R spio_installer_bootstrap_smoke --output-on-failure
 python3 tests/unit/test_registry_v2.py
 ./build-codex/bin/spio_native_tests --gtest_filter='SecurityTests.*'

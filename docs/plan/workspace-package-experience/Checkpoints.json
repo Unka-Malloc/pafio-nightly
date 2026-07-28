@@ -1,0 +1,172 @@
+[
+  {
+    "id": "1ddfcce4-b8d7-4a2c-b76c-5ffae24dfa64",
+    "status": "pending",
+    "prerequisites": [],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add workspace default members and execution selectors.",
+    "description": "Add default members, workspace-wide execution, exclusions, graph-aware filters, changed-package selection, and affected-package test gates.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Workspace commands can target all members, default members, excluded members, changed packages, dependents, and dependencies."
+      },
+      {
+        "checked": false,
+        "text": "Ambiguous selections fail with actionable text and JSON diagnostics."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": [
+      "6eeeb1da-1229-4dc8-874b-314804409f8c"
+    ]
+  },
+  {
+    "id": "6eeeb1da-1229-4dc8-874b-314804409f8c",
+    "status": "pending",
+    "prerequisites": [
+      "1ddfcce4-b8d7-4a2c-b76c-5ffae24dfa64"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add workspace-only dependency intent and patch rules.",
+    "description": "Add explicit workspace-only dependencies plus root-level patch or replace rules for local development that are excluded from published package metadata.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Resolver errors when a workspace-only dependency resolves outside the workspace."
+      },
+      {
+        "checked": false,
+        "text": "Publish preflight rejects accidental publication of patch or replace state."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": [
+      "d347e167-f012-493a-8978-d41235c9267a"
+    ]
+  },
+  {
+    "id": "d347e167-f012-493a-8978-d41235c9267a",
+    "status": "pending",
+    "prerequisites": [
+      "6eeeb1da-1229-4dc8-874b-314804409f8c"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Extend package metadata and validation.",
+    "description": "Add description, license, repository, homepage, keywords, categories, readme, authors, links, and documentation URLs to manifests, publish preflight, registry records, and display commands.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Manifest validation enforces metadata shape and policy-relevant fields."
+      },
+      {
+        "checked": false,
+        "text": "Published records and display commands expose metadata consistently in text and JSON."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": [
+      "95335e33-66e7-467d-a636-1667d2e1b841"
+    ]
+  },
+  {
+    "id": "95335e33-66e7-467d-a636-1667d2e1b841",
+    "status": "pending",
+    "prerequisites": [
+      "d347e167-f012-493a-8978-d41235c9267a"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add package search and info commands.",
+    "description": "Add searchable metadata index plus spio search and spio info commands tied to registry records and release-state interpretation.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "search and info work against local or remote registry metadata without solver side effects."
+      },
+      {
+        "checked": false,
+        "text": "Outputs include package metadata, versions, release state, advisories, source identity, and policy warnings."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": [
+      "34ccdd8b-d27d-4fc8-8b8d-2926b8ae6a87"
+    ]
+  },
+  {
+    "id": "34ccdd8b-d27d-4fc8-8b8d-2926b8ae6a87",
+    "status": "pending",
+    "prerequisites": [
+      "95335e33-66e7-467d-a636-1667d2e1b841"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Generate command references and shell completions.",
+    "description": "Add completion generation, command reference generation, stable examples, and docs gates that keep examples executable.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Generated completions and command references are derived from the current CLI argument index or command registry."
+      },
+      {
+        "checked": false,
+        "text": "Docs gates run example commands or validate them against the CLI help surface."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": [
+      "b0f68e45-4388-4028-8cd5-f233dac22a83"
+    ]
+  },
+  {
+    "id": "b0f68e45-4388-4028-8cd5-f233dac22a83",
+    "status": "pending",
+    "prerequisites": [
+      "34ccdd8b-d27d-4fc8-8b8d-2926b8ae6a87"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Keep project graph payloads aligned with package experience.",
+    "description": "Extend project graph and environment payloads when workspace selectors, metadata, search, or policy state become part of user-facing package workflows.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "project-graph JSON includes the selected workspace, package metadata, policy state, and source summaries needed by downstream tools."
+      },
+      {
+        "checked": false,
+        "text": "Cross-repository sample workflow gates consume the payload without private implementation knowledge."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework workspace package experience plan checkpoints",
+      "target": "docs/plan/workspace-package-experience and owning implementation files"
+    },
+    "next": []
+  }
+]

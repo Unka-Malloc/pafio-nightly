@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for maintainers of `spio`'s written contracts, documentation topology, ADR hygiene, planning handoff, and repository-facing governance text.
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-06-28
 
 ## Mission
 
@@ -16,23 +16,21 @@ Primary paths:
 2. `docs/README.md`
 3. `docs/governance/`
 4. `docs/rollups/`
-5. `docs/history/`
-6. `docs/archive/`
-7. `docs/adr/`
-8. `docs/plan/`
-9. `docs/teams/`
-10. `scripts/docs-index.py`
-11. `scripts/docs-lifecycle.py`
-12. `scripts/docs-audit.py`
+5. `docs/adr/`
+6. `docs/plan/`
+7. `docs/teams/`
+8. `scripts/docs-index.py`
+9. `scripts/docs-lifecycle.py`
+10. `scripts/docs-audit.py`
 
 Key SSOTs:
 
 1. `Docs maintenance model -> ../governance/Docs-Maintenance-Model.md`
-2. `Ecosystem milestone mirror -> ../plan/repository-delivery-convergence/Evidence.md`
-3. `File-governance mirror -> ../plan/repository-delivery-convergence/Evidence.md`
+2. `Active plan index -> ../plan/Manifest.json`
+3. `Plan workspace rules -> ../plan/README.md`
 4. `Current state -> ../rollups/CURRENT-STATE.md`
-5. `Master plan -> ../plan/repository-delivery-convergence/Evidence.md`
-6. `Future direction and coordination -> ../plan/repository-delivery-convergence/Evidence.md`
+5. `Delivery quality plan -> ../plan/delivery-quality/README.md`
+6. `Workflow and toolchain plan -> ../plan/workflow-toolchain/README.md`
 
 ## Daily Workflow
 
@@ -40,8 +38,8 @@ Key SSOTs:
 2. Keep summary docs short and linked; do not let READMEs become a second owner copy.
 3. Add or update an ADR when an accepted boundary or workflow decision needs durable rationale.
 4. Refresh team runbooks whenever ownership, review routing, or recovery expectations move.
-5. If a cross-repo milestone or repo-exit changes, update the nightly authority first, then the local ecosystem mirror, then repo-local planning docs.
-6. If docs tree topology, index generation, lifecycle metadata, or ignore-policy baseline changes, update the file-governance mirror and the docs automation scripts in the same checkpoint.
+5. If a cross-repo contract or repo-exit boundary changes, update the external owner document first, then the relevant functional plan if remaining work changed.
+6. If docs tree topology, index generation, lifecycle metadata, or ignore-policy baseline changes, update the docs maintenance model and docs automation scripts in the same checkpoint.
 
 ## Change Classes
 

@@ -38,7 +38,7 @@ The local portability path is client-side:
 - bundle metadata must preserve package name, version, source fingerprint,
   archive hash, and dependency metadata
 
-This contract does not make `styio-spio` a registry server. Global package
+This contract does not make `pafio-nightly` a registry server. Global package
 distribution, regional mirrors, and authoritative write/control planes belong
 to `styio-platform`.
 

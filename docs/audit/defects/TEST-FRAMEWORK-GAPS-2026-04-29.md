@@ -1,11 +1,11 @@
 # Styio Spio Test Framework Defects 2026-04-29
 
-**Purpose:** Record test framework and test-case defects found during the 2026-04-29 review of `styio-spio`.
+**Purpose:** Record test framework and test-case defects found during the 2026-04-29 review of `pafio-nightly`.
 
 **Last updated:** 2026-04-29
 
 **Status:** Open
-**Scope:** `styio-spio` native, CLI, integration, package-manager, submit-gate, and CI test coverage.
+**Scope:** `pafio-nightly` native, CLI, integration, package-manager, submit-gate, and CI test coverage.
 **Evidence reviewed:** `tests/CMakeLists.txt`, `tests/README.md`, `tests/integration/README.md`, `tests/integration/scripts/run-blackbox-placeholder.sh`, `.github/workflows/local-ci-gate.yml`, `scripts/delivery-gate.sh`, `scripts/checkpoint-health.sh`, and `scripts/submit-gate.py`.
 
 This record captures test framework and test-case gaps. The repository has meaningful native and CLI coverage, but several release-critical workflows are still represented by placeholder or optional gates.
