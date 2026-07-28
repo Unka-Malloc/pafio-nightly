@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import tarfile
-import tomllib
 from collections import defaultdict
+from contextlib import contextmanager
 from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11
+    import tomli as tomllib  # type: ignore[no-redef]
 
 from .common import (
     REGISTRY_SUBPROCESS_TIMEOUT_SECONDS,
@@ -38,6 +44,35 @@ from .common import (
 
 
 MAX_ARCHIVE_MANIFEST_BYTES = 1024 * 1024
+
+
+@contextmanager
+def _registry_mutation_lock(dest_root: pathlib.Path):
+    dest_root.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = dest_root.parent / f".{dest_root.name}.spio-publish.lock"
+    with lock_path.open("a+b") as handle:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _prescan_source_archive(archive_path: pathlib.Path) -> None:
@@ -584,7 +619,6 @@ def publish_to_registry_v2(
     key_dir = normalize_local_root(key_dir_value)
     role_keys = load_role_keys(key_dir)
     registry_time = utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    created_root = _initialize_registry_root(dest_root, role_keys, registry_name=registry_name, registry_time=registry_time)
 
     candidate_payload: dict[str, Any] | None = None
     if archive_path_value is not None:
@@ -604,8 +638,15 @@ def publish_to_registry_v2(
         publisher_id=publisher_id,
         published_at=registry_time,
     )
-    append_result = _append_release_record(dest_root, record, archive_path)
-    metadata_versions = _refresh_signed_metadata(dest_root, role_keys, registry_time)
+    with _registry_mutation_lock(dest_root):
+        created_root = _initialize_registry_root(
+            dest_root,
+            role_keys,
+            registry_name=registry_name,
+            registry_time=registry_time,
+        )
+        append_result = _append_release_record(dest_root, record, archive_path)
+        metadata_versions = _refresh_signed_metadata(dest_root, role_keys, registry_time)
 
     return {
         "ok": True,

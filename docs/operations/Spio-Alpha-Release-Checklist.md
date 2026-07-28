@@ -2,7 +2,10 @@
 
 **Purpose:** Define the concrete closure checklist for publishing `spio` v0.1.0-alpha without implying npm-level package-manager maturity.
 
-**Last updated:** 2026-05-05
+**Last updated:** 2026-07-28
+
+**Authoritative execution graph:** `docs/plan/package-manager-roadmap/` and
+`docs/plan/repository-delivery-convergence/`
 
 ## Release Goal
 
@@ -131,14 +134,14 @@ local registry state.
 
 ## Deferred Features
 
-| Feature | Alpha stance | Estimated cost |
-|---------|--------------|----------------|
-| Full semver range solver | Defer; support pinned/latest releases | Medium, touches resolver and lock semantics |
-| Registry search and discovery | Defer; package roots must be explicit | Medium, needs index/query service and CLI UX |
-| Private account auth | Defer to private security module and platform | Medium to high, needs tokens, policy, and audit |
-| Signed provenance | Defer; keep SHA-256 over HTTPS for alpha | Medium, needs signing keys, verification UX, CI custody |
-| Windows CLI installer | Required for `windows-x86_64` support before announcement | Medium, needs PowerShell installer and real Windows smoke target |
-| Desktop/mobile package installation | Defer; platform target namespaces may exist first | High, separate packaging and app distribution paths |
-| Cache garbage collection | Defer; document manual cleanup | Low to medium |
-| Self-contained macOS/Linux archives | Defer past first alpha CLI smoke | Medium, needs archive metadata, RPATH/install-name handling, and runtime library policy |
-| x86_64 Linux artifacts | Required for Debian, Red Hat family, openSUSE, Arch family, and musl x86_64 support before announcement | Low to medium, mostly CI capacity once build scripts are stable |
+| Feature | Alpha stance | Estimated cost | Plan disposition |
+|---------|--------------|----------------|------------------|
+| Full semver range solver | Defer; support pinned/latest releases | Medium, touches resolver and lock semantics | `single-version-v1` exact pins remain the contract; range solving requires a requirements update. |
+| Registry search and discovery | Defer; package roots must be explicit | Medium, needs index/query service and CLI UX | Explicitly excluded from alpha in the package-manager roadmap; manifest and lockfile registry roots remain required. |
+| Private account auth | Defer to private security module and platform | Medium to high, needs tokens, policy, and audit | Tracked by the convergence backlog; control-plane bearer auth covers publish mutation only. |
+| Signed provenance | Defer; keep SHA-256 over HTTPS for alpha | Medium, needs signing keys, verification UX, CI custody | TUF chain verification covers registry consumption; signed provenance UX remains deferred. |
+| Windows CLI installer | Required for `windows-x86_64` support before announcement | Medium, needs PowerShell installer and real Windows smoke target | The platform roadmap keeps Windows unsupported until real artifacts and smoke evidence exist. |
+| Desktop/mobile package installation | Defer; platform target namespaces may exist first | High, separate packaging and app distribution paths | Outside alpha scope. |
+| Cache garbage collection | Defer; document manual cleanup | Low to medium | Manual cleanup is documented above. |
+| Self-contained macOS/Linux archives | Defer past first alpha CLI smoke | Medium, needs archive metadata, RPATH/install-name handling, and runtime library policy | Remains an explicit known constraint. |
+| x86_64 Linux artifacts | Required for Debian, Red Hat family, openSUSE, Arch family, and musl x86_64 support before announcement | Low to medium, mostly CI capacity once build scripts are stable | Required before those targets are announced; tracked by the platform roadmap. |

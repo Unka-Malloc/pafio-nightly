@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-07-28
 
 ## Who This Is For
 

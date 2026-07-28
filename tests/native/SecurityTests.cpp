@@ -199,11 +199,17 @@ TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
       "  \"root_sha256\": \"" + root_digest + "\",\n"
       "  \"control_plane_base_url\": \"https://packages.example.test/api/spio-registry-control/v1\",\n"
       "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
-      "  \"expires\": \"2026-06-02T00:00:00Z\"\n"
+      "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
       "}\n");
 
-  const spio::RegistryTrustPin imported =
-      spio::ImportRegistryTrustDescriptor(root / ".spio-home", descriptor_path.string());
+  EXPECT_THROW(
+      spio::ImportRegistryTrustDescriptor(root / ".spio-home", descriptor_path.string()),
+      spio::FetchError);
+
+  const spio::RegistryTrustPin imported = spio::ImportRegistryTrustDescriptor(
+      root / ".spio-home",
+      descriptor_path.string(),
+      spio::RegistryTrustImportOptions{.allow_dev_unsigned = true});
   EXPECT_EQ(imported.registry_root, "https://packages.example.test/spio");
   EXPECT_EQ(imported.root_sha256, root_digest);
   EXPECT_EQ(imported.registry_name, "unit-registry");
@@ -214,4 +220,45 @@ TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
   ASSERT_TRUE(resolved.has_value());
   EXPECT_EQ(resolved->root_sha256, root_digest);
   EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "trust" / "registry-trust.json"));
+}
+
+TEST(SecurityTests, RejectsExpiredAndUnknownSignerDescriptors)
+{
+  const fs::path root = MakeTempDir("registry-trust-negative");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const fs::path expired_path = root / "expired.json";
+  WriteFile(
+      expired_path,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"registry_root\": \"https://packages.example.test/spio/\",\n"
+      "  \"registry_name\": \"unit-registry\",\n"
+      "  \"root_sha256\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n"
+      "  \"issued_at\": \"2020-01-01T00:00:00Z\",\n"
+      "  \"expires\": \"2020-02-01T00:00:00Z\"\n"
+      "}\n");
+  EXPECT_THROW(
+      spio::ImportRegistryTrustDescriptor(
+          root / ".spio-home",
+          expired_path.string(),
+          spio::RegistryTrustImportOptions{.allow_dev_unsigned = true}),
+      spio::FetchError);
+
+  const fs::path unknown_signer = root / "unknown-signer.json";
+  WriteFile(
+      unknown_signer,
+      "{\n"
+      "  \"signed\": {\n"
+      "    \"schema_version\": 1,\n"
+      "    \"registry_root\": \"https://packages.example.test/spio/\",\n"
+      "    \"registry_name\": \"unit-registry\",\n"
+      "    \"root_sha256\": \"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\",\n"
+      "    \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
+      "    \"expires\": \"2099-06-02T00:00:00Z\"\n"
+      "  },\n"
+      "  \"signatures\": [{\"keyid\": \"unknown\", \"sig\": \"YWJjZA==\"}]\n"
+      "}\n");
+  EXPECT_THROW(
+      spio::ImportRegistryTrustDescriptor(root / ".spio-home", unknown_signer.string()),
+      spio::FetchError);
 }

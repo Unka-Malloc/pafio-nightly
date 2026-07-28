@@ -1,15 +1,16 @@
 #include "SpioSecurity/RegistrySecurity.hpp"
 
-#include "SpioCore/Errors.hpp"
-
 #include <array>
+#include <atomic>
 #include <cctype>
 #include <filesystem>
+#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <sstream>
 #include <utility>
 #include <vector>
+
+#include "SpioCore/Errors.hpp"
 
 namespace fs = std::filesystem;
 
@@ -22,54 +23,49 @@ enum class SecurityHandlerResult
   kResolved,
 };
 
-std::string NormalizeRegistryRoot(std::string value)
-{
-  while (!value.empty() && value.back() == '/')
-  {
+std::string
+NormalizeRegistryRoot(std::string value) {
+  while (!value.empty() && value.back() == '/') {
     value.pop_back();
   }
   return value;
 }
 
-bool IsHttpRegistryRoot(const std::string &value)
-{
+bool
+IsHttpRegistryRoot(const std::string &value) {
   return value.starts_with("http://") || value.starts_with("https://");
 }
 
-bool IsFileRegistryRoot(const std::string &value)
-{
+bool
+IsFileRegistryRoot(const std::string &value) {
   return value.starts_with("file://");
 }
 
-std::vector<std::string> SplitPosixPath(const std::string &value)
-{
+std::vector<std::string>
+SplitPosixPath(const std::string &value) {
   std::vector<std::string> parts;
   std::stringstream stream(value);
   std::string part;
-  while (std::getline(stream, part, '/'))
-  {
+  while (std::getline(stream, part, '/')) {
     parts.push_back(part);
   }
   return parts;
 }
 
-bool IsSafePackageSegment(const std::string &value)
-{
-  if (value.empty())
-  {
+bool
+IsSafePackageSegment(const std::string &value) {
+  if (value.empty()) {
     return false;
   }
-  const auto is_lower_or_digit = [](const unsigned char ch) {
+  const auto is_lower_or_digit = [](const unsigned char ch)
+  {
     return (ch >= 'a' && ch <= 'z') || std::isdigit(ch) != 0;
   };
-  if (!is_lower_or_digit(static_cast<unsigned char>(value.front())))
-  {
+  if (!is_lower_or_digit(static_cast<unsigned char>(value.front()))) {
     return false;
   }
-  for (const unsigned char ch : value)
-  {
-    if (!is_lower_or_digit(ch) && ch != '-' && ch != '_')
-    {
+  for (const unsigned char ch : value) {
+    if (!is_lower_or_digit(ch) && ch != '-' && ch != '_') {
       return false;
     }
   }
@@ -77,21 +73,20 @@ bool IsSafePackageSegment(const std::string &value)
 }
 
 using ReadSecurityHandler =
-    SecurityHandlerResult (*)(const spio::RegistryReadSecurityRequest &request, spio::RegistryReadSecurityDecision &decision);
+  SecurityHandlerResult (*)(const spio::RegistryReadSecurityRequest &request, spio::RegistryReadSecurityDecision &decision);
 using WriteSecurityHandler =
-    SecurityHandlerResult (*)(const spio::RegistryWriteSecurityRequest &request, spio::RegistryWriteSecurityDecision &decision);
+  SecurityHandlerResult (*)(const spio::RegistryWriteSecurityRequest &request, spio::RegistryWriteSecurityDecision &decision);
 
 template <typename Request, typename Decision, typename Handler, size_t N>
-Decision RunSecurityChain(
-    const Request &request,
-    Decision decision,
-    const std::array<Handler, N> &handlers,
-    const char *chain_name)
-{
-  for (const Handler handler : handlers)
-  {
-    if (handler(request, decision) == SecurityHandlerResult::kResolved)
-    {
+Decision
+RunSecurityChain(
+  const Request &request,
+  Decision decision,
+  const std::array<Handler, N> &handlers,
+  const char *chain_name
+) {
+  for (const Handler handler : handlers) {
+    if (handler(request, decision) == SecurityHandlerResult::kResolved) {
       return decision;
     }
   }
@@ -99,73 +94,78 @@ Decision RunSecurityChain(
   throw std::logic_error(std::string(chain_name) + " registry security chain did not resolve");
 }
 
-SecurityHandlerResult NormalizeReadRegistryRoot(
-    const spio::RegistryReadSecurityRequest &request,
-    spio::RegistryReadSecurityDecision &decision)
-{
+SecurityHandlerResult
+NormalizeReadRegistryRoot(
+  const spio::RegistryReadSecurityRequest &request,
+  spio::RegistryReadSecurityDecision &decision
+) {
   decision.registry_root = NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
-SecurityHandlerResult ValidateReadRegistryRootScheme(
-    const spio::RegistryReadSecurityRequest &request,
-    spio::RegistryReadSecurityDecision &decision)
-{
-  if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root))
-  {
+SecurityHandlerResult
+ValidateReadRegistryRootScheme(
+  const spio::RegistryReadSecurityRequest &request,
+  spio::RegistryReadSecurityDecision &decision
+) {
+  if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root)) {
     throw spio::FetchError("registry root must use file://, http://, or https://: " + request.registry_root);
   }
   return SecurityHandlerResult::kContinue;
 }
 
-SecurityHandlerResult ResolvePublicDefaultReadAccess(
-    const spio::RegistryReadSecurityRequest &request,
-    spio::RegistryReadSecurityDecision &decision)
-{
-  (void) request;
+SecurityHandlerResult
+ResolvePublicDefaultReadAccess(
+  const spio::RegistryReadSecurityRequest &request,
+  spio::RegistryReadSecurityDecision &decision
+) {
+  (void)request;
   decision.request_headers.clear();
   decision.provider_name = "public-default";
   return SecurityHandlerResult::kResolved;
 }
 
-SecurityHandlerResult NormalizeWriteRegistryRoot(
-    const spio::RegistryWriteSecurityRequest &request,
-    spio::RegistryWriteSecurityDecision &decision)
-{
+SecurityHandlerResult
+NormalizeWriteRegistryRoot(
+  const spio::RegistryWriteSecurityRequest &request,
+  spio::RegistryWriteSecurityDecision &decision
+) {
   decision.registry_root = NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
-SecurityHandlerResult ValidateWriteRegistryRootScheme(
-    const spio::RegistryWriteSecurityRequest &request,
-    spio::RegistryWriteSecurityDecision &decision)
-{
-  if (!IsHttpRegistryRoot(decision.registry_root))
-  {
+SecurityHandlerResult
+ValidateWriteRegistryRootScheme(
+  const spio::RegistryWriteSecurityRequest &request,
+  spio::RegistryWriteSecurityDecision &decision
+) {
+  if (!IsHttpRegistryRoot(decision.registry_root)) {
     throw spio::PublishError("remote registry publish requires an http:// or https:// registry root: " + request.registry_root);
   }
   return SecurityHandlerResult::kContinue;
 }
 
-SecurityHandlerResult RejectOpenSourceWriteSecurityHooks(
-    const spio::RegistryWriteSecurityRequest &request,
-    spio::RegistryWriteSecurityDecision &decision)
-{
-  (void) decision;
-  if (request.profile_name.has_value() || request.policy_file.has_value() || !request.explicit_request_headers.empty())
-  {
+SecurityHandlerResult
+RejectOpenSourceWriteSecurityHooks(
+  const spio::RegistryWriteSecurityRequest &request,
+  spio::RegistryWriteSecurityDecision &decision
+) {
+  (void)decision;
+  if (request.profile_name.has_value() || request.policy_file.has_value() || !request.explicit_request_headers.empty()) {
     throw spio::PublishError(
-        "registry write security hooks require a private module under src-private/SpioSecurity and are not available "
-        "in the open-source core");
+      "registry write security hooks require a private module under src-private/SpioSecurity and are not available "
+      "in the open-source core"
+    );
   }
   return SecurityHandlerResult::kContinue;
 }
 
-SecurityHandlerResult ResolvePublicDefaultWriteAccess(
-    const spio::RegistryWriteSecurityRequest &request,
-    spio::RegistryWriteSecurityDecision &decision)
-{
-  (void) request;
+SecurityHandlerResult
+ResolvePublicDefaultWriteAccess(
+  const spio::RegistryWriteSecurityRequest &request,
+  spio::RegistryWriteSecurityDecision &decision
+) {
+  (void)request;
   decision.request_headers.clear();
   decision.provider_name = "public-default";
   decision.mode = "anonymous";
@@ -174,27 +174,31 @@ SecurityHandlerResult ResolvePublicDefaultWriteAccess(
 }
 
 const std::array<ReadSecurityHandler, 3> kDefaultReadSecurityHandlers = {
-    NormalizeReadRegistryRoot,
-    ValidateReadRegistryRootScheme,
-    ResolvePublicDefaultReadAccess,
+  NormalizeReadRegistryRoot,
+  ValidateReadRegistryRootScheme,
+  ResolvePublicDefaultReadAccess,
 };
 
 const std::array<WriteSecurityHandler, 4> kDefaultWriteSecurityHandlers = {
-    NormalizeWriteRegistryRoot,
-    ValidateWriteRegistryRootScheme,
-    RejectOpenSourceWriteSecurityHooks,
-    ResolvePublicDefaultWriteAccess,
+  NormalizeWriteRegistryRoot,
+  ValidateWriteRegistryRootScheme,
+  RejectOpenSourceWriteSecurityHooks,
+  ResolvePublicDefaultWriteAccess,
 };
 
-spio::RegistryReadSecurityResolver &ReadSecurityResolverSlot()
-{
-  static spio::RegistryReadSecurityResolver resolver = spio::ResolveDefaultRegistryReadSecurity;
+std::atomic<spio::RegistryReadSecurityResolver> &
+ReadSecurityResolverSlot() {
+  static std::atomic<spio::RegistryReadSecurityResolver> resolver{
+    spio::ResolveDefaultRegistryReadSecurity
+  };
   return resolver;
 }
 
-spio::RegistryWriteSecurityResolver &WriteSecurityResolverSlot()
-{
-  static spio::RegistryWriteSecurityResolver resolver = spio::ResolveDefaultRegistryWriteSecurity;
+std::atomic<spio::RegistryWriteSecurityResolver> &
+WriteSecurityResolverSlot() {
+  static std::atomic<spio::RegistryWriteSecurityResolver> resolver{
+    spio::ResolveDefaultRegistryWriteSecurity
+  };
   return resolver;
 }
 
@@ -203,126 +207,115 @@ spio::RegistryWriteSecurityResolver &WriteSecurityResolverSlot()
 namespace spio
 {
 
-RegistryReadSecurityDecision ResolveDefaultRegistryReadSecurity(const RegistryReadSecurityRequest &request)
-{
+RegistryReadSecurityDecision
+ResolveDefaultRegistryReadSecurity(const RegistryReadSecurityRequest &request) {
   return RunSecurityChain(
-      request,
-      RegistryReadSecurityDecision{},
-      kDefaultReadSecurityHandlers,
-      "default read");
+    request,
+    RegistryReadSecurityDecision{},
+    kDefaultReadSecurityHandlers,
+    "default read"
+  );
 }
 
-RegistryWriteSecurityDecision ResolveDefaultRegistryWriteSecurity(const RegistryWriteSecurityRequest &request)
-{
+RegistryWriteSecurityDecision
+ResolveDefaultRegistryWriteSecurity(const RegistryWriteSecurityRequest &request) {
   return RunSecurityChain(
-      request,
-      RegistryWriteSecurityDecision{},
-      kDefaultWriteSecurityHandlers,
-      "default write");
+    request,
+    RegistryWriteSecurityDecision{},
+    kDefaultWriteSecurityHandlers,
+    "default write"
+  );
 }
 
-RegistryReadSecurityResolver RegisterRegistryReadSecurityResolver(RegistryReadSecurityResolver resolver)
-{
-  RegistryReadSecurityResolver &slot = ReadSecurityResolverSlot();
-  RegistryReadSecurityResolver previous = slot;
-  slot = resolver != nullptr ? resolver : ResolveDefaultRegistryReadSecurity;
-  return previous;
+RegistryReadSecurityResolver
+RegisterRegistryReadSecurityResolver(RegistryReadSecurityResolver resolver) {
+  return ReadSecurityResolverSlot().exchange(
+    resolver != nullptr ? resolver : ResolveDefaultRegistryReadSecurity,
+    std::memory_order_acq_rel
+  );
 }
 
-RegistryWriteSecurityResolver RegisterRegistryWriteSecurityResolver(RegistryWriteSecurityResolver resolver)
-{
-  RegistryWriteSecurityResolver &slot = WriteSecurityResolverSlot();
-  RegistryWriteSecurityResolver previous = slot;
-  slot = resolver != nullptr ? resolver : ResolveDefaultRegistryWriteSecurity;
-  return previous;
+RegistryWriteSecurityResolver
+RegisterRegistryWriteSecurityResolver(RegistryWriteSecurityResolver resolver) {
+  return WriteSecurityResolverSlot().exchange(
+    resolver != nullptr ? resolver : ResolveDefaultRegistryWriteSecurity,
+    std::memory_order_acq_rel
+  );
 }
 
-RegistryReadSecurityDecision ResolveRegistryReadSecurity(const RegistryReadSecurityRequest &request)
-{
-  return ReadSecurityResolverSlot()(request);
+RegistryReadSecurityDecision
+ResolveRegistryReadSecurity(const RegistryReadSecurityRequest &request) {
+  return ReadSecurityResolverSlot().load(std::memory_order_acquire)(request);
 }
 
-RegistryWriteSecurityDecision ResolveRegistryWriteSecurity(const RegistryWriteSecurityRequest &request)
-{
-  return WriteSecurityResolverSlot()(request);
+RegistryWriteSecurityDecision
+ResolveRegistryWriteSecurity(const RegistryWriteSecurityRequest &request) {
+  return WriteSecurityResolverSlot().load(std::memory_order_acquire)(request);
 }
 
-RegistryPackageNameParts SplitRegistryPackageName(const std::string &package_name, const std::string &context)
-{
+RegistryPackageNameParts
+SplitRegistryPackageName(const std::string &package_name, const std::string &context) {
   const size_t slash = package_name.find('/');
-  if (slash == std::string::npos || slash != package_name.rfind('/'))
-  {
+  if (slash == std::string::npos || slash != package_name.rfind('/')) {
     throw FetchError(context + " must match namespace/name: " + package_name);
   }
   RegistryPackageNameParts parts{
-      .namespace_name = package_name.substr(0U, slash),
-      .short_name = package_name.substr(slash + 1U),
+    .namespace_name = package_name.substr(0U, slash),
+    .short_name = package_name.substr(slash + 1U),
   };
-  if (!IsSafePackageSegment(parts.namespace_name) || !IsSafePackageSegment(parts.short_name))
-  {
+  if (!IsSafePackageSegment(parts.namespace_name) || !IsSafePackageSegment(parts.short_name)) {
     throw FetchError(context + " must match namespace/name: " + package_name);
   }
   return parts;
 }
 
-void ValidateRegistryPackageIdentity(const std::string &package_name)
-{
-  (void) SplitRegistryPackageName(package_name, "registry package name");
+void
+ValidateRegistryPackageIdentity(const std::string &package_name) {
+  (void)SplitRegistryPackageName(package_name, "registry package name");
 }
 
-std::filesystem::path NormalizeRegistryObjectPath(const std::string &relative_path, const std::string &context)
-{
-  if (relative_path.empty() || relative_path.ends_with('/'))
-  {
+std::filesystem::path
+NormalizeRegistryObjectPath(const std::string &relative_path, const std::string &context) {
+  if (relative_path.empty() || relative_path.ends_with('/')) {
     throw FetchError(context + " must be a non-empty POSIX-relative path: " + relative_path);
   }
-  if (relative_path.find('\\') != std::string::npos || relative_path.starts_with('/'))
-  {
+  if (relative_path.find('\\') != std::string::npos || relative_path.starts_with('/')) {
     throw FetchError(context + " must be a POSIX-relative path inside the registry root: " + relative_path);
   }
-  for (const unsigned char ch : relative_path)
-  {
-    if (ch < 32U)
-    {
+  for (const unsigned char ch : relative_path) {
+    if (ch < 32U) {
       throw FetchError(context + " must not contain control characters: " + relative_path);
     }
   }
   const fs::path path(relative_path);
-  if (path.is_absolute())
-  {
+  if (path.is_absolute()) {
     throw FetchError(context + " must be relative: " + relative_path);
   }
-  for (const std::string &part : SplitPosixPath(relative_path))
-  {
-    if (part.empty() || part == "." || part == "..")
-    {
+  for (const std::string &part : SplitPosixPath(relative_path)) {
+    if (part.empty() || part == "." || part == "..") {
       throw FetchError(context + " must be a canonical POSIX-relative path inside the registry root: " + relative_path);
     }
   }
   const fs::path normalized = path.lexically_normal();
   const std::string text = normalized.generic_string();
-  if (text.empty() || text == "." || text == ".." || text.starts_with("../"))
-  {
+  if (text.empty() || text == "." || text == ".." || text.starts_with("../")) {
     throw FetchError(context + " escapes the registry root: " + relative_path);
   }
   return normalized;
 }
 
-std::filesystem::path NormalizeRegistryRelativePath(const std::string &relative_path, const std::string &context)
-{
+std::filesystem::path
+NormalizeRegistryRelativePath(const std::string &relative_path, const std::string &context) {
   return NormalizeRegistryObjectPath(relative_path, context);
 }
 
-bool IsRegistrySha256Digest(const std::string &value)
-{
-  if (value.size() != 64U)
-  {
+bool
+IsRegistrySha256Digest(const std::string &value) {
+  if (value.size() != 64U) {
     return false;
   }
-  for (const unsigned char ch : value)
-  {
-    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f'))
-    {
+  for (const unsigned char ch : value) {
+    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f')) {
       return false;
     }
   }

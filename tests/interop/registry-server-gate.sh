@@ -9,6 +9,7 @@ CONTROL_LOG="$TMP_ROOT/control-plane.log"
 STATIC_LOG="$TMP_ROOT/static-server.log"
 CONTROL_PID=""
 STATIC_PID=""
+AUTH_TOKEN="interop-control-token"
 
 cleanup() {
   if [[ -n "$CONTROL_PID" ]]; then
@@ -58,6 +59,7 @@ python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --spio-bin "$SPIO_BIN" \
   --read-root-url "$STATIC_ROOT" \
   --control-plane-base-url "$CONTROL_BASE" \
+  --auth-token "$AUTH_TOKEN" \
   --bind 127.0.0.1 \
   --port "$CONTROL_PORT" >"$CONTROL_LOG" 2>&1 &
 CONTROL_PID="$!"
@@ -79,6 +81,8 @@ python3 "$ROOT_DIR/scripts/registry-server-gate.py" \
   --publish-root "$CONTROL_BASE" \
   --fetch-root "$STATIC_ROOT" \
   --fetch-trust-descriptor "${CONTROL_BASE}/descriptor" \
+  --fetch-trust-dev \
+  --publish-header "Authorization: Bearer ${AUTH_TOKEN}" \
   --spio-bin "$SPIO_BIN" \
   --json >"$OUT_JSON"
 

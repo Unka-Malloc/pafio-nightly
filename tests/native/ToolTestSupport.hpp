@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -73,7 +74,11 @@ inline std::string ReadFile(const fs::path &path)
   std::ifstream in(path);
   std::ostringstream buffer;
   buffer << in.rdbuf();
-  return buffer.str();
+  std::string text = buffer.str();
+  // Normalize CRLF from Windows working trees / bind mounts so fixture
+  // comparisons stay LF-canonical across Docker-on-Windows hosts.
+  text.erase(std::remove(text.begin(), text.end(), '\r'), text.end());
+  return text;
 }
 
 inline void WriteExecutable(const fs::path &path, const std::string &content)

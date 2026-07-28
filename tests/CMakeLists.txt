@@ -26,6 +26,7 @@ add_executable(spio_native_tests
   native/ToolPinTests.cpp
   native/ToolchainStateTests.cpp
   native/ToolStatusTests.cpp
+  native/TufTests.cpp
   native/VendorTests.cpp
 )
 target_link_libraries(spio_native_tests PRIVATE spio_core GTest::gtest_main)
@@ -169,12 +170,12 @@ add_test(
 
 add_test(
   NAME spio_styio_interface_gate_handshake
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/styio-interface-gate-handshake.sh"
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/styio-interface-gate-handshake.sh" "$<TARGET_FILE:spio>"
 )
 
 add_test(
   NAME spio_styio_interface_gate_compile_plan
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/styio-interface-gate-compile-plan.sh"
+  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/styio-interface-gate-compile-plan.sh" "$<TARGET_FILE:spio>"
 )
 
 add_test(
@@ -182,29 +183,43 @@ add_test(
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-http-fetch.sh" "$<TARGET_FILE:spio>"
 )
 
-add_test(
-  NAME spio_registry_http_publish
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-http-publish.sh" "$<TARGET_FILE:spio>"
-)
+if(EXISTS "${CMAKE_SOURCE_DIR}/src-private")
+  add_test(
+    NAME spio_registry_http_publish
+    COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-http-publish.sh" "$<TARGET_FILE:spio>"
+  )
 
-add_test(
-  NAME spio_registry_server_gate
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-server-gate.sh" "$<TARGET_FILE:spio>"
-)
+  add_test(
+    NAME spio_registry_server_gate
+    COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-server-gate.sh" "$<TARGET_FILE:spio>"
+  )
+endif()
 
 add_test(
   NAME spio_registry_split_origin_promotion
   COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-split-origin-promotion.sh" "$<TARGET_FILE:spio>"
 )
 
-add_test(
-  NAME spio_registry_split_origin_http
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-split-origin-http.sh" "$<TARGET_FILE:spio>"
-)
+if(EXISTS "${CMAKE_SOURCE_DIR}/src-private")
+  add_test(
+    NAME spio_registry_split_origin_http
+    COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-split-origin-http.sh" "$<TARGET_FILE:spio>"
+  )
+endif()
 
 add_test(
   NAME spio_registry_v2_unit
   COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_registry_v2.py"
+)
+
+add_test(
+  NAME spio_tuf_parity_unit
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_tuf_parity.py"
+)
+
+add_test(
+  NAME spio_control_plane_auth_unit
+  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_control_plane_auth.py"
 )
 
 add_test(

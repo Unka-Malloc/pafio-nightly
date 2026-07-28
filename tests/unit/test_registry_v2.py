@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import io
 import json
 import pathlib
@@ -167,6 +168,35 @@ class RegistryV2Tests(unittest.TestCase):
             latest = json.loads(lines[-1])
             self.assertEqual(latest["version"], "1.2.0")
             self.assertEqual(latest["source_artifact"]["compression"], "none")
+
+    def test_concurrent_publish_preserves_both_releases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            dest_root = root / "registry-v2"
+            key_dir = root / "keys"
+            archives = [
+                root / "artifacts" / "util-1.0.0.tar",
+                root / "artifacts" / "util-1.1.0.tar",
+            ]
+            self._build_source_archive("acme/util", "1.0.0", archives[0])
+            self._build_source_archive("acme/util", "1.1.0", archives[1])
+            generate_key_directory(key_dir)
+
+            def publish(archive: pathlib.Path) -> None:
+                publish_to_registry_v2(
+                    str(dest_root),
+                    str(key_dir),
+                    archive_path_value=str(archive),
+                    registry_name="concurrent-registry",
+                    publisher_id="unit-test",
+                )
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                list(executor.map(publish, archives))
+
+            verified = verify_registry_root(str(dest_root))
+            self.assertEqual(verified["releases"], 2)
+            self.assertEqual(verified["tree_size"], 2)
 
     def test_reader_enforces_http_timeout(self) -> None:
         original_timeout = validator.HTTP_READ_TIMEOUT_SECONDS

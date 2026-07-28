@@ -3,9 +3,11 @@
 #include "SpioCore/Errors.hpp"
 #include "SpioCore/Paths.hpp"
 #include "SpioCore/Process.hpp"
+#include "SpioCore/ToolPaths.hpp"
 #include "SpioCore/Version.hpp"
 #include "SpioManifest/Manifest.hpp"
 #include "SpioRegistryClient/Client.hpp"
+#include "SpioSecurity/PrescanArchive.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -269,8 +271,9 @@ private:
 
     fs::create_directories(repo_dir.parent_path());
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
-        .program = "git",
+        .program = spio::ResolvedGitPath(),
         .args = {"clone", "--mirror", normalized_source, repo_dir.string()},
+        .search_path = false,
         .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -285,8 +288,9 @@ private:
   bool HasRevision(const fs::path &repo_dir, const std::string &rev) const
   {
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
-        .program = "git",
+        .program = spio::ResolvedGitPath(),
         .args = {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"},
+        .search_path = false,
         .timeout = spio::kExternalProcessProbeTimeout,
         .error_context = "resolver process",
     });
@@ -300,8 +304,9 @@ private:
   void FetchOrigin(const fs::path &repo_dir) const
   {
     const spio::ProcessResult result = spio::RunProcess<spio::CacheError>({
-        .program = "git",
+        .program = spio::ResolvedGitPath(),
         .args = {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"},
+        .search_path = false,
         .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -325,8 +330,9 @@ private:
     fs::create_directories(snapshot_root);
     const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
     const spio::ProcessResult archive = spio::RunProcess<spio::CacheError>({
-        .program = "git",
+        .program = spio::ResolvedGitPath(),
         .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", "--output", archive_path.string(), rev},
+        .search_path = false,
         .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -339,9 +345,56 @@ private:
           spio::DescribeProcessFailure(archive));
     }
 
+    const spio::ProcessResult path_listing = spio::RunProcess<spio::CacheError>({
+        .program = spio::ResolvedTarPath(),
+        .args = {"-tf", archive_path.string()},
+        .search_path = false,
+        .timeout = spio::kExternalProcessStepTimeout,
+        .max_stdout_bytes = spio::kArchiveListingMaxBytes,
+        .error_context = "resolver process",
+    });
+    if (path_listing.exit_code != 0)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw spio::CacheError(
+          "failed to list git archive '" + archive_path.string() + "': " +
+          spio::DescribeProcessFailure(path_listing));
+    }
+    const spio::ProcessResult verbose_listing = spio::RunProcess<spio::CacheError>({
+        .program = spio::ResolvedTarPath(),
+        .args = {"-tvf", archive_path.string()},
+        .search_path = false,
+        .timeout = spio::kExternalProcessStepTimeout,
+        .max_stdout_bytes = spio::kArchiveListingMaxBytes,
+        .error_context = "resolver process",
+    });
+    if (verbose_listing.exit_code != 0)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw spio::CacheError(
+          "failed to inspect git archive '" + archive_path.string() + "': " +
+          spio::DescribeProcessFailure(verbose_listing));
+    }
+    const spio::ArchivePrescanResult prescan = spio::PrescanArchiveListing(
+        path_listing.stdout_text,
+        verbose_listing.stdout_text,
+        path_listing.stdout_truncated || verbose_listing.stdout_truncated,
+        false);
+    if (!prescan.ok)
+    {
+      std::error_code ignored;
+      fs::remove(archive_path, ignored);
+      throw spio::CacheError(
+          std::string("git archive prescan failed") +
+          (prescan.error_code.empty() ? "" : " (" + prescan.error_code + ")") + ": " + prescan.error);
+    }
+
     const spio::ProcessResult extract = spio::RunProcess<spio::CacheError>({
-        .program = "tar",
+        .program = spio::ResolvedTarPath(),
         .args = {"-xf", archive_path.string(), "-C", snapshot_root.string()},
+        .search_path = false,
         .timeout = spio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
     });
@@ -390,7 +443,7 @@ public:
     std::vector<std::string> root_ids;
     for (const ManifestSelection &seed : root_seeds_)
     {
-      const size_t root_index = ResolveNode(seed.manifest_path, seed.origin);
+      const size_t root_index = ResolveNode(seed.manifest_path, seed.origin, {});
       root_ids.push_back(nodes_.at(root_index).id);
     }
     std::sort(root_ids.begin(), root_ids.end());
@@ -661,7 +714,9 @@ private:
     }
     if (!dependency.version.has_value())
     {
-      throw spio::ResolutionError("registry dependency '" + dependency.alias + "' must declare version = \"x.y.z\"");
+      throw spio::ResolutionError(
+          "registry dependency '" + dependency.alias +
+          "' must declare version = \"x.y.z\" (exact semver only; ranges are not supported in single-version-v1)");
     }
 
     const spio::RegistryMaterializationResult materialized =
@@ -681,7 +736,73 @@ private:
     return SelectPackageManifestFromRoot(root_manifest, registry_origin, dependency.package);
   }
 
-  size_t ResolveNode(const fs::path &manifest_path, const SourceOrigin &origin)
+  enum class VisitState
+  {
+    kActive,
+    kDone,
+  };
+
+  static std::string JoinRequirementChain(const std::vector<std::string> &chain)
+  {
+    std::ostringstream out;
+    for (size_t i = 0; i < chain.size(); ++i)
+    {
+      if (i != 0)
+      {
+        out << " -> ";
+      }
+      out << chain[i];
+    }
+    return out.str();
+  }
+
+  std::string FormatCyclePath(size_t cycle_index) const
+  {
+    const auto cycle_start = std::find(active_stack_.begin(), active_stack_.end(), cycle_index);
+    std::vector<std::string> cycle_ids;
+    for (auto it = cycle_start; it != active_stack_.end(); ++it)
+    {
+      cycle_ids.push_back(nodes_.at(*it).id);
+    }
+    cycle_ids.push_back(nodes_.at(cycle_index).id);
+    return JoinRequirementChain(cycle_ids);
+  }
+
+  [[noreturn]] void ThrowVersionConflict(
+      const Node &other,
+      const Node &candidate,
+      const std::vector<std::string> &candidate_chain) const
+  {
+    const std::vector<std::string> &other_chain = path_ids_by_index_.at(node_by_package_name_.at(other.package.name));
+    throw spio::ResolutionError(
+        "single-version-v1 conflict for package '" + candidate.package.name + "': versions '" +
+        other.package.version + "' and '" + candidate.package.version + "'\n"
+        "  required by: " +
+        JoinRequirementChain(other_chain) +
+        "\n"
+        "  required by: " +
+        JoinRequirementChain(candidate_chain));
+  }
+
+  [[noreturn]] void ThrowSourceConflict(
+      const Node &other,
+      const Node &candidate,
+      const std::vector<std::string> &candidate_chain) const
+  {
+    const std::vector<std::string> &other_chain = path_ids_by_index_.at(node_by_package_name_.at(other.package.name));
+    throw spio::ResolutionError(
+        "single-version-v1 source conflict for package '" + candidate.package.name + "'\n"
+        "  required by: " +
+        JoinRequirementChain(other_chain) +
+        "\n"
+        "  required by: " +
+        JoinRequirementChain(candidate_chain));
+  }
+
+  size_t ResolveNode(
+      const fs::path &manifest_path,
+      const SourceOrigin &origin,
+      const std::vector<std::string> &parent_path)
   {
     const fs::path normalized_manifest_path = CanonicalAbsolutePath(manifest_path);
     const fs::path package_dir = normalized_manifest_path.parent_path();
@@ -689,7 +810,14 @@ private:
 
     if (const auto existing = node_by_source_fingerprint_.find(source_fingerprint); existing != node_by_source_fingerprint_.end())
     {
-      return existing->second;
+      const size_t existing_index = existing->second;
+      if (const auto visit = visit_state_by_index_.find(existing_index);
+          visit != visit_state_by_index_.end() && visit->second == VisitState::kActive)
+      {
+        throw spio::ResolutionError(
+            "single-version-v1 requires an acyclic dependency graph: " + FormatCyclePath(existing_index));
+      }
+      return existing_index;
     }
 
     const spio::ManifestDocument manifest =
@@ -714,19 +842,19 @@ private:
         .dependency_aliases = {},
     };
 
+    std::vector<std::string> candidate_chain = parent_path;
+    candidate_chain.push_back(node.id);
+
     if (const auto existing_by_name = node_by_package_name_.find(node.package.name); existing_by_name != node_by_package_name_.end())
     {
       const Node &other = nodes_.at(existing_by_name->second);
       if (other.package.version != node.package.version)
       {
-        throw spio::ResolutionError(
-            "single-version-v1 conflict for package '" + node.package.name + "': versions '" +
-            other.package.version + "' and '" + node.package.version + "'");
+        ThrowVersionConflict(other, node, candidate_chain);
       }
       if (other.source_fingerprint != node.source_fingerprint)
       {
-        throw spio::ResolutionError(
-            "single-version-v1 source conflict for package '" + node.package.name + "'");
+        ThrowSourceConflict(other, node, candidate_chain);
       }
       return existing_by_name->second;
     }
@@ -735,42 +863,50 @@ private:
     nodes_.push_back(node);
     node_by_source_fingerprint_[source_fingerprint] = node_index;
     node_by_package_name_[node.package.name] = node_index;
+    path_ids_by_index_[node_index] = candidate_chain;
+    visit_state_by_index_[node_index] = VisitState::kActive;
+    active_stack_.push_back(node_index);
 
     std::vector<std::string> dependencies;
     std::vector<spio::ResolvedDependencyAlias> dependency_aliases;
-    for (const spio::Dependency &dependency : CollectDependencies(node.package))
+    try
     {
-      ManifestSelection selected;
-      if (dependency.source_kind == spio::DependencySourceKind::kPath)
+      for (const spio::Dependency &dependency : CollectDependencies(nodes_.at(node_index).package))
       {
-        selected = ResolvePathDependency(nodes_.at(node_index), dependency);
-      }
-      else if (dependency.source_kind == spio::DependencySourceKind::kGit)
-      {
-        selected = ResolveGitDependency(nodes_.at(node_index), dependency);
-      }
-      else
-      {
-        selected = ResolveRegistryDependency(nodes_.at(node_index), dependency);
-      }
+        ManifestSelection selected;
+        if (dependency.source_kind == spio::DependencySourceKind::kPath)
+        {
+          selected = ResolvePathDependency(nodes_.at(node_index), dependency);
+        }
+        else if (dependency.source_kind == spio::DependencySourceKind::kGit)
+        {
+          selected = ResolveGitDependency(nodes_.at(node_index), dependency);
+        }
+        else
+        {
+          selected = ResolveRegistryDependency(nodes_.at(node_index), dependency);
+        }
 
-      const size_t dependency_index = ResolveNode(selected.manifest_path, selected.origin);
-      const Node &dependency_node = nodes_.at(dependency_index);
-      if (dependency.package.has_value() && *dependency.package != dependency_node.package.name)
-      {
-        throw spio::ResolutionError(
-            "dependency '" + dependency.alias + "' expected package '" + *dependency.package +
-            "' but found '" + dependency_node.package.name + "'");
+        const size_t dependency_index = ResolveNode(selected.manifest_path, selected.origin, candidate_chain);
+        const Node &dependency_node = nodes_.at(dependency_index);
+        if (dependency.package.has_value() && *dependency.package != dependency_node.package.name)
+        {
+          throw spio::ResolutionError(
+              "dependency '" + dependency.alias + "' expected package '" + *dependency.package +
+              "' but found '" + dependency_node.package.name + "'");
+        }
+        dependencies.push_back(dependency_node.id);
+        dependency_aliases.push_back({
+            .alias = dependency.alias,
+            .package_id = dependency_node.id,
+        });
       }
-      if (dependency_node.source_fingerprint == node.source_fingerprint)
-      {
-        throw spio::ResolutionError("package '" + node.package.name + "' cannot depend on itself");
-      }
-      dependencies.push_back(dependency_node.id);
-      dependency_aliases.push_back({
-          .alias = dependency.alias,
-          .package_id = dependency_node.id,
-      });
+    }
+    catch (...)
+    {
+      active_stack_.pop_back();
+      visit_state_by_index_.erase(node_index);
+      throw;
     }
 
     std::sort(dependencies.begin(), dependencies.end());
@@ -783,6 +919,8 @@ private:
         });
     nodes_[node_index].dependencies = std::move(dependencies);
     nodes_[node_index].dependency_aliases = std::move(dependency_aliases);
+    active_stack_.pop_back();
+    visit_state_by_index_[node_index] = VisitState::kDone;
     return node_index;
   }
 
@@ -794,6 +932,9 @@ private:
   std::set<std::string> top_level_workspace_dirs_;
   std::unordered_map<std::string, size_t> node_by_source_fingerprint_;
   std::unordered_map<std::string, size_t> node_by_package_name_;
+  std::unordered_map<size_t, VisitState> visit_state_by_index_;
+  std::unordered_map<size_t, std::vector<std::string>> path_ids_by_index_;
+  std::vector<size_t> active_stack_;
   std::vector<Node> nodes_;
 };
 

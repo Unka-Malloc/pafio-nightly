@@ -22,10 +22,16 @@ struct RegistryTrustPin
   std::string expires;
 };
 
+struct RegistryTrustImportOptions
+{
+  bool allow_dev_unsigned = false;
+};
+
 std::string NormalizeRegistryTrustRoot(std::string value);
 RegistryTrustPin ImportRegistryTrustDescriptor(
     const std::filesystem::path &spio_home,
-    const std::string &descriptor_source);
+    const std::string &descriptor_source,
+    const RegistryTrustImportOptions &options = {});
 std::optional<RegistryTrustPin> ResolveRegistryTrustPin(
     const std::filesystem::path &spio_home,
     const std::string &registry_root);

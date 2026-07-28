@@ -1,5 +1,6 @@
 #include "SpioWorkflow/Dependencies.hpp"
 
+#include "SpioCore/AtomicFile.hpp"
 #include "SpioCore/Errors.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
@@ -57,7 +58,9 @@ void ValidateSemver(const std::string &value, const std::string &context)
 {
   if (!std::regex_match(value, SemverRegex()))
   {
-    throw spio::ValidationError(context + " must be strict semver x.y.z");
+    throw spio::ValidationError(
+        context +
+        " must be exact semver x.y.z (ranges, prerelease, and prefixes are not supported in single-version-v1)");
   }
 }
 
@@ -82,16 +85,7 @@ std::string ReadFile(const fs::path &path)
 
 void WriteFile(const fs::path &path, const std::string &content)
 {
-  std::ofstream out(path);
-  if (!out)
-  {
-    throw std::runtime_error("failed to open file for write: " + path.string());
-  }
-  out << content;
-  if (!out.good())
-  {
-    throw std::runtime_error("failed to write file: " + path.string());
-  }
+  spio::AtomicWriteFile(path, content);
 }
 
 std::vector<spio::Dependency> &SelectSection(spio::PackageConfig &package, spio::DependencySection section)
