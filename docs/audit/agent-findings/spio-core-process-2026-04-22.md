@@ -4,7 +4,7 @@
 
 **Last updated:** 2026-04-22
 
-Scope: `resolver`, `manifest`, `toolchain`, `process lifecycle`, `state machine`, `timeout`, tests, and gates in `styio-spio`.
+Scope: `resolver`, `manifest`, `toolchain`, `process lifecycle`, `state machine`, `timeout`, tests, and gates in `pafio-nightly`.
 
 ## Findings
 
@@ -16,9 +16,9 @@ Scope: `resolver`, `manifest`, `toolchain`, `process lifecycle`, `state machine`
 
 ## Verification
 
-- `cmake --build /home/unka/styio-spio/build-codex --target spio_native_tests -j2`
-- `/home/unka/styio-spio/build-codex/bin/spio_native_tests --gtest_filter='ProcessTests.StreamsLargeStdinWhileDrainingStdout:ResolverTests.ResolvesLargeGitSnapshotsWithoutArchiveTruncation'`
-- `/home/unka/styio-spio/build-codex/bin/spio_native_tests --gtest_filter='ProcessTests.*:ResolverTests.*'`
+- `cmake --build /home/unka/pafio-nightly/build-codex --target spio_native_tests -j2`
+- `/home/unka/pafio-nightly/build-codex/bin/spio_native_tests --gtest_filter='ProcessTests.StreamsLargeStdinWhileDrainingStdout:ResolverTests.ResolvesLargeGitSnapshotsWithoutArchiveTruncation'`
+- `/home/unka/pafio-nightly/build-codex/bin/spio_native_tests --gtest_filter='ProcessTests.*:ResolverTests.*'`
 
 ## Files changed
 

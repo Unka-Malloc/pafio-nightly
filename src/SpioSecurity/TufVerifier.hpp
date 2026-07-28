@@ -1,0 +1,52 @@
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
+namespace spio
+{
+
+struct TufObjectBytes
+{
+  std::string relative_path;
+  std::string bytes;
+};
+
+struct TufVerifiedTargets
+{
+  nlohmann::json signed_payload;
+  std::string relative_path;
+  std::string sha256;
+};
+
+struct TufVerifyResult
+{
+  bool ok = false;
+  std::string error;
+  std::string error_code;
+  std::optional<TufVerifiedTargets> targets;
+  int root_version = 0;
+  int timestamp_version = 0;
+  int snapshot_version = 0;
+};
+
+// Pure verifier: metadata map + optional trusted root pin -> verdict.
+// Ports src/spio_registry_v2/validator.py verification order for the chain
+// root -> timestamp -> snapshot -> namespace targets (package-scoped).
+TufVerifyResult VerifyTufChainForPackage(
+    const std::map<std::string, std::string> &objects_by_relative_path,
+    const std::string &package_name,
+    const std::string &package_namespace,
+    const std::optional<std::string> &trusted_root_sha256 = std::nullopt);
+
+// Full-registry verify matching verify_registry_root (used by parity fixtures).
+TufVerifyResult VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relative_path);
+
+}  // namespace spio

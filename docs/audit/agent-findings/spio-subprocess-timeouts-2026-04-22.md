@@ -4,7 +4,7 @@
 
 **Last updated:** 2026-04-22
 
-Scope: resolver, source-build, registry, and native process execution paths in `styio-spio`.
+Scope: resolver, source-build, registry, and native process execution paths in `pafio-nightly`.
 
 ## Findings And Remediation
 

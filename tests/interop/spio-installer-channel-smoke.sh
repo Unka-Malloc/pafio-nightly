@@ -57,12 +57,12 @@ trap cleanup EXIT
 
 platform=$(detect_platform)
 remote_dir="$work_dir/remote"
-install_dir="$work_dir/bin"
 spio_home="$work_dir/spio-home"
 version="0.1.0-dev"
 release_dir="$remote_dir/tools/spio/releases/$version/$platform"
 channel_dir="$remote_dir/tools/spio/channel/latest/$platform"
-mkdir -p "$release_dir" "$channel_dir" "$install_dir"
+install_dir="$work_dir/user/.local/bin"
+mkdir -p "$release_dir" "$channel_dir" "$work_dir/user"
 
 cp "$spio_binary" "$release_dir/spio"
 cp "$repo_root/scripts/install-spio.sh" "$remote_dir/tools/spio/install-spio.sh"

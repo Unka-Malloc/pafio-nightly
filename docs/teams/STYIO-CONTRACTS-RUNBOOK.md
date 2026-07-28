@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for `spio` maintainers of external compiler contracts, compatibility boundaries, and compiler-facing handoff docs.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-06-28
 
 ## Mission
 
@@ -18,7 +18,7 @@ without letting any path drift into undocumented behavior.
 3. `docs/governance/Spio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
-6. `docs/plan/repository-delivery-convergence/Evidence.md`
+6. `docs/governance/Spio-Control-Console-And-Service-Split.md`
 7. `docs/governance/Spio-Local-Offline-Package-Contract.md`
 
 ## Daily Workflow
@@ -37,7 +37,7 @@ without letting any path drift into undocumented behavior.
 9. Keep the `spio` cloud-plan submit target aligned with `styio-platform`'s `submitJob` contract route, currently `POST /api/styio-platform/v1/jobs`.
 10. Keep `contracts/registry-control-plane/v1/` byte-aligned with the platform copy when only README/example governance wording changes; if JSON route shape changes, coordinate both repositories before claiming compatibility.
 11. Keep `registryDescriptor` as the client/server trust handoff operation:
-    `styio-platform` owns descriptor issuance and `styio-spio` owns descriptor
+    `styio-platform` owns descriptor issuance and `pafio-nightly` owns descriptor
     import, pin storage, and remote fetch enforcement.
 12. Keep Styio prebuilt install docs aligned with client release targets:
     `styio-linux`, `styio-macos-cli`, and `styio-windows-cli` are CLI-facing

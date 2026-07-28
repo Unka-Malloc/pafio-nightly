@@ -29,7 +29,7 @@ Options:
   --no-release-root-config
                         Do not write SPIO_HOME/config/tool-release-root.
   --print-platform      Print the detected release platform and exit.
-  --print-adapter       Print the detected Linux distro adapter and exit.
+  --print-adapter       Print the detected Unix host adapter and exit.
   -h, --help            Show this help.
 USAGE
 }
@@ -79,6 +79,12 @@ os_release_value() {
 }
 
 detect_distro_family() {
+  host_os="$(lowercase "$(uname_s)")"
+  if [ "$host_os" = "darwin" ]; then
+    echo "macos"
+    return 0
+  fi
+
   os_release_file="${SPIO_INSTALL_OS_RELEASE_FILE:-/etc/os-release}"
   distro_id="$(os_release_value "$os_release_file" ID 2>/dev/null || true)"
   distro_like="$(os_release_value "$os_release_file" ID_LIKE 2>/dev/null || true)"
@@ -168,6 +174,7 @@ hint_prefix() {
 
 distro_package_manager() {
   case "${1:-$(detect_distro_family)}" in
+    macos) echo "system" ;;
     debian) echo "apt-get" ;;
     redhat) echo "dnf" ;;
     arch) echo "pacman" ;;
@@ -181,6 +188,9 @@ distro_prerequisite_command() {
   family="${1:-$(detect_distro_family)}"
   prefix="$(hint_prefix)"
   case "$family" in
+    macos)
+      printf 'xcode-select --install\n'
+      ;;
     debian)
       printf '%sapt-get update && %sapt-get install -y ca-certificates curl coreutils\n' "$prefix" "$prefix"
       ;;
@@ -226,8 +236,14 @@ install_dir_is_writable() {
     [ -w "$dir" ]
     return $?
   fi
-  parent="$(dirname "$dir")"
-  [ -d "$parent" ] && [ -w "$parent" ]
+
+  ancestor="$dir"
+  while [ ! -e "$ancestor" ]; do
+    parent="$(dirname "$ancestor")"
+    [ "$parent" != "$ancestor" ] || return 1
+    ancestor="$parent"
+  done
+  [ -d "$ancestor" ] && [ -w "$ancestor" ]
 }
 
 BASE_URL="${SPIO_INSTALL_BASE_URL:-}"
@@ -330,6 +346,15 @@ verify_sha256() {
   actual="$(sha256_value "$file")"
   if [ "$actual" != "$expected" ]; then
     fail "sha256 mismatch for downloaded spio binary: expected $expected, got $actual"
+  fi
+}
+
+reject_macos_quarantine() {
+  file="$1"
+  [ "$(lowercase "$(uname_s)")" = "darwin" ] || return 0
+  command -v xattr >/dev/null 2>&1 || return 0
+  if xattr -p com.apple.quarantine "$file" >/dev/null 2>&1; then
+    fail "downloaded spio binary is quarantined; verify the HTTPS origin and SHA-256, then remove com.apple.quarantine explicitly before retrying"
   fi
 }
 
@@ -488,6 +513,7 @@ fi
 if [ -n "$EXPECTED_SHA256" ]; then
   verify_sha256 "$TMP_BIN" "$EXPECTED_SHA256"
 fi
+reject_macos_quarantine "$TMP_BIN"
 chmod 0755 "$TMP_BIN"
 cat >"$TMP_STYIO_SHIM" <<'EOF'
 #!/usr/bin/env sh

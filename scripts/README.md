@@ -18,7 +18,7 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - delivery gate
 - curl-pipe installer for installing the `spio` binary and managed `styio` shim into a PATH directory
 - native configure/build/test entrypoint
-- Debian 13 / compatible Debian/Ubuntu dev environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
+- Debian 13 trixie dev and CI environment bootstrap with the shared LLVM 18.1.x, CMake/CTest 3.31.6, and Python 3.13.5 baseline
 - extractability self-check
 - contract fixture validation
 - black-box integration runner setup

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TOOL_VENV="${STYIO_SPIO_TOOL_VENV:-$HOME/.local/venvs/styio-spio-tools}"
+TOOL_VENV="${PAFIO_NIGHTLY_TOOL_VENV:-$HOME/.local/venvs/pafio-nightly-tools}"
 DEBIAN_STANDARD_VERSION="${STYIO_TOOLCHAIN_DEBIAN_STANDARD_VERSION:-13}"
 LLVM_STANDARD_SERIES="${STYIO_TOOLCHAIN_LLVM_STANDARD_SERIES:-18.1.x}"
 CMAKE_STANDARD_VERSION="${STYIO_TOOLCHAIN_CMAKE_STANDARD_VERSION:-3.31.6}"
@@ -16,10 +16,10 @@ Install the Debian/Ubuntu packages required to build and test spio on a fresh
 Linux container or VM.
 
 Optional environment:
-  STYIO_SPIO_TOOL_VENV      Python virtualenv used for standardized cmake/ctest
+  PAFIO_NIGHTLY_TOOL_VENV   Python virtualenv used for standardized cmake/ctest
                             Default: $TOOL_VENV
 
-Standardized baseline shared with styio-nightly:
+Standardized baseline shared by pafio-nightly and styio-nightly:
   Debian                  $DEBIAN_STANDARD_VERSION (trixie)
   LLVM / Clang / LLD      $LLVM_STANDARD_SERIES via clang-18 toolchain packages
   CMake / CTest           $CMAKE_STANDARD_VERSION (installed into the tool venv)

@@ -139,7 +139,7 @@ class WorkspaceRecord:
     manifest_path: pathlib.Path
     platform: str
     spio_home: pathlib.Path
-    owner_ref: str = "styio-view"
+    owner_ref: str = "vityo-nightly"
     status: str = "active"
     entry_url: str = ""
     export_state: str = "not_requested"

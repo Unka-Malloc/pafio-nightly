@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze the command surface, exit code ranges, and machine-readable output rules for the `spio` bootstrap phase so later implementations can evolve behind a stable interface.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-06-28
 
 ## 1. Command Surface
 
@@ -177,10 +177,10 @@ This is the package-manager-side self-description endpoint. It reports:
 - bootstrap status
 - supported manifest and lockfile versions
 - supported machine contract versions
-- `supported_contracts.project_graph` reports `[1]`
+- `supported_contracts.project_graph` reports `[package-workspace-shape]`
 - `supported_contracts.build_job_request` reports `[1]`
-- `supported_contracts.toolchain_state` reports `[1]`
-- `supported_contracts.workflow_success_payloads` reports `[1]`
+- `supported_contracts.toolchain_state` reports `[compiler-toolchain-shape]`
+- `supported_contracts.workflow_success_payloads` reports `[execution-result-shape]`
 - `supported_contracts.compile_plan` reports `[1]`
 - `supported_contracts.cloud_execution_policy` reports `[1]`
 - `supported_contracts.worker_pool_keys` reports `[1]`
@@ -201,19 +201,19 @@ Compile-plan publication rule:
 
 ### 3.2 `spio project-graph --json`
 
-- `spio project-graph --json` publishes `project_graph v1`
-- `project_graph v1` includes at least `packages`, `dependencies`, `targets`, `toolchain`, `managed_toolchains`, `lock_state`, `vendor_state`, `notes`, `package_distribution`, and `source_state`
+- `spio project-graph --json` publishes `project_graph package-workspace-shape`
+- `project_graph package-workspace-shape` includes at least `packages`, `dependencies`, `targets`, `toolchain`, `managed_toolchains`, `lock_state`, `vendor_state`, `notes`, `package_distribution`, and `source_state`
 
 ### 3.3 `spio tool status --json`
 
-- `spio tool status --json` publishes `toolchain_state v1`
+- `spio tool status --json` publishes `toolchain_state compiler-toolchain-shape`
 - `project_pin`
 - `current_compiler`
 - `managed_toolchains`
 
 ### 3.4 `spio --json build/run/test`
 
-- `workflow_success_payloads v1`
+- `workflow_success_payloads execution-result-shape`
 - `receipt.json`
 - `diagnostics.jsonl` path
 - captured stdout/stderr
@@ -374,7 +374,7 @@ Optional keys:
 - prebuilt install accepts legacy `tools/styio/...` channel and release paths only as a compatibility fallback
 - `install-spio.sh` writes a `styio` wrapper that delegates to the managed compiler under `SPIO_HOME/tools/styio/current/bin/styio`; the compiler itself must answer `styio --version`
 - `--source` forces source-build mode and `--prebuilt-only` fails instead of falling back to source-build
-- source fallback fetches from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
+- source fallback fetches from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/SymPolicy/styio.git`
 - source fallback uses `SPIO_STYIO_SOURCE_REF` when set, otherwise `main` for `latest`; explicit `styio@<ref>` maps to that source revision when prebuilt install is skipped or unavailable
 - source fallback defaults to non-interactive fetch approval so fresh machines can bootstrap with one command
 - both prebuilt and source installs validate the resulting compiler through the same compatibility matrix as `spio tool install` before promoting it to `SPIO_HOME/tools/styio/current/`
@@ -402,9 +402,9 @@ Optional keys:
 - `spio build --dry-run` must not require compiler probing
 - `spio build minimal` uses the selected project toolchain mode:
   - `binary` continues through published compiler discovery and compatibility gating
-  - `build` resolves or fetches the official `styio` source tree from `https://github.com/eBioRing/Styio.git`, maps `stable` and `nightly` to the same-named source branches, builds a local compiler under `SPIO_HOME/toolchains/source/`, and then runs the compile-plan through that source-built compiler
+  - `build` resolves or fetches the official `styio` source tree from `https://github.com/SymPolicy/Styio.git`, maps `stable` and `nightly` to the same-named source branches, builds a local compiler under `SPIO_HOME/toolchains/source/`, and then runs the compile-plan through that source-built compiler
 - Source-build alignment requirements for `spio build minimal`:
-  - official source origin is `https://github.com/eBioRing/Styio.git`
+  - official source origin is `https://github.com/SymPolicy/Styio.git`
   - channel mapping is `stable` and `nightly` to the same-named source branches
   - project-local workflow state remains in `spio-toolchain.lock`
   - source-build mode bypasses the published binary compatibility matrix

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
+import os
+import threading
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -100,6 +104,41 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def constant_time_token_equals(expected: str, provided: str) -> bool:
+    expected_bytes = expected.encode("utf-8")
+    provided_bytes = provided.encode("utf-8")
+    if len(expected_bytes) != len(provided_bytes):
+        # Compare against itself to keep the runtime closer to constant for length mismatches.
+        hmac.compare_digest(expected_bytes, expected_bytes)
+        return False
+    return hmac.compare_digest(expected_bytes, provided_bytes)
+
+
+def extract_bearer_token(authorization: str | None) -> str | None:
+    if authorization is None:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def resolve_confined_path(raw_path: str, staging_dir: Path, field_name: str) -> Path:
+    if not raw_path or not isinstance(raw_path, str):
+        raise ValueError(f"{field_name} must be a non-empty string")
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        # Absolute paths are only accepted when they resolve inside the staging directory.
+        resolved = candidate.resolve()
+    else:
+        resolved = (staging_dir / candidate).resolve()
+    try:
+        resolved.relative_to(staging_dir)
+    except ValueError as err:
+        raise ValueError(f"{field_name} escapes the configured staging directory") from err
+    return resolved
+
+
 class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
     registry_root: str
     key_dir: str
@@ -107,6 +146,9 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
     spio_bin: str
     read_root_url: str = ""
     control_plane_base_url: str = ""
+    auth_token: str = ""
+    staging_dir: str = ""
+    mutation_lock = threading.Lock()
 
     def setup(self) -> None:
         super().setup()
@@ -116,12 +158,38 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
         body = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(body.__len__()))
         self.end_headers()
         self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None:
         return
+
+    def _require_bearer_auth(self) -> bool:
+        if not self.auth_token:
+            self._send_json(
+                401,
+                failure_envelope(
+                    "registry control plane authentication is not configured",
+                    "mutating endpoints are deny-by-default until SPIO_REGISTRY_CONTROL_TOKEN or --auth-token is set",
+                    category="AuthError",
+                    returncode=17,
+                ),
+            )
+            return False
+        provided = extract_bearer_token(self.headers.get("Authorization"))
+        if provided is None or not constant_time_token_equals(self.auth_token, provided):
+            self._send_json(
+                401,
+                failure_envelope(
+                    "registry control plane authentication failed",
+                    "missing or invalid bearer token",
+                    category="AuthError",
+                    returncode=17,
+                ),
+            )
+            return False
+        return True
 
     def do_GET(self) -> None:
         if self.path == f"{BASE_PATH}/status":
@@ -141,6 +209,8 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
             "root_initialized": (root_path / "config.json").exists() and (root_path / "trust" / "root.json").exists(),
             "config_present": (root_path / "config.json").exists(),
             "root_metadata_present": (root_path / "trust" / "root.json").exists(),
+            "auth_required": True,
+            "staging_dir_configured": bool(self.staging_dir),
             "publish_endpoint": f"{BASE_PATH}/publish",
             "verify_endpoint": f"{BASE_PATH}/verify",
             "descriptor_endpoint": f"{BASE_PATH}/descriptor",
@@ -162,14 +232,15 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
             return
         registry_root = self.read_root_url or root_path.resolve().as_uri()
         control_plane_base = self.control_plane_base_url or BASE_PATH
+        issued_at = datetime.now(tz=timezone.utc)
         payload = {
             "schema_version": 1,
             "registry_name": self.registry_name,
             "registry_root": registry_root,
             "control_plane_base_url": control_plane_base,
             "root_sha256": sha256_file(root_metadata),
-            "issued_at": "2026-05-02T00:00:00Z",
-            "expires": "2026-06-02T00:00:00Z",
+            "issued_at": issued_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "expires": (issued_at + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "descriptor_signature": "platform-control-plane-mtls",
         }
         self._send_json(200, success_envelope("published registry trust descriptor", payload))
@@ -184,23 +255,55 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
         self.send_error(404, "not found")
 
     def _handle_publish(self) -> None:
+        if not self._require_bearer_auth():
+            return
+        if not self.staging_dir:
+            self._send_json(
+                500,
+                failure_envelope(
+                    "registry publish failed",
+                    "control plane staging directory is not configured",
+                    category="ConfigError",
+                ),
+            )
+            return
         try:
             request = load_json_request(self)
         except ValueError as err:
             self._send_json(400, failure_envelope("malformed registry publish request", str(err), category="UsageError", returncode=2))
             return
+
+        staging = Path(self.staging_dir)
+        archive_path_value = request.get("archive_path")
+        manifest_path_value = request.get("manifest_path")
+        output_path_value = request.get("output_path")
         try:
-            payload = publish_to_registry_v2(
-                self.registry_root,
-                self.key_dir,
-                archive_path_value=request.get("archive_path"),
-                manifest_path_value=request.get("manifest_path"),
-                spio_bin_value=self.spio_bin,
-                package_name=request.get("package"),
-                output_path_value=request.get("output_path"),
-                registry_name=self.registry_name,
-                publisher_id=request.get("publisher_id") or "control-plane",
+            if archive_path_value is not None:
+                archive_path_value = str(resolve_confined_path(str(archive_path_value), staging, "archive_path"))
+            if manifest_path_value is not None:
+                manifest_path_value = str(resolve_confined_path(str(manifest_path_value), staging, "manifest_path"))
+            if output_path_value is not None:
+                output_path_value = str(resolve_confined_path(str(output_path_value), staging, "output_path"))
+        except ValueError as err:
+            self._send_json(
+                400,
+                failure_envelope("registry publish path rejected", str(err), category="PathConfinementError", returncode=2),
             )
+            return
+
+        try:
+            with self.mutation_lock:
+                payload = publish_to_registry_v2(
+                    self.registry_root,
+                    self.key_dir,
+                    archive_path_value=archive_path_value,
+                    manifest_path_value=manifest_path_value,
+                    spio_bin_value=self.spio_bin,
+                    package_name=request.get("package"),
+                    output_path_value=output_path_value,
+                    registry_name=self.registry_name,
+                    publisher_id=request.get("publisher_id") or "control-plane",
+                )
         except RegistryV2Error as err:
             self._send_json(
                 registry_error_status(err, operation="publish"),
@@ -210,6 +313,8 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
         self._send_json(200, success_envelope("published registry v2 release", payload))
 
     def _handle_verify(self) -> None:
+        if not self._require_bearer_auth():
+            return
         try:
             request = load_json_request(self)
         except ValueError as err:
@@ -227,7 +332,8 @@ class RegistryControlPlaneHandler(BaseHTTPRequestHandler):
             )
             return
         try:
-            payload = verify_registry_root(self.registry_root)
+            with self.mutation_lock:
+                payload = verify_registry_root(self.registry_root)
         except RegistryV2Error as err:
             self._send_json(
                 registry_error_status(err, operation="verify"),
@@ -245,6 +351,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spio-bin", default=str(ROOT / "scripts" / "spio"), help="spio executable used for dry-run publish preparation.")
     parser.add_argument("--read-root-url", default="", help="Public static read root written into registry trust descriptors.")
     parser.add_argument("--control-plane-base-url", default="", help="Public control-plane base URL written into registry trust descriptors.")
+    parser.add_argument(
+        "--auth-token",
+        default=os.environ.get("SPIO_REGISTRY_CONTROL_TOKEN", ""),
+        help="Bearer token required for mutating endpoints. Deny-by-default when empty.",
+    )
+    parser.add_argument(
+        "--staging-dir",
+        default=os.environ.get("SPIO_REGISTRY_CONTROL_STAGING_DIR", ""),
+        help="Directory that confines archive_path/manifest_path/output_path for publish.",
+    )
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
     return parser.parse_args()
@@ -258,6 +374,11 @@ def main() -> int:
     RegistryControlPlaneHandler.spio_bin = str(Path(args.spio_bin).resolve())
     RegistryControlPlaneHandler.read_root_url = args.read_root_url
     RegistryControlPlaneHandler.control_plane_base_url = args.control_plane_base_url
+    RegistryControlPlaneHandler.auth_token = args.auth_token
+    staging = args.staging_dir.strip()
+    RegistryControlPlaneHandler.staging_dir = str(Path(staging).resolve()) if staging else ""
+    if RegistryControlPlaneHandler.staging_dir:
+        Path(RegistryControlPlaneHandler.staging_dir).mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer((args.bind, args.port), RegistryControlPlaneHandler)
     server.serve_forever()
     return 0

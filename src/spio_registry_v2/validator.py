@@ -4,6 +4,7 @@ import hashlib
 import json
 import pathlib
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
@@ -31,6 +32,7 @@ HTTP_READ_TIMEOUT_SECONDS = 10.0
 HTTP_METADATA_MAX_BYTES = 16 * 1024 * 1024
 HTTP_INDEX_MAX_BYTES = 16 * 1024 * 1024
 HTTP_ARTIFACT_MAX_BYTES = 512 * 1024 * 1024
+MAX_TRANSPARENCY_LOG_ENTRIES = 1_000_000
 
 JSON_MEDIA_TYPES = {"application/json", "application/octet-stream"}
 INDEX_MEDIA_TYPES = {"application/x-ndjson", "application/jsonl", "text/plain", "application/octet-stream"}
@@ -95,7 +97,13 @@ class RootReader:
 
     def __post_init__(self) -> None:
         parsed = urlsplit(self.root_value)
-        if parsed.scheme in ("", "file"):
+        # Windows drive paths like "T:\\registry" are parsed as scheme="T".
+        is_windows_drive = (
+            len(parsed.scheme) == 1
+            and parsed.scheme.isalpha()
+            and (self.root_value[1:3] in (":\\", ":/") or self.root_value[1:2] == ":")
+        )
+        if parsed.scheme in ("", "file") or is_windows_drive:
             self.local_root = normalize_local_root(self.root_value)
             return
         if parsed.scheme in ("http", "https"):
@@ -186,26 +194,61 @@ def _verify_role_envelope(
     required_type: str,
     allowed_keyids: set[str],
     key_lookup: dict[str, str],
+    threshold: int = 1,
 ) -> dict[str, Any]:
     signed, signatures = _validate_envelope(payload, context)
     if require_string(signed.get("type"), f"{context} type") != required_type:
         raise RegistryV2Error(f"{context} type must equal '{required_type}'")
     if require_string(signed.get("spec_version"), f"{context} spec_version") != "1":
         raise RegistryV2Error(f"{context} spec_version must equal '1'")
+    if threshold < 1:
+        raise RegistryV2Error(f"{context} threshold must be >= 1")
     valid_signatures = 0
+    seen_keyids: set[str] = set()
     for signature in signatures:
         keyid = require_string(signature.get("keyid"), f"{context} signature keyid")
         signature_value = require_string(signature.get("sig"), f"{context} signature value")
-        if keyid not in allowed_keyids:
+        if keyid not in allowed_keyids or keyid in seen_keyids:
             continue
         public_key_pem = key_lookup.get(keyid)
         if public_key_pem is None:
             continue
         verify_signature(signed, signature_value, public_key_pem)
+        seen_keyids.add(keyid)
         valid_signatures += 1
-    if valid_signatures < 1:
+    if valid_signatures < threshold:
         raise RegistryV2Error(f"{context} does not contain a valid trusted signature")
+    expires = signed.get("expires")
+    if expires is not None:
+        expires_text = require_string(expires, f"{context} expires")
+        try:
+            expires_at = datetime.strptime(expires_text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError as err:
+            raise RegistryV2Error(f"{context} expires is not a valid UTC timestamp") from err
+        # 5-minute clock-skew tolerance (matches native TufVerifier).
+        if expires_at < (datetime.now(tz=timezone.utc) - timedelta(minutes=5)):
+            raise RegistryV2Error(f"{context} has expired")
+    version = require_int(signed.get("version"), f"{context} version")
+    if version < 1:
+        raise RegistryV2Error(f"{context} version must be >= 1")
     return signed
+
+
+def _role_threshold(role_payload: dict[str, Any], context: str) -> int:
+    threshold = require_int(role_payload.get("threshold", 1), context)
+    if threshold < 1:
+        raise RegistryV2Error(f"{context} must be >= 1")
+    return threshold
+
+
+def _role_keyids(role_payload: dict[str, Any], context: str) -> set[str]:
+    values = require_array(role_payload.get("keyids"), context)
+    if not values:
+        raise RegistryV2Error(f"{context} must be a non-empty array")
+    keyids = {require_string(value, f"{context} entry") for value in values}
+    if len(keyids) != len(values):
+        raise RegistryV2Error(f"{context} must not contain duplicate key ids")
+    return keyids
 
 
 def verify_registry_root(root_path_value: str) -> dict[str, Any]:
@@ -223,10 +266,15 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
     root_signed, root_signatures = _validate_envelope(root_envelope, "registry v2 root metadata")
     if require_string(root_signed.get("type"), "registry v2 root metadata type") != "root":
         raise RegistryV2Error("registry v2 root metadata type must equal 'root'")
+    if require_string(root_signed.get("spec_version"), "registry v2 root metadata spec_version") != "1":
+        raise RegistryV2Error("registry v2 root metadata spec_version must equal '1'")
+    if require_int(root_signed.get("version"), "registry v2 root metadata version") < 1:
+        raise RegistryV2Error("registry v2 root metadata version must be >= 1")
     keys = require_object(root_signed.get("keys"), "registry v2 root metadata keys")
     roles = require_object(root_signed.get("roles"), "registry v2 root metadata roles")
     root_role = require_object(roles.get("root"), "registry v2 root metadata role 'root'")
-    root_keyids = set(require_array(root_role.get("keyids"), "registry v2 root metadata root keyids"))
+    root_keyids = _role_keyids(root_role, "registry v2 root metadata root keyids")
+    root_threshold = _role_threshold(root_role, "registry v2 root metadata root threshold")
     key_lookup: dict[str, str] = {}
     for keyid, key_payload in keys.items():
         key_object = require_object(key_payload, f"registry v2 key '{keyid}'")
@@ -234,18 +282,31 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
         key_lookup[keyid] = require_string(keyval.get("public"), f"registry v2 key '{keyid}' public key")
 
     root_valid_signatures = 0
+    seen_root_keyids: set[str] = set()
     for signature in root_signatures:
         keyid = require_string(signature.get("keyid"), "registry v2 root signature keyid")
-        if keyid not in root_keyids:
+        if keyid not in root_keyids or keyid in seen_root_keyids:
+            continue
+        public_key_pem = key_lookup.get(keyid)
+        if public_key_pem is None:
             continue
         verify_signature(
             root_signed,
             require_string(signature.get("sig"), "registry v2 root signature value"),
-            key_lookup[keyid],
+            public_key_pem,
         )
+        seen_root_keyids.add(keyid)
         root_valid_signatures += 1
-    if root_valid_signatures < 1:
+    if root_valid_signatures < root_threshold:
         raise RegistryV2Error("registry v2 root metadata does not contain a valid root signature")
+    if root_signed.get("expires") is not None:
+        expires_text = require_string(root_signed.get("expires"), "registry v2 root metadata expires")
+        try:
+            expires_at = datetime.strptime(expires_text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError as err:
+            raise RegistryV2Error("registry v2 root metadata expires is not a valid UTC timestamp") from err
+        if expires_at < (datetime.now(tz=timezone.utc) - timedelta(minutes=5)):
+            raise RegistryV2Error("registry v2 root metadata has expired")
 
     timestamp_role = require_object(roles.get("timestamp"), "registry v2 role 'timestamp'")
     snapshot_role = require_object(roles.get("snapshot"), "registry v2 role 'snapshot'")
@@ -256,22 +317,25 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
         root_reader.load_json("trust/timestamp.json", "registry v2 timestamp metadata"),
         context="registry v2 timestamp metadata",
         required_type="timestamp",
-        allowed_keyids=set(require_array(timestamp_role.get("keyids"), "registry v2 timestamp keyids")),
+        allowed_keyids=_role_keyids(timestamp_role, "registry v2 timestamp keyids"),
         key_lookup=key_lookup,
+        threshold=_role_threshold(timestamp_role, "registry v2 timestamp threshold"),
     )
     snapshot_signed = _verify_role_envelope(
         root_reader.load_json("trust/snapshot.json", "registry v2 snapshot metadata"),
         context="registry v2 snapshot metadata",
         required_type="snapshot",
-        allowed_keyids=set(require_array(snapshot_role.get("keyids"), "registry v2 snapshot keyids")),
+        allowed_keyids=_role_keyids(snapshot_role, "registry v2 snapshot keyids"),
         key_lookup=key_lookup,
+        threshold=_role_threshold(snapshot_role, "registry v2 snapshot threshold"),
     )
     checkpoint_signed = _verify_role_envelope(
         root_reader.load_json("log/checkpoint.json", "registry v2 transparency checkpoint"),
         context="registry v2 transparency checkpoint",
         required_type="checkpoint",
-        allowed_keyids=set(require_array(log_role.get("keyids"), "registry v2 log keyids")),
+        allowed_keyids=_role_keyids(log_role, "registry v2 log keyids"),
         key_lookup=key_lookup,
+        threshold=_role_threshold(log_role, "registry v2 log threshold"),
     )
 
     timestamp_meta = require_object(timestamp_signed.get("meta"), "registry v2 timestamp meta")
@@ -301,7 +365,8 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
     ) != root_reader.object_sha256("log/checkpoint.json"):
         raise RegistryV2Error("registry v2 snapshot checkpoint sha256 does not match file digest")
 
-    trusted_targets_keyids = set(require_array(targets_role.get("keyids"), "registry v2 targets keyids"))
+    trusted_targets_keyids = _role_keyids(targets_role, "registry v2 targets keyids")
+    trusted_targets_threshold = _role_threshold(targets_role, "registry v2 targets threshold")
 
     for relative_path, meta in snapshot_meta_entries.items():
         normalized_relative_path = normalize_registry_relative_path(relative_path, "registry v2 snapshot meta path")
@@ -321,6 +386,7 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
                 required_type="targets",
                 allowed_keyids=trusted_targets_keyids,
                 key_lookup=key_lookup,
+                threshold=trusted_targets_threshold,
             )
             namespace = require_string(targets_signed.get("namespace"), f"registry v2 targets namespace '{relative_path}'")
             packages = require_object(targets_signed.get("packages"), f"registry v2 targets packages '{relative_path}'")
@@ -391,6 +457,10 @@ def verify_registry_root(root_path_value: str) -> dict[str, Any]:
                         raise RegistryV2Error(f"registry v2 release digest mismatch for {package_name}@{version}")
 
     tree_size = require_int(checkpoint_signed.get("tree_size"), "registry v2 checkpoint tree_size")
+    if tree_size < 0 or tree_size > MAX_TRANSPARENCY_LOG_ENTRIES:
+        raise RegistryV2Error(
+            f"registry v2 checkpoint tree_size must be between 0 and {MAX_TRANSPARENCY_LOG_ENTRIES}"
+        )
     root_hash = require_sha256_digest(checkpoint_signed.get("root_hash"), "registry v2 checkpoint root_hash")
     leaf_hashes: list[str] = []
     for sequence in range(1, tree_size + 1):

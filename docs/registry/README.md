@@ -26,7 +26,7 @@
 
 ## Minimum Measurable Coverage
 
-| Capability | `styio-spio` coverage |
+| Capability | `pafio-nightly` coverage |
 |------------|-----------------------|
 | Publish | Local `spio publish` preflight, filesystem/remote publish command semantics, immutable release expectations, and compatibility with the shared registry-control-plane package. |
 | Verify | Client digest verification before extraction plus static-root and control-plane contract gates that prove the shared envelope shape. |

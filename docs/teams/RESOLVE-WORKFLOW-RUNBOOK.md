@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work entrypoint for maintainers of dependency resolution, local workflow orchestration, graph rendering, and compile-plan preparation.
 
-**Last updated:** 2026-04-17
+**Last updated:** 2026-06-28
 
 ## Mission
 
@@ -19,13 +19,14 @@ Primary paths:
 5. `src/SpioTree/`
 6. `src/SpioVendor/`
 7. `src/SpioPack/`
-8. `docs/plan/repository-delivery-convergence/Evidence.md`
+8. `docs/plan/resolver-offline-cache/`
+9. `docs/plan/workflow-toolchain/`
 
 Key SSOTs:
 
-1. `Ecosystem milestone mirror -> ../plan/repository-delivery-convergence/Evidence.md`
-2. `Master plan -> ../plan/repository-delivery-convergence/Evidence.md`
-3. `Workstreams -> ../plan/repository-delivery-convergence/Evidence.md`
+1. `Resolver, offline, and cache plan -> ../plan/resolver-offline-cache/README.md`
+2. `Workflow and toolchain plan -> ../plan/workflow-toolchain/README.md`
+3. `Manifest and lock conventions -> ../governance/Spio-Manifest-and-Lock-Conventions.md`
 4. `Verification matrix -> ../operations/Spio-Verification-Matrix.md`
 
 ## Daily Workflow

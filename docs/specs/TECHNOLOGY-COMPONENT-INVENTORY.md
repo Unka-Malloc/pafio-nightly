@@ -1,10 +1,10 @@
 # Technology And Component Inventory
 
-**Purpose:** Define the required technology-stack, internal-component, open-source-component, and dependency-manifest inventory for `styio-spio`.
+**Purpose:** Define the required technology-stack, internal-component, open-source-component, and dependency-manifest inventory for `pafio-nightly`.
 
 **Last updated:** 2026-04-24
 
-This document is the repository-local maintenance rule for the manifest inventory audited by `styio-audit`. The canonical audit module must list the same surfaces in `for-styio-spio/module.json`; if this document and the audit manifest diverge, the change is not closed.
+This document is the repository-local maintenance rule for the manifest inventory audited by `styio-audit`. The canonical audit module must list the same surfaces in `for-pafio-nightly/module.json`; if this document and the audit manifest diverge, the change is not closed.
 
 ## Required Inventory Fields
 

@@ -2,7 +2,7 @@
 
 **Purpose:** Provide the daily-work coordination entrypoint for `spio`; explicitly maintain team ownership, review routing, escalation paths, and checkpoint discipline without replacing SSOT planning or governance documents.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-06-28
 
 ## Mission
 
@@ -44,7 +44,7 @@ Styio / Contracts -> styio-platform handoff
 1. If implementation and planning disagree, escalate to `docs/plan/`.
 2. If CLI or compiler contract wording disagrees, escalate to `docs/governance/` and `docs/external/for-styio/`.
 3. If registry delivery shape disagrees, escalate to `docs/registry/`.
-4. If platform service ownership disagrees, escalate to `docs/plan/repository-delivery-convergence/Evidence.md` and the downstream `styio-platform` docs.
+4. If platform service ownership disagrees, escalate to `docs/governance/Spio-Control-Console-And-Service-Split.md` and the downstream `styio-platform` docs.
 5. If workflow or delivery process disagrees, escalate to `docs/assets/workflow/`.
 
 ## Checkpoint Policy

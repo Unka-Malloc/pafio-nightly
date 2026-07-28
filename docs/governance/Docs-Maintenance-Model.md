@@ -2,7 +2,7 @@
 
 **Purpose:** Keep `spio` documentation modular and maintainable by assigning a single owner module to each kind of knowledge.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-06-28
 
 ## 1. Module Roles
 
@@ -67,15 +67,17 @@ Must not:
 
 Owns:
 
-- delivery phases
-- workstreams
-- TODO decomposition
-- planning summaries
+- Better Plan workspace state
+- functional execution plans
+- checkpoint graphs
+- remaining work and acceptance criteria
 
 Must not:
 
 - redefine CLI, schema, or compatibility rules
 - redefine exact gate commands
+- retain completed implementation decisions as the only durable record
+- organize plans by phase, milestone, workstream letter, or historical generation
 
 ### `docs/operations/`
 
@@ -117,17 +119,22 @@ Must not:
 - registry client contract: `docs/registry/Spio-Registry-Client-Contract.md`
 - registry deployment baseline: `docs/registry/Spio-Registry-Deployment-Baseline.md`
 - design and implementation decision records: `docs/adr/INDEX.md`
-- overall roadmap: `docs/plan/repository-delivery-convergence/Evidence.md`
-- stage review and future feature priorities: `docs/plan/repository-delivery-convergence/Evidence.md`
-- future direction and cross-team coordination: `docs/plan/repository-delivery-convergence/Evidence.md`
-- workstream TODOs: `docs/plan/repository-delivery-convergence/Evidence.md`
-- bootstrap summary: `docs/plan/repository-delivery-convergence/Evidence.md`
+- active plan index: `docs/plan/Manifest.json`
+- delivery quality plan: `docs/plan/delivery-quality/README.md`
+- workflow and toolchain plan: `docs/plan/workflow-toolchain/README.md`
+- registry and supply-chain plan: `docs/plan/registry-supply-chain/README.md`
+- resolver, offline, and cache plan: `docs/plan/resolver-offline-cache/README.md`
+- workspace and package experience plan: `docs/plan/workspace-package-experience/README.md`
+- spio foundation plan: `docs/plan/spio-foundation/README.md`
+- Linux compatibility plan: `docs/plan/linux-compatibility/README.md`
+- macOS compatibility plan: `docs/plan/macos-compatibility/README.md`
+- Windows compatibility plan: `docs/plan/windows-compatibility/README.md`
 - gate definitions and commands: `docs/operations/Spio-Verification-Matrix.md`
 - registry server operational validation: `docs/operations/Spio-Registry-Server-Runbook.md`
 - split procedure: `docs/operations/Spio-Repo-Split-Runbook.md`
 - `styio` developer knowledge: `docs/external/for-styio/Styio-for-Spio-Developers.md`
 - `styio` handoff interface spec: `docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md`
-- `styio` public interface expectations: `docs/plan/repository-delivery-convergence/Evidence.md`
+- `styio` public interface expectations: `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
 
 ## 3. Drift Prevention Rules
 
@@ -141,15 +148,17 @@ Must not:
 - registry docs may specialize client or server responsibilities, but they must not redefine the shared registry object layout.
 - security docs may define private-boundary rules, but they must not carry deployment secrets or environment-owned credentials.
 - ADRs may explain an accepted policy or implementation boundary, but the normative rule must still live in its owner document.
+- Implemented work must be represented by an ADR before the corresponding plan/history source can be retired.
 
 ## 4. Update Workflow
 
 When a change happens:
 
-- CLI or exit-code change: update governance first, then tests, then planning/operations references if needed
+- CLI or exit-code change: update governance first, then tests, then plan/operations references if needed
 - argument or helper-script parameter change: update `Spio-Entry-Argument-Index.md` first, then the owning contract/script/tests
 - delivery gate change: update operations for `scripts/submit-gate.py`, `scripts/perf-gate.py`, `scripts/repo-hygiene-check.py`, and `scripts/delivery-gate.sh` before changing CI wiring
 - new public workflow-boundary or implementation-scope decision: add or update an ADR in `docs/adr/` with the same change
+- completed plan work: update or add an ADR, then reduce the plan entry to remaining work or mark the Better Plan checkpoint complete
 - compatibility change: update governance plus `contracts/compat/*`, then verification coverage
 - gate command change: update operations first, then any summaries that link to the gate
 - migration procedure change: update operations runbook and preflight script together

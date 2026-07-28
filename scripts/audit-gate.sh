@@ -65,4 +65,4 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   done
 fi
 
-"$AUDIT_BIN" gate --repo "$ROOT" --project styio-spio
+"$AUDIT_BIN" gate --repo "$ROOT" --project pafio-nightly

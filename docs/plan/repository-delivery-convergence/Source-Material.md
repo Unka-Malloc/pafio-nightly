@@ -246,8 +246,8 @@ local registry state.
 | `Pafio-Platform-Migration-Handoff.md` | [Pafio Platform Migration Handoff](./Pafio-Platform-Migration-Handoff.md) | Define the local package-manager-to-global-platform boundary after moving server, package-distribution, and compile-platform ownership into styio-cloud. |
 | `Pafio-Stage-Review-and-Future-Features.md` | [Pafio Stage Review and Future Features](./Pafio-Stage-Review-and-Future-Features.md) | Summarize the current implemented pafio surface, capture the durable lessons from the implementation path so far, and rank the next high-value features using mature package-manager patterns as reference points. |
 | `Pafio-Workstreams-and-TODOs.md` | [Pafio Workstreams and TODOs](./Pafio-Workstreams-and-TODOs.md) | Break the pafio implementation into independent task lines that can be assigned, implemented, and verified in parallel. |
-| `Styio-Ecosystem-Delivery-Master-Plan.md` | [Styio Ecosystem Delivery Master Plan](./Styio-Ecosystem-Delivery-Master-Plan.md) | 浣滀�?pafio 瀵逛笁浠撶粺涓�浜や粯鎬荤翰鐨勯暅鍍忓叆鍙ｏ紝鍥哄�?pafio 鍦ㄦ瘡涓�閲岀▼纰戜腑鐨勮亴璐ｃ�佹枃妗ｈ惤鐐瑰拰鏈�浠� gate銆� |
-| `Styio-Ecosystem-File-Governance-Alignment-Plan.md` | [Styio Ecosystem File Governance Alignment Plan](./Styio-Ecosystem-File-Governance-Alignment-Plan.md) | 浣滀�?pafio 瀵逛笁浠撴枃浠舵不鐞嗗�归綈璁″垝鐨勯暅鍍忓叆鍙ｏ紝鍥哄畾 pafio 鍦ㄦ枃浠舵不鐞嗐�佹枃妗ｇ敓鍛藉懆鏈熴�乺epo hygiene 鍜岃剼鏈�澶嶇敤涓婄殑鑱岃矗涓庢湰浠撳嚭鍙ｃ�� |
+| `Styio-Ecosystem-Delivery-Master-Plan.md` | [Styio Ecosystem Delivery Master Plan](./Styio-Ecosystem-Delivery-Master-Plan.md) | 浣滀?pafio 瀵逛笁浠撶粺涓�浜や粯鎬荤翰鐨勯暅鍍忓叆鍙ｏ紝鍥哄?pafio 鍦ㄦ瘡涓�閲岀▼纰戜腑鐨勮亴璐ｃ�佹枃妗ｈ惤鐐瑰拰鏈�浠� gate銆� |
+| `Styio-Ecosystem-File-Governance-Alignment-Plan.md` | [Styio Ecosystem File Governance Alignment Plan](./Styio-Ecosystem-File-Governance-Alignment-Plan.md) | 浣滀?pafio 瀵逛笁浠撴枃浠舵不鐞嗗�归綈璁″垝鐨勯暅鍍忓叆鍙ｏ紝鍥哄畾 pafio 鍦ㄦ枃浠舵不鐞嗐�佹枃妗ｇ敓鍛藉懆鏈熴�乺epo hygiene 鍜岃剼鏈�澶嶇敤涓婄殑鑱岃矗涓庢湰浠撳嚭鍙ｃ�� |
 ```
 
 ## source-004-readme: README
@@ -881,7 +881,7 @@ Each workstream must end in a gate that can be run without hidden local state.
 
 `pafio` is split-ready when all of the following are true:
 
-- the subtree copies cleanly to `/Users/unka/DevSpace/Unka-Malloc/pafio`
+- the subtree copies cleanly to `<local-path>`
 - bootstrap and extractability checks pass in the copied tree
 - external `styio` handshake passes through `PAFIO_STYIO_BIN` or `--styio-bin`
 - no `pafio` code reads `styio/src` or `styio/tests`
@@ -1836,7 +1836,7 @@ TODOs:
 
 - keep every `pafio`-owned contract, test, and helper under the repository root without hidden compiler-side dependencies
 - prevent direct imports from `styio/src` and `styio/tests`
-- maintain a clean extraction path to `/Users/unka/DevSpace/Unka-Malloc/pafio`
+- maintain a clean extraction path to `<local-path>`
 - keep migration instructions current as the subtree evolves
 
 Blocks:
@@ -2091,7 +2091,7 @@ Blocks:
 
 Feeds:
 
-- actual move to `/Users/unka/DevSpace/Unka-Malloc/pafio`
+- actual move to `<local-path>`
 
 Gate:
 
@@ -2131,7 +2131,7 @@ Before declaring the planning stage complete, every workstream must have:
 ```text
 # Styio Ecosystem Delivery Master Plan
 
-**Purpose:** 浣滀�?`pafio` 瀵逛笁浠撶粺涓�浜や粯鎬荤翰鐨勯暅鍍忓叆鍙ｏ紝鍥哄�?`pafio` 鍦ㄦ瘡涓�閲岀▼纰戜腑鐨勮亴璐ｃ�佹枃妗ｈ惤鐐瑰拰鏈�浠� gate銆�
+**Purpose:** 浣滀?`pafio` 瀵逛笁浠撶粺涓�浜や粯鎬荤翰鐨勯暅鍍忓叆鍙ｏ紝鍥哄?`pafio` 鍦ㄦ瘡涓�閲岀▼纰戜腑鐨勮亴璐ｃ�佹枃妗ｈ惤鐐瑰拰鏈�浠� gate銆�
 
 **Last updated:** 2026-04-17
 
@@ -2150,13 +2150,13 @@ Before declaring the planning stage complete, every workstream must have:
 
 ## 閲岀▼纰戞槧灏�
 
-| 閲岀▼纰�?| `pafio` 渚у畬鎴愮�?| 鏈�浠撴潈濞佹枃妗� | 鏈�浠撴渶浣�?gate |
+| 閲岀▼纰?| `pafio` 渚у畬鎴愮?| 鏈�浠撴潈濞佹枃妗� | 鏈�浠撴渶浣?gate |
 |--------|------------------|--------------|---------------|
-| `M0` | 闀滃儚鎬荤翰銆佺淮鎶ゆā鍨嬨�佸崗璋�?runbook銆乿erification matrix 鎺ョ�?| `docs/plan/Styio-Ecosystem-Delivery-Master-Plan.md` `docs/governance/Docs-Maintenance-Model.md` | `repo-hygiene-check.py` `submit-gate.py --profile pre-push` |
+| `M0` | 闀滃儚鎬荤翰銆佺淮鎶ゆā鍨嬨�佸崗璋?runbook銆乿erification matrix 鎺ョ?| `docs/plan/Styio-Ecosystem-Delivery-Master-Plan.md` `docs/governance/Docs-Maintenance-Model.md` | `repo-hygiene-check.py` `submit-gate.py --profile pre-push` |
 | `M1` | compat matrix銆乣machine-info`/`compile-plan` round-trip銆乧ompiler failure payload | `docs/styio/Styio-External-Interface-Requirement-Spec.md` | `styio_contract_compat_gate` `styio_compile_plan_contract_gate` |
 | `M2` | manifest/lock銆乺esolver/cache銆乫etch/vendor銆乥uild/run/test銆乸ack/publish銆乼ool lifecycle live | `docs/governance/Pafio-CLI-Contract.md` `docs/operations/Pafio-Verification-Matrix.md` | `pafio_cli_gate` `pafio_manifest_lock_gate` `pafio_workflow_gate` `pafio_registry_server_gate` |
-| `M3` | `project_graph`銆乣toolchain_state`銆乣source_state`銆乨eploy preflight 鎴愪�?`view` 鐨勬�ｅ紡娑堣垂鎺ュ�?| `docs/governance/Pafio-Entry-Argument-Index.md` `docs/styio/` `docs/for-pafio` consumers | `submit-gate.py --profile pre-push` + cross-repo fixtures |
-| `M4` | module/distribution/agent-support payload 涓� registry/deploy 娣卞�?| `docs/registry/` `docs/teams/` `docs/plan/Pafio-Workstreams-and-TODOs.md` | distribution/registry/toolchain gates |
+| `M3` | `project_graph`銆乣toolchain_state`銆乣source_state`銆乨eploy preflight 鎴愪?`view` 鐨勬�ｅ紡娑堣垂鎺ュ?| `docs/governance/Pafio-Entry-Argument-Index.md` `docs/styio/` `docs/for-pafio` consumers | `submit-gate.py --profile pre-push` + cross-repo fixtures |
+| `M4` | module/distribution/agent-support payload 涓� registry/deploy 娣卞?| `docs/registry/` `docs/teams/` `docs/plan/Pafio-Workstreams-and-TODOs.md` | distribution/registry/toolchain gates |
 | `M5` | hosted/cloud/mobile support 鎵�闇� environment/distribution contract | `docs/registry/` `docs/operations/` | hosted/distribution fixtures |
 | `M6` | split-ready銆乺elease-grade package manager銆乻ample matrix hardening | `docs/plan/Pafio-Master-Plan.md` `docs/operations/Pafio-Verification-Matrix.md` | full submit/release floor |
 
@@ -2168,8 +2168,8 @@ Before declaring the planning stage complete, every workstream must have:
 4. If `styio` has not published a capability, `pafio` must return a machine-readable contract error instead of guessing.
 5. Any cross-repo milestone, repo exit, or checkpoint-ID change must first land in the authoritative nightly plan, then in this mirror, then in local owner docs.
 
-## 鏈�浠撲紭鍏堥『搴�?
-褰撳�?`pafio` 鐨勬帹杩涢『搴忓浐瀹氫负锛�?
+## 鏈�浠撲紭鍏堥『搴?
+褰撳?`pafio` 鐨勬帹杩涢『搴忓浐瀹氫负锛?
 1. compiler handshake and compat policy
 2. live workflow closure
 3. project graph and environment payload publication
@@ -2181,30 +2181,30 @@ Before declaring the planning stage complete, every workstream must have:
 ```text
 # Styio Ecosystem File Governance Alignment Plan
 
-**Purpose:** 浣滀�?`pafio` 瀵逛笁浠撴枃浠舵不鐞嗗�归綈璁″垝鐨勯暅鍍忓叆鍙ｏ紝鍥哄畾 `pafio` 鍦ㄦ枃浠舵不鐞嗐�佹枃妗ｇ敓鍛藉懆鏈熴�乺epo hygiene 鍜岃剼鏈�澶嶇敤涓婄殑鑱岃矗涓庢湰浠撳嚭鍙ｃ��
+**Purpose:** 浣滀?`pafio` 瀵逛笁浠撴枃浠舵不鐞嗗�归綈璁″垝鐨勯暅鍍忓叆鍙ｏ紝鍥哄畾 `pafio` 鍦ㄦ枃浠舵不鐞嗐�佹枃妗ｇ敓鍛藉懆鏈熴�乺epo hygiene 鍜岃剼鏈�澶嶇敤涓婄殑鑱岃矗涓庢湰浠撳嚭鍙ｃ��
 
 **Last updated:** 2026-04-17
 
 **Authority:** The canonical copy lives at [`styio-nightly/docs/plan/Styio-Ecosystem-File-Governance-Alignment-Plan.md`](../../../../styio-nightly/docs/plan/Styio-Ecosystem-File-Governance-Alignment-Plan.md).
 
-## `pafio` 鐨勫�归綈鐩�鏍�?
-`pafio` 闇�瑕佷粠鈥滃伐绋嬮棬绂佸己銆佹枃妗ｇ敓鍛藉懆鏈熷亸杞烩�濆�归綈鍒�?`nightly` 鐨勬不鐞嗘按浣嶏�?
-1. 琛ラ�?`docs/history/`銆乣docs/archive/`銆乣docs/rollups/`銆�
-2. 寮曞�?docs index / audit / lifecycle 妫�鏌ャ��
+## `pafio` 鐨勫�归綈鐩�鏍?
+`pafio` 闇�瑕佷粠鈥滃伐绋嬮棬绂佸己銆佹枃妗ｇ敓鍛藉懆鏈熷亸杞烩�濆�归綈鍒?`nightly` 鐨勬不鐞嗘按浣嶏?
+1. 琛ラ?`docs/history/`銆乣docs/archive/`銆乣docs/rollups/`銆�
+2. 寮曞?docs index / audit / lifecycle 妫�鏌ャ��
 3. 璁� `Docs-Maintenance-Model`銆乿erification matrix銆乺epo hygiene銆乻ubmit gate 涓庢枃妗ｇ敓鍛藉懆鏈熷舰鎴愪竴濂楁祦绋嬨��
 
 ## 閲岀▼纰戞槧灏�
 
-| 閲岀▼纰�?| `pafio` 渚у畬鎴愮�?| 鏈�浠撲富瑕佽惤鐐� | 鏈�浣� gate |
+| 閲岀▼纰?| `pafio` 渚у畬鎴愮?| 鏈�浠撲富瑕佽惤鐐� | 鏈�浣� gate |
 |--------|------------------|--------------|-----------|
-| `FG0` | 闀滃儚璁″垝銆佺淮鎶ゆā鍨嬨�乺unbook 鎺ョ�?| `docs/plan/` `docs/governance/` `docs/teams/` | `repo-hygiene-check.py --repo-root . --mode tracked` |
-| `FG1` | `history/archive/rollups` 琛ラ綈锛宒ocs index/audit/lifecycle 鎺ュ�?| `docs/history/` `docs/archive/` `docs/rollups/` `scripts/` | `repo-hygiene-check.py` `submit-gate.py --profile pre-push` |
-| `FG2` | 淇濇寔涓�?`view` 鍜� `nightly` 鐨勭洰褰曡亴璐ｅ�归�?| `docs/README.md` `docs/governance/Docs-Maintenance-Model.md` | docs + hygiene floor |
-| `FG3` | 缁х画浣滀�?shared baseline 鍙傝�冧粨锛岀淮鎸�?required pattern銆乫ixture negate 涓� gate 璇�涔夊�?`nightly` / `view` 鍚岀�?| `.gitignore` `scripts/repo-hygiene-check.py` `docs/operations/Pafio-Verification-Matrix.md` | `repo-hygiene-check.py` `delivery-gate.py` `submit-gate.py` |
-| `FG4` | 绋虫�佹不鐞�?| 鍏ㄤ粨娌荤悊鍏ュ�?| full submit floor |
+| `FG0` | 闀滃儚璁″垝銆佺淮鎶ゆā鍨嬨�乺unbook 鎺ョ?| `docs/plan/` `docs/governance/` `docs/teams/` | `repo-hygiene-check.py --repo-root . --mode tracked` |
+| `FG1` | `history/archive/rollups` 琛ラ綈锛宒ocs index/audit/lifecycle 鎺ュ?| `docs/history/` `docs/archive/` `docs/rollups/` `scripts/` | `repo-hygiene-check.py` `submit-gate.py --profile pre-push` |
+| `FG2` | 淇濇寔涓?`view` 鍜� `nightly` 鐨勭洰褰曡亴璐ｅ�归?| `docs/README.md` `docs/governance/Docs-Maintenance-Model.md` | docs + hygiene floor |
+| `FG3` | 缁х画浣滀?shared baseline 鍙傝�冧粨锛岀淮鎸?required pattern銆乫ixture negate 涓� gate 璇�涔夊?`nightly` / `view` 鍚岀?| `.gitignore` `scripts/repo-hygiene-check.py` `docs/operations/Pafio-Verification-Matrix.md` | `repo-hygiene-check.py` `delivery-gate.py` `submit-gate.py` |
+| `FG4` | 绋虫�佹不鐞?| 鍏ㄤ粨娌荤悊鍏ュ?| full submit floor |
 
-## 鏈�浠撹�勫�?
-1. `pafio` 涓嶅�嶅�?`nightly` 鐨勫畬鏁寸洰褰曟爲锛屼絾蹇呴』澶嶅埗鍏舵不鐞嗚兘鍔涖��
-2. 鏂囦欢娌荤悊鍙樺寲浼樺厛鏇存柊鏈�闀滃儚锛屽啀鏇存�?`Docs-Maintenance-Model.md`銆乣COORDINATION-RUNBOOK.md` 涓庣浉鍏�?operations 鏂囨。銆�?3. 浠讳�?ignore 瑙勫垯鍙樻洿閮藉繀椤诲悓鏃惰�冭檻 tracked fixture 鐨勬樉寮�?negate rule銆�
-4. `pafio` 鐨� required pattern / negate-rule 妯″瀷鏄�?shared baseline 鍙傝�冧箣涓�锛涘悗缁�鑻� `nightly` / `view` 鍗囩�?gate 璇�涔夛紝搴斾紭鍏堜笌杩欓噷淇濇寔绛夊己锛岃�屼笉鏄�鍚勮嚜鍒嗗弶銆�?5. 鏂板�� docs/file governance 鑴氭湰鏃讹紝浼樺厛澶嶇敤鐜版�?`repo-hygiene-check.py`銆乣delivery-gate.py`銆乣submit-gate.py` 鐨勬帴绾挎柟寮忋��
+## 鏈�浠撹�勫?
+1. `pafio` 涓嶅�嶅?`nightly` 鐨勫畬鏁寸洰褰曟爲锛屼絾蹇呴』澶嶅埗鍏舵不鐞嗚兘鍔涖��
+2. 鏂囦欢娌荤悊鍙樺寲浼樺厛鏇存柊鏈�闀滃儚锛屽啀鏇存?`Docs-Maintenance-Model.md`銆乣COORDINATION-RUNBOOK.md` 涓庣浉鍏?operations 鏂囨。銆?3. 浠讳?ignore 瑙勫垯鍙樻洿閮藉繀椤诲悓鏃惰�冭檻 tracked fixture 鐨勬樉寮?negate rule銆�
+4. `pafio` 鐨� required pattern / negate-rule 妯″瀷鏄?shared baseline 鍙傝�冧箣涓�锛涘悗缁�鑻� `nightly` / `view` 鍗囩?gate 璇�涔夛紝搴斾紭鍏堜笌杩欓噷淇濇寔绛夊己锛岃�屼笉鏄�鍚勮嚜鍒嗗弶銆?5. 鏂板�� docs/file governance 鑴氭湰鏃讹紝浼樺厛澶嶇敤鐜版?`repo-hygiene-check.py`銆乣delivery-gate.py`銆乣submit-gate.py` 鐨勬帴绾挎柟寮忋��
 ```

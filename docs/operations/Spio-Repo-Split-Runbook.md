@@ -1,6 +1,6 @@
 # Spio Repository Split Runbook
 
-**Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `/Users/unka/DevSpace/Unka-Malloc/styio-spio`.
+**Purpose:** Describe the exact preflight, copy, and post-copy sequence for moving `spio` out of the current workspace into `pafio-repository`.
 
 **Last updated:** 2026-04-24
 
@@ -25,7 +25,7 @@ Recommended combined preflight:
 Preferred command:
 
 ```text
-./scripts/copy-to-external-repo.sh /Users/unka/DevSpace/Unka-Malloc/styio-spio
+./scripts/copy-to-external-repo.sh pafio-repository
 ```
 
 This copies only the `spio` subtree and excludes:
@@ -39,7 +39,7 @@ This copies only the `spio` subtree and excludes:
 
 ## 3. Post-Copy Validation
 
-Inside `/Users/unka/DevSpace/Unka-Malloc/styio-spio`, run:
+Inside `pafio-repository`, run:
 
 ```text
 ./scripts/native-check.sh
@@ -56,7 +56,7 @@ After the subtree moves:
 - keep compiler-location contracts limited to explicit `--styio-bin`, `SPIO_STYIO_BIN`, project-local `spio-toolchain.toml`, and managed current compiler state
 - keep `contracts/` inside the new repository as the source of truth for package-manager-side contracts
 - keep hosted control-plane, registry server control-plane, compile-platform, cloud stress, and extensible cloud-service ownership in `styio-platform`
-- keep offline package use, local package import/export, and project-local Styio environment optimization in `styio-spio`
+- keep offline package use, local package import/export, and project-local Styio environment optimization in `pafio-nightly`
 - do not pull compiler implementation files into the new repository just for convenience
 
 ## 5. Known Defects

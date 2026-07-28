@@ -83,7 +83,7 @@ std::string ResolveSourceOriginBaseline()
   {
     return explicit_origin;
   }
-  return "https://github.com/eBioRing/Styio.git";
+  return "https://github.com/SymPolicy/Styio.git";
 }
 
 CloudBuildJobRequest BuildCloudBuildJobRequest(

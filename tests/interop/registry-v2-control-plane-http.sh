@@ -7,6 +7,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROOT="$(mktemp -d)"
 LOG_FILE="$ROOT/control-plane.log"
 SERVER_PID=""
+AUTH_TOKEN="interop-control-token"
 
 cleanup() {
   if [[ -n "$SERVER_PID" ]]; then
@@ -20,7 +21,8 @@ trap cleanup EXIT
 export SPIO_HOME="$ROOT/.spio-home"
 KEY_DIR="$ROOT/keys"
 V2_ROOT="$ROOT/registry-v2"
-PACKAGE_ROOT="$ROOT/publish/app"
+STAGING_DIR="$ROOT/staging"
+PACKAGE_ROOT="$STAGING_DIR/publish/app"
 mkdir -p "$PACKAGE_ROOT/src"
 
 cat >"$PACKAGE_ROOT/spio.toml" <<'EOF'
@@ -62,11 +64,14 @@ python3 "$REPO_ROOT/scripts/registry-v2-control-plane-server.py" \
   --key-dir "$KEY_DIR" \
   --spio-bin "$SPIO_BIN" \
   --registry-name "http-control-registry" \
+  --auth-token "$AUTH_TOKEN" \
+  --staging-dir "$STAGING_DIR" \
   --bind 127.0.0.1 \
   --port "$PORT" >"$LOG_FILE" 2>&1 &
 SERVER_PID="$!"
 
 BASE_URL="http://127.0.0.1:${PORT}/api/spio-registry-control/v1"
+AUTH_HEADER="Authorization: Bearer ${AUTH_TOKEN}"
 for _ in $(seq 1 30); do
   if curl -fsS "${BASE_URL}/status" >/dev/null 2>&1; then
     break
@@ -83,12 +88,43 @@ assert payload["returncode"] == 0
 assert payload["payload"]["root_initialized"] is False
 assert payload["payload"]["registry_root"] == "<redacted>"
 assert payload["payload"]["key_dir"] == "<redacted>"
+assert payload["payload"]["auth_required"] is True
+PY
+
+UNAUTH_CODE="$(
+  curl -sS -o "$ROOT/unauth-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
+    -H 'Content-Type: application/json' \
+    --data "{\"manifest_path\": \"publish/app/spio.toml\", \"publisher_id\": \"http-test\"}"
+)"
+test "$UNAUTH_CODE" = "401"
+
+WRONG_TOKEN_CODE="$(
+  curl -sS -o "$ROOT/wrong-token-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer wrong-token' \
+    --data "{\"manifest_path\": \"publish/app/spio.toml\", \"publisher_id\": \"http-test\"}"
+)"
+test "$WRONG_TOKEN_CODE" = "401"
+
+TRAVERSAL_CODE="$(
+  curl -sS -o "$ROOT/traversal-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
+    -H 'Content-Type: application/json' \
+    -H "$AUTH_HEADER" \
+    --data "{\"manifest_path\": \"../keys/keys.json\", \"publisher_id\": \"http-test\"}"
+)"
+test "$TRAVERSAL_CODE" = "400"
+python3 - "$ROOT/traversal-response.json" <<'PY'
+import json
+import sys
+payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
+assert payload["error_payload"]["category"] == "PathConfinementError"
 PY
 
 PUBLISH_JSON="$(
   curl -fsS -X POST "${BASE_URL}/publish" \
     -H 'Content-Type: application/json' \
-    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/spio.toml\", \"publisher_id\": \"http-test\"}"
+    -H "$AUTH_HEADER" \
+    --data "{\"manifest_path\": \"publish/app/spio.toml\", \"publisher_id\": \"http-test\"}"
 )"
 
 python3 - "$PUBLISH_JSON" <<'PY'
@@ -115,7 +151,7 @@ assert payload["payload"]["key_dir"] == "<redacted>"
 PY
 
 OVERSIZED_CODE="$(
-  python3 - <<'PY' | curl -sS -o "$ROOT/oversized-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" -H 'Content-Type: application/json' --data-binary @-
+  python3 - <<'PY' | curl -sS -o "$ROOT/oversized-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" -H 'Content-Type: application/json' -H "Authorization: Bearer interop-control-token" --data-binary @-
 print("x" * 1048577)
 PY
 )"
@@ -133,6 +169,7 @@ PY
 VERIFY_JSON="$(
   curl -fsS -X POST "${BASE_URL}/verify" \
     -H 'Content-Type: application/json' \
+    -H "$AUTH_HEADER" \
     --data '{}'
 )"
 
@@ -148,6 +185,7 @@ PY
 VERIFY_BAD_CODE="$(
   curl -sS -o "$ROOT/verify-bad-response.json" -w '%{http_code}' -X POST "${BASE_URL}/verify" \
     -H 'Content-Type: application/json' \
+    -H "$AUTH_HEADER" \
     --data '{"unexpected": true}'
 )"
 
@@ -164,7 +202,8 @@ PY
 DUPLICATE_CODE="$(
   curl -sS -o "$ROOT/duplicate-response.json" -w '%{http_code}' -X POST "${BASE_URL}/publish" \
     -H 'Content-Type: application/json' \
-    --data "{\"manifest_path\": \"${PACKAGE_ROOT}/spio.toml\", \"publisher_id\": \"http-test\"}"
+    -H "$AUTH_HEADER" \
+    --data "{\"manifest_path\": \"publish/app/spio.toml\", \"publisher_id\": \"http-test\"}"
 )"
 
 test "$DUPLICATE_CODE" = "409"

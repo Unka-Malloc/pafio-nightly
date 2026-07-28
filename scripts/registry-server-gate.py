@@ -324,6 +324,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--sync-timeout-seconds", type=float, default=0.0, help="time budget for publish-to-fetch sync")
     parser.add_argument("--fetch-trust-descriptor", help="registry trust descriptor imported before remote fetch validation")
+    parser.add_argument(
+        "--fetch-trust-dev",
+        action="store_true",
+        help="allow an unsigned trust descriptor for an explicitly local development fixture",
+    )
     parser.add_argument("--spio-bin", default=str(DEFAULT_SPIO), help="spio wrapper used for publish/fetch checks")
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     args = parser.parse_args(argv)
@@ -431,6 +436,7 @@ def main(argv: list[str] | None = None) -> int:
                         "registry",
                         "trust",
                         "import",
+                        *(["--dev"] if args.fetch_trust_dev else []),
                         args.fetch_trust_descriptor,
                     ],
                     cwd=temp_root,

@@ -9,6 +9,7 @@ WRITE_SERVER_PID=""
 READ_SERVER_PID=""
 WRITE_LOG="$TMP_ROOT/write-server.log"
 READ_LOG="$TMP_ROOT/read-server.log"
+AUTH_TOKEN="interop-control-token"
 
 cleanup() {
   if [[ -n "$WRITE_SERVER_PID" ]]; then
@@ -60,6 +61,7 @@ python3 "$ROOT_DIR/scripts/registry-v2-control-plane-server.py" \
   --spio-bin "$SPIO_BIN" \
   --read-root-url "$READ_URL" \
   --control-plane-base-url "$WRITE_URL" \
+  --auth-token "$AUTH_TOKEN" \
   --bind 127.0.0.1 \
   --port "$write_port" >"$WRITE_LOG" 2>&1 &
 WRITE_SERVER_PID="$!"
@@ -98,7 +100,12 @@ cat >"$TMP_ROOT/publish/util/src/lib.styio" <<'EOF'
 # util
 EOF
 
-PUBLISH_JSON="$("$SPIO_BIN" --json publish --manifest-path "$TMP_ROOT/publish/util/spio.toml" --registry "$WRITE_URL")"
+PUBLISH_JSON="$(
+  "$SPIO_BIN" --json publish \
+    --manifest-path "$TMP_ROOT/publish/util/spio.toml" \
+    --registry "$WRITE_URL" \
+    --registry-header "Authorization: Bearer ${AUTH_TOKEN}"
+)"
 python3 - "$PUBLISH_JSON" <<'PY'
 import json
 import sys
@@ -155,7 +162,7 @@ assert payload["files_total"] >= 1
 assert payload["verified"]["ok"] is True
 PY
 
-"$SPIO_BIN" --json registry trust import "${WRITE_URL}/descriptor" >/dev/null
+"$SPIO_BIN" --json registry trust import --dev "${WRITE_URL}/descriptor" >/dev/null
 
 FETCH_JSON="$("$SPIO_BIN" --json fetch --manifest-path "$TMP_ROOT/spio.toml")"
 python3 - "$FETCH_JSON" <<'PY'
@@ -167,7 +174,10 @@ assert payload["registry_packages"] == 1
 assert payload["packages"] == 2
 PY
 
-if "$SPIO_BIN" publish --manifest-path "$TMP_ROOT/publish/util/spio.toml" --registry "$WRITE_URL" >/dev/null 2>&1; then
+if "$SPIO_BIN" publish \
+  --manifest-path "$TMP_ROOT/publish/util/spio.toml" \
+  --registry "$WRITE_URL" \
+  --registry-header "Authorization: Bearer ${AUTH_TOKEN}" >/dev/null 2>&1; then
   echo "duplicate publish to write origin unexpectedly succeeded" >&2
   exit 1
 fi

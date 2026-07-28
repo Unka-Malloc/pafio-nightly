@@ -55,4 +55,4 @@ python3 ./tests/interop/native-contract-source-gate.py
 
 ## Handoff / Recovery
 
-Record the registry mode affected, the acceptance command that still fails, whether local or remote storage assumptions changed, and whether the next fix belongs in `styio-spio` client code or `styio-platform` service code.
+Record the registry mode affected, the acceptance command that still fails, whether local or remote storage assumptions changed, and whether the next fix belongs in `pafio-nightly` client code or `styio-platform` service code.

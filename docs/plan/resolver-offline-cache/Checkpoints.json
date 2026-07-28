@@ -1,0 +1,201 @@
+[
+  {
+    "id": "e2bb8f93-0eb8-471f-87e0-4e3df697fd35",
+    "status": "pending",
+    "prerequisites": [],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add exact sync and cache maintenance commands.",
+    "description": "Add exact local-state synchronization plus cache status, verify, prune, and repair behavior for git, registry, tool, and build caches.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "sync exact mode removes stale project-local materialization without deleting live lockfile inputs."
+      },
+      {
+        "checked": false,
+        "text": "cache status, verify, prune, and repair commands have JSON output and corruption recovery tests."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "6e1c7d67-2fe2-47ec-9cb6-908f3dc7ae96"
+    ]
+  },
+  {
+    "id": "6e1c7d67-2fe2-47ec-9cb6-908f3dc7ae96",
+    "status": "pending",
+    "prerequisites": [
+      "e2bb8f93-0eb8-471f-87e0-4e3df697fd35"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Move reusable state behind content-addressed keys.",
+    "description": "Store source archives, normalized trees, and reusable build artifacts by SHA-256 while keeping project-local .spio/build as the active work area.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Cache keys include graph, toolchain, target, profile, source digest, and compile-plan identity as applicable."
+      },
+      {
+        "checked": false,
+        "text": "Repeated fetch/build operations deduplicate immutable state and detect digest mismatch."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "7954bad7-d8e3-4ca1-9daf-16c0d4e97f9a"
+    ]
+  },
+  {
+    "id": "7954bad7-d8e3-4ca1-9daf-16c0d4e97f9a",
+    "status": "pending",
+    "prerequisites": [
+      "6e1c7d67-2fe2-47ec-9cb6-908f3dc7ae96"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Complete registry vendoring and offline import/export.",
+    "description": "Vendor registry metadata, blobs, trust pins, and extracted snapshots so offline builds can work from committed or imported package state.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "vendor check verifies metadata, blobs, trust pins, and extracted snapshots without network access."
+      },
+      {
+        "checked": false,
+        "text": "Offline CI can clear SPIO_HOME, import or use vendored state, and run check/build/test against registry dependencies."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "396dd135-bb24-4720-81f2-3c9b0b180e8f"
+    ]
+  },
+  {
+    "id": "396dd135-bb24-4720-81f2-3c9b0b180e8f",
+    "status": "pending",
+    "prerequisites": [
+      "7954bad7-d8e3-4ca1-9daf-16c0d4e97f9a"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add semver range solving.",
+    "description": "Add range syntax, solver policy, prerelease handling, minimum version constraints, conflict diagnostics, and deterministic lock recording of selected versions.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Manifest and lock docs define range syntax and selected-version recording."
+      },
+      {
+        "checked": false,
+        "text": "Solver tests cover compatible ranges, conflicts, prereleases, minimum constraints, and deterministic lock output."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "4fa3ad41-1f29-4c0a-a05d-7aa078d6634a"
+    ]
+  },
+  {
+    "id": "4fa3ad41-1f29-4c0a-a05d-7aa078d6634a",
+    "status": "pending",
+    "prerequisites": [
+      "396dd135-bb24-4720-81f2-3c9b0b180e8f"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add selective update and upgrade workflows.",
+    "description": "Add update and upgrade commands with package selection, transitive strategies, conservative/eager modes, and lockfile diff summaries.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Update commands can refresh one package, transitive dependencies, or the graph according to documented strategy flags."
+      },
+      {
+        "checked": false,
+        "text": "Text and JSON lock diffs identify added, removed, changed, unchanged, yanked, deprecated, and policy-blocked packages."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "f40236de-a6a9-4f1a-82a4-bd5f01c2e975"
+    ]
+  },
+  {
+    "id": "f40236de-a6a9-4f1a-82a4-bd5f01c2e975",
+    "status": "pending",
+    "prerequisites": [
+      "4fa3ad41-1f29-4c0a-a05d-7aa078d6634a"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add resolver explanations and conflict traces.",
+    "description": "Add tree why, selected-version explanations, and structured diagnostics for solver failures.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Users can ask why a package or version is present in text and JSON output."
+      },
+      {
+        "checked": false,
+        "text": "Conflict diagnostics identify the constraints and sources that made resolution impossible."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": [
+      "7dc4cb02-38b5-496c-bbac-27978a387108"
+    ]
+  },
+  {
+    "id": "7dc4cb02-38b5-496c-bbac-27978a387108",
+    "status": "pending",
+    "prerequisites": [
+      "f40236de-a6a9-4f1a-82a4-bd5f01c2e975"
+    ],
+    "platform": "macos",
+    "difficulty": "high",
+    "goal": "Add feature and target-conditional dependency inputs.",
+    "description": "Add manifest syntax, resolver evaluation, lock recording, publish metadata, and compile-plan propagation for features, optional dependencies, and platform or target conditions.",
+    "acceptance_criteria": [
+      {
+        "checked": false,
+        "text": "Feature and target-condition rules are documented in governance and publish metadata."
+      },
+      {
+        "checked": false,
+        "text": "Resolver, lock, publish, and compile-plan tests cover default features, optional dependencies, and target-specific dependencies."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "Rework resolver offline cache plan checkpoints",
+      "target": "docs/plan/resolver-offline-cache and owning implementation files"
+    },
+    "next": []
+  }
+]

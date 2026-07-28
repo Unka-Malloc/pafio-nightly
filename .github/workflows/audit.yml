@@ -10,9 +10,17 @@ permissions:
 
 jobs:
   audit:
-    runs-on: ubuntu-24.04
+    # GitHub-hosted Linux runner is only the container host; commands run in Debian 13.
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
     timeout-minutes: 2
 
     steps:
+      - name: Verify Debian trixie execution baseline
+        run: |
+          . /etc/os-release
+          test "$ID" = debian
+          test "$VERSION_ID" = 13
       - name: Confirm policy workflow handoff
         run: echo "The released policy audit runs in .github/workflows/styio-audit.yml."

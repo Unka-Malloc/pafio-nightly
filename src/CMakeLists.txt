@@ -17,9 +17,12 @@ endfunction()
 
 set(SPIO_FOUNDATION_SOURCES
     SpioCompat/Compat.cpp
+    SpioCore/AtomicFile.cpp
+    SpioCore/FileLock.cpp
     SpioCore/Paths.cpp
     SpioCore/Process.cpp
     SpioCore/Sha256.cpp
+    SpioCore/ToolPaths.cpp
 )
 
 set(SPIO_MANIFEST_SOURCES
@@ -30,8 +33,11 @@ set(SPIO_MANIFEST_SOURCES
 set(SPIO_RESOLUTION_SOURCES
     SpioRegistryClient/Client.cpp
     SpioResolve/Resolver.cpp
+    SpioSecurity/Ed25519.cpp
+    SpioSecurity/PrescanArchive.cpp
     SpioSecurity/RegistrySecurity.cpp
     SpioSecurity/RegistryTrust.cpp
+    SpioSecurity/TufVerifier.cpp
 )
 
 set(SPIO_TOOLCHAIN_SERVICE_SOURCES

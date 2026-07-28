@@ -700,7 +700,7 @@ Behavior summary:
   - explicit `--source-root <path>`
   - `SPIO_STYIO_SOURCE_ROOT`
   - cached official source checkout under `SPIO_HOME/src/styio/...`
-- in `build` mode, the default official source origin is `https://github.com/eBioRing/Styio.git`
+- in `build` mode, the default official source origin is `https://github.com/SymPolicy/Styio.git`
 - in `build` mode, project channel selection maps to the same-named source branch:
   - `stable` -> `stable`
   - `nightly` -> `nightly`
@@ -1083,7 +1083,7 @@ Behavior summary:
 - validates the downloaded compiler through `styio --machine-info=json` and the compatibility matrix
 - installs a managed wrapper that answers `styio --version` from the compatibility metadata and delegates other commands to the real compiler
 - falls back to source-build when the prebuilt release root is unavailable and prebuilt-only mode is not requested
-- source fallback fetches source from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/eBioRing/styio.git`
+- source fallback fetches source from `SPIO_STYIO_SOURCE_ORIGIN` when set, otherwise from `https://github.com/SymPolicy/styio.git`
 - source fallback uses `SPIO_STYIO_SOURCE_REF` when set; otherwise `latest` maps to `main`
 - source fallback builds the `styio` target through the source-build path
 - promotes the compiler into the managed current root under `SPIO_HOME/tools/styio/current/`
@@ -1627,15 +1627,14 @@ Behavior:
 Canonical form:
 
 ```text
-./scripts/copy-to-external-repo.sh [target-dir]
+./scripts/copy-to-external-repo.sh <target-dir>
 ```
 
 Arguments:
 
-- `[target-dir]`
-  - optional
+- `<target-dir>`
+  - required
   - copy destination
-  - defaults to `/Users/unka/DevSpace/Unka-Malloc/styio-spio`
 
 ## 6. Public Environment Variables
 

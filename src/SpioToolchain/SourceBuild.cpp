@@ -119,7 +119,7 @@ std::string OfficialSourceOrigin()
   {
     return explicit_origin;
   }
-  return "https://github.com/eBioRing/styio.git";
+  return "https://github.com/SymPolicy/styio.git";
 }
 
 std::string RequestedSourceRef(const spio::SourceBuildRequest &request)
