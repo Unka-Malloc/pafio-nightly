@@ -2,7 +2,7 @@
 
 **Purpose:** Define the required workflow for checking GitHub Actions after a local commit is pushed, including what must be verified before committing and what must be watched after pushing.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-07-30
 
 ## Scope
 
@@ -31,16 +31,24 @@ gate. `macOS / latest native smoke` and `Windows / latest native smoke` are
 platform adaptation lanes; the Windows lane is non-blocking until the native
 Windows port and installer checkpoints close.
 
-Cross-repository contract or product changes must also run the matching ecosystem gate from `styio-nightly`, for example:
+Cross-repository contract or product changes must replay the immutable owner
+matrix and the matching executable product gate:
 
 ```bash
-cd /home/unka/styio-nightly
-python3 scripts/ecosystem-cli-doc-gate.py --workspace-root /home/unka
-python3 scripts/ecosystem-product-gate.py --workspace-root /home/unka
-python3 scripts/ecosystem-sample-workflow-gate.py --workspace-root /home/unka
+cd <styio-workspace>
+python3 scripts/ecosystem-cli-doc-gate.py --require-workspace --workspace-root <workspace-root>
+
+cd <pafio-workspace>
+python3 scripts/verify-ecosystem-contracts.py --focused --repositories-root <owner-repositories>
+python3 scripts/verify-ecosystem-contracts.py --full --repositories-root <owner-repositories> --pafio-bin <pafio> --styio-bin <styio> --vityo-root <vityo-workspace>
 ```
 
-The commit message body should record the checks that were actually run.
+The focused replay reads only the commits pinned by
+`contracts/ecosystem/owner-matrix.json`; dirty or newer sibling worktrees do not
+change its result. The full gate additionally proves public `pafio new`, cold
+automatic sync/build, stable frozen build state, metadata v1, system Styio
+compile-plan consumption, and the Vityo owner adapters. The commit message body
+should record the checks that were actually run.
 
 ## Post-Push Verification
 

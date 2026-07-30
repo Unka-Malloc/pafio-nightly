@@ -15,6 +15,7 @@ installation or hosted execution.
 2. `src/PafioResolve/`, `src/PafioWorkflow/`, and `src/PafioPlan/`
 3. `src/PafioCore/`, `src/PafioTree/`, and `src/PafioVendor/`
 4. focused native and CLI tests
+5. black-box acceptance for public workflow and ecosystem-verifier behavior
 
 ## Daily Workflow
 
@@ -22,6 +23,9 @@ installation or hosted execution.
 2. Keep one sync transaction behind `check`, `build`, `run`, and `test`.
 3. Keep metadata bounded to its seven v1 fields.
 4. Exercise the smallest relevant native filter before cross-repository tests.
+5. Keep the fixed-revision verifier acceptance isolated from live owner
+   worktrees; validate executable new/build/frozen/metadata behavior only in the
+   final full product matrix.
 
 ## Change Classes
 

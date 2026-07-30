@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "contracts": {
+    "compile_plan": {
+      "consumer": "styio-nightly",
+      "owner": "pafio-nightly",
+      "version": 1
+    },
+    "diagnostics": {
+      "owner": "styio-nightly",
+      "version": 1
+    },
+    "hosted_workspace": {
+      "consumer": "vityo-nightly",
+      "owner": "styio-cloud-nightly",
+      "version": 1
+    },
+    "machine_info": {
+      "consumer": "vityo-nightly",
+      "owner": "styio-nightly",
+      "version": 1
+    },
+    "metadata": {
+      "consumer": "vityo-nightly",
+      "owner": "pafio-nightly",
+      "version": 1
+    },
+    "receipt": {
+      "owner": "styio-nightly",
+      "version": 1
+    },
+    "registry_control": {
+      "base_path": "/api/pafio-registry-control/v1",
+      "owner": "styio-cloud-nightly",
+      "protocol": "pafio-static-registry",
+      "version": 1
+    },
+    "resolution": {
+      "owner": "pafio-nightly",
+      "version": 1
+    },
+    "runtime_events": {
+      "owner": "styio-nightly",
+      "version": 1
+    },
+    "workflow": {
+      "owner": "pafio-nightly",
+      "version": 1
+    }
+  },
+  "repositories": [
+    {
+      "contains": [
+        {
+          "id": "pafio-contract-versions",
+          "path": "README.md",
+          "values": [
+            "dependency resolution",
+            "project workflows",
+            "metadata v1",
+            "compile-plan consumption"
+          ]
+        }
+      ],
+      "forbids": [
+        {
+          "id": "pafio-no-legacy-compiler-profile",
+          "path": "README.md",
+          "values": [
+            "build_mode",
+            "\"bootstrap\": true",
+            "pafio install"
+          ]
+        }
+      ],
+      "name": "pafio-nightly",
+      "required_paths": [
+        "README.md",
+        "contracts/compile-plan/v1/compile-plan.schema.json",
+        "contracts/metadata-v1/metadata.schema.json",
+        "contracts/resolution-v1/resolution.schema.json",
+        "docs/governance/Pafio-CLI-Contract.md"
+      ],
+      "revision": "86f68c07b152ab0a1836e7ff9bd0785b66e6bb99",
+      "role": "project-workflow"
+    },
+    {
+      "contains": [
+        {
+          "id": "styio-accepts-pafio-plan",
+          "path": "docs/plan/Styio-Ecosystem-CLI-Contract-Matrix.md",
+          "values": [
+            "generated_by.tool = \"pafio\"",
+            "styio --machine-info=json",
+            "Diagnostics, receipts, runtime events",
+            "receipt.json",
+            "runtime-events.jsonl"
+          ]
+        }
+      ],
+      "forbids": [
+        {
+          "id": "styio-no-build-mode",
+          "path": "docs/plan/Styio-Ecosystem-CLI-Contract-Matrix.md",
+          "values": [
+            "build_mode"
+          ]
+        }
+      ],
+      "name": "styio-nightly",
+      "required_paths": [
+        "docs/plan/Styio-Ecosystem-CLI-Contract-Matrix.md",
+        "src/StyioServices/StyioConfig/CompilePlanContract.cpp",
+        "tests/main_contract_test.cpp"
+      ],
+      "revision": "ee7e3b52f15780ea4b58bd1497fa2443b925c024",
+      "role": "compiler"
+    },
+    {
+      "contains": [
+        {
+          "id": "platform-static-registry",
+          "path": "contracts/registry-v2/v1/registry-v2.contract.json",
+          "values": [
+            "pafio-static-registry"
+          ]
+        },
+        {
+          "id": "platform-registry-control-route",
+          "path": "manifests/package-registry.yaml",
+          "values": [
+            "/api/pafio-registry-control/v1"
+          ]
+        },
+        {
+          "id": "platform-worker-command",
+          "path": "src/PlatformCloud/DeveloperWorkspace/WorkerRuntimeFactory.cpp",
+          "values": [
+            "pafio build for platform worker"
+          ]
+        },
+        {
+          "id": "platform-hosted-owner",
+          "path": "contracts/hosted-control-plane/v1/README.md",
+          "values": [
+            "Platform-hosted workspaces"
+          ]
+        }
+      ],
+      "forbids": [],
+      "name": "styio-cloud-nightly",
+      "required_paths": [
+        "contracts/hosted-control-plane/v1/README.md",
+        "contracts/registry-v2/v1/registry-v2.contract.json",
+        "manifests/package-registry.yaml",
+        "src/PlatformCloud/DeveloperWorkspace/WorkerRuntimeFactory.cpp"
+      ],
+      "revision": "0aa1082a4a5d979ee738ae98e4c4b5973a4bb7ea",
+      "role": "platform"
+    },
+    {
+      "contains": [
+        {
+          "id": "vityo-metadata-adapter",
+          "path": "products/vityo_app/lib/owner_adapters/pafio_metadata_adapter.dart",
+          "values": [
+            "pafio metadata --json"
+          ]
+        },
+        {
+          "id": "vityo-compiler-adapter",
+          "path": "products/vityo_app/lib/owner_adapters/styio_compiler_adapter.dart",
+          "values": [
+            "styio --machine-info=json"
+          ]
+        },
+        {
+          "id": "vityo-hosted-adapter",
+          "path": "products/vityo_app/lib/owner_adapters/platform_hosted_adapter.dart",
+          "values": [
+            "Platform hosted-workspace v1"
+          ]
+        }
+      ],
+      "forbids": [
+        {
+          "id": "vityo-no-private-home",
+          "path": ".",
+          "values": [
+            "PAFIO_HOME"
+          ]
+        }
+      ],
+      "name": "vityo-nightly",
+      "required_paths": [
+        "products/vityo_app/lib/owner_adapters/pafio_metadata_adapter.dart",
+        "products/vityo_app/lib/owner_adapters/platform_hosted_adapter.dart",
+        "products/vityo_app/lib/owner_adapters/styio_compiler_adapter.dart"
+      ],
+      "revision": "33538048a722fbb0a9bf223a3b0cda8f9413f1b2",
+      "role": "consumer"
+    },
+    {
+      "contains": [
+        {
+          "id": "site-pafio-entry",
+          "path": "README.md",
+          "values": [
+            "Pafio is the project entry",
+            "Styio is system-provided"
+          ]
+        }
+      ],
+      "forbids": [],
+      "name": "styio.io",
+      "required_paths": [
+        "README.md",
+        "tools/pafio/install-pafio.sh"
+      ],
+      "revision": "20c5411d46c7df74fde833a039f9d840aab12d99",
+      "role": "public-site"
+    },
+    {
+      "contains": [
+        {
+          "id": "audit-pafio-scope",
+          "path": "README.md",
+          "values": [
+            "Pafio metadata/workflow",
+            "Platform hosted/registry"
+          ]
+        }
+      ],
+      "forbids": [],
+      "name": "styio-audit",
+      "required_paths": [
+        "README.md",
+        "for-pafio/module.json",
+        "for-styio-platform/module.json"
+      ],
+      "revision": "e23f0086d00d3bc5795abae638317ce39f8bf45e",
+      "role": "audit-policy"
+    },
+    {
+      "contains": [
+        {
+          "id": "umbrella-pafio-entry",
+          "path": "README.md",
+          "values": [
+            "Use Pafio for project workflows",
+            "system Styio for compilation"
+          ]
+        }
+      ],
+      "forbids": [],
+      "name": "styio",
+      "required_paths": [
+        "README.md",
+        "styio/docs/for_pafio/Pafio-Compiler-Handoff.md"
+      ],
+      "revision": "842895ed910335bf3e2c493860eef64ed743d029",
+      "role": "release-aggregate"
+    }
+  ]
+}

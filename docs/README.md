@@ -29,3 +29,16 @@ workspaces, cloud jobs, and workers. This repository does not duplicate either
 owner's server or compiler implementation.
 
 Generated `INDEX.md` files are inventories, not normative sources.
+
+## Maintained Documentation Gates
+
+Run the repository-owned tools from the Pafio root:
+
+```bash
+python3 scripts/docs-index.py --check
+python3 scripts/docs-lifecycle.py validate
+python3 scripts/docs-audit.py
+```
+
+The index and lifecycle checks establish deterministic collection wiring; the
+audit composes them with required metadata and team-owner routing.
