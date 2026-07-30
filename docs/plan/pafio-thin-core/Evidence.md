@@ -1,5 +1,7 @@
 # Pafio 薄包管理核心 — 证据与取舍
 
+**Purpose:** 保存已完成可信依赖内核的实现证据与设计取舍。
+
 **Plan:** `pafio-thin-core`  
 **Last updated:** 2026-07-28
 

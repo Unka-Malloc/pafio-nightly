@@ -1,195 +1,46 @@
-# spio
+# Pafio
 
-**Purpose:** `spio` is the local-first package manager and project workflow client for Styio. It is designed to work offline when packages are available locally and to use `styio-platform` only as an optional service foundation.
+**Purpose:** Define Pafio as the Styio ecosystem's package manager and local project workflow entry.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-07-30
 
-## Repository Naming
-
-The upstream package-manager repository is now `Pafio`, short for package file
-input output. The downstream nightly repository is `pafio-nightly`. The current
-tracked CLI, manifest, and compatibility surface in this checkout still use the
-`spio` command namespace until a source-level CLI rename is planned and migrated
-as a separate compatibility-breaking change.
-
-## Scope
-
-- `spio` manages package manifests, lockfiles, dependency resolution, cache layout, local package import/export, package build orchestration, and project-level commands.
-- `spio` does not parse Styio source semantics on its own.
-- `spio` does not own hosted compile services, registry server control planes, worker pools, or extensible cloud-service backends; those live in `styio-platform`.
-- `spio` must remain useful without a platform connection when dependencies are satisfied by workspace, path, vendor, cache, or explicitly imported offline packages.
-- `spio` supports two project toolchain modes:
-  - `binary`: published compiler path through a versioned machine contract and a process boundary
-  - `build`: source-build path through an official `styio` source checkout and local compiler build cache
-
-## Product Surface Split
-
-- `frontend/console/` is reserved for the repo-hosted human control console page.
-- `src/` remains the native package-manager core and compatibility renderer for client-side package, registry, toolchain, and compile-plan handoff behavior.
-- `docs/registry/` and `docs/governance/` remain the SSOT for package-manager client contracts; service-side runbooks and control planes move to `styio-platform`.
-- the native CLI stays the machine/admin surface; it is not the user-facing control console.
-
-The normative split is defined in
-[`docs/governance/Spio-Control-Console-And-Service-Split.md`](docs/governance/Spio-Control-Console-And-Service-Split.md).
-
-## Native Target Split
-
-- `src/` no longer builds as one monolithic `spio_core`.
-- package-manager/domain code now composes from internal static libraries such as `spio_foundation`, `spio_manifest`, `spio_resolution`, `spio_toolchain_service`, `spio_package_service`, and `spio_project_service`.
-- the CLI surface now sits on top as `spio_cli_support`, `spio_cli_commands`, and `spio_cli_shell`, with the `spio` executable linking the shell target only.
-- this keeps the local CLI split from compatibility payload rendering while platform service binaries move to `styio-platform`.
-
-The source-level ownership summary lives in
-[`src/README.md`](src/README.md), and the durable architecture decision lives in
-[`docs/adr/ADR-0002-native-architecture-and-source-boundaries.md`](docs/adr/ADR-0002-native-architecture-and-source-boundaries.md).
-
-## Independence Rules
-
-- `spio` must not include or link against `styio` implementation headers or libraries.
-- `spio` must not depend on files under `../src`, `../tests`, or any other compiler-internal path.
-- `spio` may depend on a published external `styio` executable only through the documented binary-mode discovery path such as `--styio-bin` or `SPIO_STYIO_BIN`.
-- `spio` source-build mode may fetch the official `styio` source tree from `https://github.com/SymPolicy/Styio.git`, using the `stable` and `nightly` branches as the channel roots, through the documented source-build contract and cache layout.
-- `spio/contracts/` is the source of truth for package-manager-side machine contracts. Hosted workspace, registry control-plane server, and cloud-service contracts are downstream in `styio-platform`.
-- Local package import/export is a client-side contract. It must not require
-  `styio-platform`; platform mirrors only improve discovery and distribution.
-
-## Tree
+Pafio is the Cargo/CMake-style terminal entry for Styio projects. It owns project
+creation, manifests, dependency resolution, deterministic lock and vendor state,
+build orchestration, project metadata, packaging, and publishing.
 
 ```text
-spio/
-  frontend/
-    console/
-  src/
-  tests/
-    unit/
-    integration/
-  docs/
-  contracts/
-  scripts/
+pafio new|init|doctor|metadata|add|remove|sync|tree
+pafio check|build|run|test
+pafio vendor|pack|publish
+pafio registry trust
+pafio machine-info
 ```
 
-## Transitional Note
+`check`, `build`, `run`, and `test` synchronize dependencies before using the
+externally installed `styio` compiler. Compiler discovery is
+`--styio-bin` → `PAFIO_STYIO_BIN` → `styio` on `PATH`. Pafio never installs,
+updates, switches, pins, builds, or caches Styio.
 
-The current repository root still hosts the existing `styio` compiler project directly. This `spio/` subtree is being prepared so it can later be moved wholesale into `pafio-repository` without dragging compiler source code along with it.
+Pafio remains useful offline when the selected lock and required sources are
+already available. `--locked` forbids lock mutation, `--offline` forbids network
+access, and `--frozen` enables both restrictions.
 
-## Implementation Stack Note
+## Ownership
 
-The active implementation target is a native `C++20` + `CMake` codebase aligned with the operational toolchain used by `styio`.
+- Pafio: `pafio.toml`, `pafio.lock`, `.pafio/`, dependency and project workflows,
+  metadata v1, vendor, pack, and publish client behavior.
+- Styio: compile-plan consumption, compilation, diagnostics, receipts, runtime
+  events, and compiler machine information.
+- Styio Platform: registry/control plane, hosted workspace, cloud jobs, and workers.
+- Vityo: adapters over Pafio, Styio, and Platform machine contracts.
 
-The native core is now the active implementation path for:
+The completed trusted dependency kernel is an internal Pafio subsystem, not the
+whole product boundary. Legacy names, commands, data, and protocol values are not
+migrated or aliased.
 
-- CLI shape
-- manifest and lockfile validation rules
-- machine-facing contract boundaries
-- registry `v2` static distribution and control-plane contract gates
-- offline package cache, local import/export, and project-local Styio environment optimization
+## Developer entry
 
-Python remains in-tree only where it owns repository automation, contract gates, and registry/control-plane helper tooling.
-
-## Developer Context Pack
-
-Before moving this subtree into `pafio-repository`, `spio` developers should read:
-
-- `docs/external/for-styio/Styio-for-Spio-Developers.md`
-- `docs/external/for-styio/Styio-Public-Interface-Roadmap.md`
-- `docs/governance/Spio-Version-Decoupling-Constraints.md`
-
-Those documents are the migration knowledge pack for working against `styio` without creating hidden source-level dependencies.
-
-## Developer Entry Points
-
-Start repo bootstrap and common build/test commands from [docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md).
-
-## Alpha User Bootstrap
-
-The v0.1.0-alpha install flow is intended to be a prebuilt-first path:
-
-```sh
-curl -fsSL https://packages.styio.dev/tools/spio/install-spio.sh | sh -s -- --base-url https://packages.styio.dev && spio install styio@latest && styio --version
-```
-
-`install-spio.sh` installs `spio`, writes `SPIO_HOME/config/tool-release-root`
-when installed from a platform release root, and installs a companion `styio`
-shim. `spio install styio@latest` then resolves the current platform to a
-client release target such as `styio-linux` or `styio-macos-cli`, downloads the
-platform-hosted prebuilt compiler, verifies its SHA-256 checksum, and promotes it
-under `SPIO_HOME/tools/styio/current/`.
-
-On Apple Silicon macOS, pass a user-controlled directory when `/usr/local/bin`
-is not writable:
-
-```sh
-curl -fsSL https://packages.styio.dev/tools/spio/install-spio.sh |
-  sh -s -- --base-url https://packages.styio.dev --install-dir "$HOME/.local/bin"
-```
-
-The installer detects `darwin-aarch64`, uses the system `shasum` fallback for
-SHA-256 verification, and creates a previously absent `$HOME/.local/bin`.
-
-The platform adaptation target set covers `darwin-aarch64`, `linux-aarch64`,
-`linux-musl-aarch64`, `linux-x86_64`, `linux-musl-x86_64`, and
-`windows-x86_64`. Announce support only after the target has a published binary,
-checksum verification, `spio doctor` evidence, and clean-machine workflow smoke.
-GitHub Actions now has Linux, macOS, and Windows CI lanes; the Windows lane is a
-non-blocking adaptation signal until the native Windows port is complete.
-
-Use `spio doctor` when a fresh machine fails to bootstrap. It reports the
-detected release platform, the resolved Styio client release target, release-root
-configuration, required shell tools, `SPIO_HOME`, and managed `styio` status in
-one place.
-
-Project-local workflow mode selection now uses:
-
-- `./scripts/spio use binary`
-- `./scripts/spio use build`
-- `./scripts/spio set channel as stable`
-- `./scripts/spio set channel as nightly`
-- `./scripts/spio set build as minimal`
-- `./scripts/spio set risk as trusted-internal|partner-controlled|untrusted-user`
-- `./scripts/spio set lane as isolated|warm-shared`
-- `./scripts/spio set security as sandbox-default|partner-restricted|trusted-warm`
-- `./scripts/spio project-graph --json`
-- `./scripts/spio doctor --json`
-- `./scripts/spio cloud status --json`
-- `./scripts/spio cloud plan --json build minimal`
-- `./scripts/cloud-compile-stress.py --require-hot-replacement --summary-json /tmp/spio-cloud-stress-summary.json --events-jsonl /tmp/spio-cloud-stress-events.jsonl`
-- `./scripts/spio sync`
-- `./scripts/spio tool status --json`
-- `./scripts/spio build minimal`
-
-`./scripts/spio` is the repository-local convenience wrapper. It ensures the native binary exists under `./build-codex/bin/spio` and then forwards the remaining arguments. Use the wrapper in day-to-day developer docs; use the explicit binary path when a gate or external harness needs a concrete executable.
-
-Current source-build and platform boundary:
-
-- `build` mode is implemented as a local source-build workflow rooted in the official `https://github.com/SymPolicy/Styio.git` source tree.
-- `cloud status` and `cloud plan` remain local machine-readable compatibility surfaces for package-manager clients.
-- the remote async control plane, queue, worker pools, hosted workspace APIs, registry server control planes, and extensible cloud-service runbooks belong to `styio-platform`.
-- offline package use, local package import/export, local cache warm-up, vendor snapshots, and project-local compiler environment tuning belong to `pafio-nightly`.
-
-统一 docs/process 与交付入口分别为：
-
-- `./scripts/docs-gate.sh`
-- `./scripts/checkpoint-health.sh`
-- `./scripts/delivery-gate.sh --mode checkpoint`
-
-## Planning Entry Points
-
-For the full implementation and migration plan, start with:
-
-- `docs/plan/README.md`
-- `docs/plan/Manifest.json`
-- `docs/plan/delivery-quality/README.md`
-- `docs/plan/workflow-toolchain/README.md`
-- `docs/plan/registry-supply-chain/README.md`
-- `docs/plan/resolver-offline-cache/README.md`
-- `docs/plan/workspace-package-experience/README.md`
-- `docs/operations/Spio-Verification-Matrix.md`
-- `docs/operations/Spio-Repo-Split-Runbook.md`
-- `docs/governance/Spio-Local-Offline-Package-Contract.md`
-
-Recommended preflight before moving this subtree:
-
-```text
-./scripts/bootstrap-dev-env.sh
-./scripts/preflight-readiness-check.py --styio-bin /absolute/path/to/styio
-```
+The implementation is native C++20/CMake. Start with
+[docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md), the
+[CLI contract](docs/governance/Pafio-CLI-Contract.md), and the
+[active Better Plan](docs/plan/README.md).
