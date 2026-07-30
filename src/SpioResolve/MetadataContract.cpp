@@ -5,7 +5,11 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <map>
+#include <stdexcept>
+#include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -25,6 +29,30 @@ json PackageSummary(const spio::ResolvedPackage &package)
       {"source_kind", package.source_kind},
       {"version", package.package.version},
       {"edition", package.package.edition},
+  };
+}
+
+std::string DependencySourceKindName(
+    const spio::DependencySourceKind source_kind)
+{
+  switch (source_kind)
+  {
+    case spio::DependencySourceKind::kPath:
+      return "path";
+    case spio::DependencySourceKind::kGit:
+      return "git";
+    case spio::DependencySourceKind::kRegistry:
+      return "registry";
+  }
+  throw std::logic_error("unknown dependency source kind");
+}
+
+json DependencySource(const spio::Dependency &dependency)
+{
+  return {
+      {"kind", DependencySourceKindName(dependency.source_kind)},
+      {"location", dependency.source},
+      {"rev", dependency.rev.has_value() ? json(*dependency.rev) : json(nullptr)},
   };
 }
 
@@ -85,24 +113,79 @@ MetadataDocument BuildMetadataDocument(
 
   json dependencies = json::array();
   json targets = json::array();
+  workspace["packages"] = json::array();
   for (const ResolvedPackage *resolved_package : ordered_packages)
   {
-    std::vector<ResolvedDependencyAlias> aliases =
-        resolved_package->dependency_aliases;
-    std::sort(
-        aliases.begin(),
-        aliases.end(),
-        [](const ResolvedDependencyAlias &left,
-           const ResolvedDependencyAlias &right) {
-          return std::tie(left.alias, left.package_id) <
-                 std::tie(right.alias, right.package_id);
-        });
-    for (const ResolvedDependencyAlias &alias : aliases)
+    workspace["packages"].push_back(PackageSummary(*resolved_package));
+
+    std::map<std::string, std::string> package_id_by_alias;
+    for (const ResolvedDependencyAlias &alias :
+         resolved_package->dependency_aliases)
     {
+      if (!package_id_by_alias.emplace(alias.alias, alias.package_id).second)
+      {
+        throw std::logic_error(
+            "metadata graph contains duplicate dependency alias '" +
+            alias.alias + "' for '" + resolved_package->id + "'");
+      }
+    }
+
+    std::vector<std::pair<const Dependency *, std::string>>
+        declared_dependencies;
+    declared_dependencies.reserve(
+        resolved_package->package.dependencies.size() +
+        resolved_package->package.dev_dependencies.size());
+    for (const Dependency &dependency :
+         resolved_package->package.dependencies)
+    {
+      declared_dependencies.emplace_back(&dependency, "normal");
+    }
+    for (const Dependency &dependency :
+         resolved_package->package.dev_dependencies)
+    {
+      declared_dependencies.emplace_back(&dependency, "dev");
+    }
+    std::sort(
+        declared_dependencies.begin(),
+        declared_dependencies.end(),
+        [](const auto &left, const auto &right) {
+          return std::tie(left.first->alias, left.second) <
+                 std::tie(right.first->alias, right.second);
+        });
+
+    for (const auto &[dependency, kind] : declared_dependencies)
+    {
+      const auto resolved = package_id_by_alias.find(dependency->alias);
+      if (resolved == package_id_by_alias.end())
+      {
+        throw std::logic_error(
+            "metadata graph is missing dependency alias '" +
+            dependency->alias + "' for '" + resolved_package->id + "'");
+      }
+      const auto target = std::find_if(
+          ordered_packages.begin(),
+          ordered_packages.end(),
+          [&](const ResolvedPackage *candidate) {
+            return candidate->id == resolved->second;
+          });
+      if (target == ordered_packages.end())
+      {
+        throw std::logic_error(
+            "metadata graph dependency alias '" + dependency->alias +
+            "' references unknown package id '" + resolved->second + "'");
+      }
+
       dependencies.push_back({
-          {"alias", alias.alias},
-          {"package_id", alias.package_id},
+          {"alias", dependency->alias},
+          {"kind", kind},
+          {"package", (*target)->package.name},
+          {"package_id", resolved->second},
           {"parent_package_id", resolved_package->id},
+          {"requirement",
+           dependency->version.has_value()
+               ? json(*dependency->version)
+               : json(nullptr)},
+          {"source", DependencySource(*dependency)},
       });
     }
 

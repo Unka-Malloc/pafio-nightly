@@ -1,10 +1,14 @@
 #include "SpioResolve/MetadataContract.hpp"
 
 #include <array>
+#include <filesystem>
+#include <fstream>
 #include <set>
 #include <string>
 
 #include <gtest/gtest.h>
+
+namespace fs = std::filesystem;
 
 TEST(MetadataTests, SerializerExposesOnlyTheMetadataV1TopLevelFields)
 {
@@ -55,4 +59,130 @@ TEST(MetadataTests, SerializerExposesOnlyTheMetadataV1TopLevelFields)
   {
     EXPECT_FALSE(payload.contains(forbidden)) << forbidden;
   }
+}
+
+TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
+{
+  const fs::path project_root =
+      fs::temp_directory_path() / "spio-metadata-v1-project-snapshot";
+  fs::remove_all(project_root);
+  fs::create_directories(project_root);
+  const fs::path manifest_path = project_root / "spio.toml";
+  {
+    std::ofstream manifest(manifest_path);
+    manifest
+        << "[spio]\n"
+        << "manifest-version = 1\n\n"
+        << "[package]\n"
+        << "name = \"acme/app\"\n"
+        << "version = \"1.0.0\"\n"
+        << "edition = \"2026\"\n\n"
+        << "[build]\n"
+        << "implicit-std = true\n\n"
+        << "[[bin]]\n"
+        << "name = \"app\"\n"
+        << "path = \"src/main.styio\"\n";
+  }
+
+  spio::PackageConfig application{
+      .name = "acme/app",
+      .version = "1.0.0",
+      .edition = "2026",
+      .publish = true,
+  };
+  application.dependencies.push_back({
+      .alias = "core",
+      .package = "acme/core",
+      .source_kind = spio::DependencySourceKind::kPath,
+      .source = "../core",
+  });
+  application.dev_dependencies.push_back({
+      .alias = "fixtures",
+      .package = "acme/fixtures",
+      .source_kind = spio::DependencySourceKind::kRegistry,
+      .source = "https://registry.example.invalid",
+      .version = "2.0.0",
+  });
+
+  const spio::ResolvedGraphResult graph{
+      .manifest_path = manifest_path,
+      .lockfile_path = project_root / "spio.lock",
+      .root_ids = {"workspace:acme/app@1.0.0"},
+      .packages = {
+          {
+              .manifest_path = manifest_path,
+              .root_dir = project_root,
+              .package = application,
+              .id = "workspace:acme/app@1.0.0",
+              .source_kind = "workspace",
+              .dependencies = {
+                  "path:acme/core@1.0.0",
+                  "registry:acme/fixtures@2.0.0#sha256",
+              },
+              .dependency_aliases = {
+                  {.alias = "core", .package_id = "path:acme/core@1.0.0"},
+                  {
+                      .alias = "fixtures",
+                      .package_id =
+                          "registry:acme/fixtures@2.0.0#sha256",
+                  },
+              },
+          },
+          {
+              .manifest_path = project_root.parent_path() / "core" /
+                               "spio.toml",
+              .root_dir = project_root.parent_path() / "core",
+              .package = {
+                  .name = "acme/core",
+                  .version = "1.0.0",
+                  .edition = "2026",
+              },
+              .id = "path:acme/core@1.0.0",
+              .source_kind = "path",
+          },
+          {
+              .manifest_path = project_root / ".cache" / "fixtures" /
+                               "spio.toml",
+              .root_dir = project_root / ".cache" / "fixtures",
+              .package = {
+                  .name = "acme/fixtures",
+                  .version = "2.0.0",
+                  .edition = "2026",
+              },
+              .id = "registry:acme/fixtures@2.0.0#sha256",
+              .source_kind = "registry",
+          },
+      },
+  };
+
+  const nlohmann::json payload = spio::SerializeMetadataV1(
+      spio::BuildMetadataDocument(manifest_path, graph));
+
+  ASSERT_EQ(payload.at("workspace").at("packages").size(), 3U);
+  EXPECT_EQ(
+      payload.at("workspace").at("packages")[0].at("name"), "acme/core");
+  EXPECT_EQ(
+      payload.at("workspace").at("packages")[1].at("name"), "acme/fixtures");
+  EXPECT_EQ(
+      payload.at("workspace").at("packages")[2].at("name"), "acme/app");
+
+  ASSERT_EQ(payload.at("dependencies").size(), 2U);
+  const nlohmann::json &core = payload.at("dependencies")[0];
+  EXPECT_EQ(core.at("alias"), "core");
+  EXPECT_EQ(core.at("kind"), "normal");
+  EXPECT_EQ(core.at("package"), "acme/core");
+  EXPECT_TRUE(core.at("requirement").is_null());
+  EXPECT_EQ(core.at("source").at("kind"), "path");
+  EXPECT_EQ(core.at("source").at("location"), "../core");
+  EXPECT_TRUE(core.at("source").at("rev").is_null());
+
+  const nlohmann::json &fixtures = payload.at("dependencies")[1];
+  EXPECT_EQ(fixtures.at("alias"), "fixtures");
+  EXPECT_EQ(fixtures.at("kind"), "dev");
+  EXPECT_EQ(fixtures.at("package"), "acme/fixtures");
+  EXPECT_EQ(fixtures.at("requirement"), "2.0.0");
+  EXPECT_EQ(fixtures.at("source").at("kind"), "registry");
+  EXPECT_EQ(
+      fixtures.at("source").at("location"),
+      "https://registry.example.invalid");
 }
