@@ -2,8 +2,12 @@
 
 #include "SpioCore/AtomicFile.hpp"
 #include "SpioCore/Errors.hpp"
+#include "SpioCore/FileLock.hpp"
+#include "SpioCore/Paths.hpp"
+#include "SpioCore/Sha256.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioManifest/Manifest.hpp"
+#include "SpioResolve/ResolutionContract.hpp"
 #include "SpioResolve/Resolver.hpp"
 
 #include <algorithm>
@@ -386,17 +390,36 @@ DependencyCommandResult RemoveDependencyAndRefreshLock(const RemoveDependencyReq
       match.section);
 }
 
-FetchCommandResult FetchDependencies(const fs::path &manifest_path, const ResolveOptions &options)
+SyncProjectResult SyncProjectDependencies(
+    const fs::path &manifest_path,
+    const ResolveOptions &options)
 {
   if (!fs::exists(manifest_path))
   {
     throw ValidationError("manifest not found: " + manifest_path.string());
   }
+  const fs::path requested_lockfile_path =
+      CanonicalAbsolutePath(manifest_path).parent_path() / "spio.lock";
+  if (options.locked && !fs::exists(requested_lockfile_path))
+  {
+    throw SyncError("lockfile missing: " + requested_lockfile_path.string());
+  }
 
-  const LockGenerationResult generated = ResolveSingleVersionLockfile(manifest_path, options);
+  ResolvedGraphResult graph = ResolveSingleVersionGraph(manifest_path, options);
+  const std::string rendered = SerializeLockfileCanonical(graph.lockfile);
+  const std::string manifest_bytes =
+      SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+  const std::string manifest_sha256 = Sha256Text(manifest_bytes);
+  const std::string lock_sha256 = Sha256Text(rendered);
+  const std::string resolution_bytes =
+      SerializeResolutionCanonical(graph, manifest_sha256, lock_sha256);
+  const fs::path resolution_path =
+      ProjectStateRootForManifest(graph.manifest_path) / "resolution-v1.json";
+  std::string lockfile_mode = options.locked ? "locked" : "unchanged";
+
   size_t git_package_count = 0;
   size_t registry_package_count = 0;
-  for (const LockPackage &package : generated.lockfile.packages)
+  for (const ResolvedPackage &package : graph.packages)
   {
     if (package.source_kind == "git")
     {
@@ -408,9 +431,48 @@ FetchCommandResult FetchDependencies(const fs::path &manifest_path, const Resolv
     }
   }
 
+  const FileLockGuard project_lock =
+      AcquireFileLock(graph.lockfile_path.parent_path(), FileLockScope::kProject);
+  const std::string current_manifest_bytes =
+      SerializeManifestCanonical(LoadManifest(graph.manifest_path));
+  if (Sha256Text(current_manifest_bytes) != manifest_sha256)
+  {
+    throw ValidationError(
+        "manifest changed while sync was preparing: " + graph.manifest_path.string());
+  }
+
+  if (options.locked)
+  {
+    if (!fs::exists(graph.lockfile_path))
+    {
+      throw SyncError("lockfile missing: " + graph.lockfile_path.string());
+    }
+    if (ReadFile(graph.lockfile_path) != rendered)
+    {
+      throw SyncError("lockfile is stale: " + graph.lockfile_path.string());
+    }
+  }
+  else if (!fs::exists(graph.lockfile_path) ||
+           ReadFile(graph.lockfile_path) != rendered)
+  {
+    AtomicWriteFile(graph.lockfile_path, rendered);
+    lockfile_mode = "write";
+  }
+
+  if (!fs::exists(resolution_path) ||
+      ReadFile(resolution_path) != resolution_bytes)
+  {
+    AtomicWriteFile(resolution_path, resolution_bytes);
+  }
+
+  const fs::path resolved_manifest_path = graph.manifest_path;
+  const size_t package_count = graph.packages.size();
   return {
-      .manifest_path = generated.manifest_path,
-      .package_count = generated.lockfile.packages.size(),
+      .graph = std::move(graph),
+      .resolution_path = resolution_path,
+      .lockfile_mode = std::move(lockfile_mode),
+      .manifest_path = resolved_manifest_path,
+      .package_count = package_count,
       .git_package_count = git_package_count,
       .registry_package_count = registry_package_count,
   };

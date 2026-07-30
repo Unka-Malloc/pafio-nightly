@@ -7,13 +7,11 @@
 
 using json = nlohmann::json;
 
-using spio::testsupport::CanonicalAbsolutePath;
 using spio::testsupport::MakeTempDir;
 using spio::testsupport::ReadFile;
 using spio::testsupport::ScopedEnvVar;
 using spio::testsupport::WriteExecutable;
 using spio::testsupport::WriteFakeCompilePlanStyio;
-using spio::testsupport::WriteFakeSourceToolchain;
 using spio::testsupport::WriteFile;
 
 TEST(BuildCliTests, NonDryRunBuildRejectsCompilerWithoutRequiredCompilePlanVersion)
@@ -29,8 +27,7 @@ TEST(BuildCliTests, NonDryRunBuildRejectsCompilerWithoutRequiredCompilePlanVersi
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -71,8 +68,7 @@ TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -95,21 +91,27 @@ TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
 
   EXPECT_EQ(exit_code, spio::kExitSuccess);
   const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("action").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("status").get<std::string>(), "succeeded");
   EXPECT_EQ(payload.at("mode").get<std::string>(), "execute");
   EXPECT_EQ(payload.at("intent").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("sync").at("status").get<std::string>(), "succeeded");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
+  EXPECT_EQ(payload.at("styio").at("process").at("status").get<std::string>(), "exited");
+  EXPECT_EQ(payload.at("styio").at("process").at("exit_code").get<int>(), 0);
   EXPECT_EQ(payload.at("styio").at("supported_compile_plan_versions").at(0).get<int>(), 1);
 
-  const fs::path build_root = payload.at("build_root").get<std::string>();
+  const fs::path build_root = payload.at("plan").at("build_root").get<std::string>();
   ASSERT_TRUE(fs::exists(build_root / "receipt.json"));
   const json receipt = json::parse(ReadFile(build_root / "receipt.json"));
   EXPECT_EQ(receipt.at("tool").get<std::string>(), "styio");
   EXPECT_EQ(receipt.at("intent").get<std::string>(), "build");
 }
 
-TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
+TEST(BuildCliTests, SyncCompletesBeforeStyioProbeAndExplicitBinaryWinsOverEnvironment)
 {
-  const fs::path root = MakeTempDir("build-minimal-dry-run-state");
+  const fs::path root = MakeTempDir("build-sync-before-styio");
+  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   WriteFile(
       root / "spio.toml",
       "[spio]\n"
@@ -119,103 +121,72 @@ TEST(BuildCliTests, DryRunBuildMinimalReportsProjectToolchainState)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
+      "path = \"src/main.styio\"\n\n"
+      "[dependencies]\n"
+      "util = { package = \"acme/util\", path = \"vendor/util\" }\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
-
-  ASSERT_EQ(
-      spio::RunCli({
-          "use",
-          "build",
-          "--manifest-path",
-          (root / "spio.toml").string(),
-      }),
-      spio::kExitSuccess);
-
-  testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
-      "--json",
-      "build",
-      "minimal",
-      "--manifest-path",
-      (root / "spio.toml").string(),
-      "--dry-run",
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("mode").get<std::string>(), "dry-run");
-  EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
-  EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
-  EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "isolated");
-  EXPECT_EQ(payload.at("cloud").at("worker_pool_key").at("toolchain_mode").get<std::string>(), "build");
-}
-
-TEST(BuildCliTests, BuildModeUsesLocalSourceRootToProduceCompiler)
-{
-  const fs::path root = MakeTempDir("build-mode-local-source-root");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   WriteFile(
-      root / "project/spio.toml",
+      root / "vendor/util/spio.toml",
       "[spio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "name = \"acme/util\"\n"
+      "version = \"0.2.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
       "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "project/src/main.styio", ">_(\"app\")\n");
-  WriteFakeSourceToolchain(root / "styio-source");
+      "[lib]\n"
+      "path = \"src/lib.styio\"\n");
+  WriteFile(root / "vendor/util/src/lib.styio", "# util := true\n");
 
-  ASSERT_EQ(
-      spio::RunCli({
-          "use",
-          "build",
-          "--manifest-path",
-          (root / "project/spio.toml").string(),
-      }),
-      spio::kExitSuccess);
-  ASSERT_EQ(
-      spio::RunCli({
-          "set",
-          "channel",
-          "as",
-          "nightly",
-          "--manifest-path",
-          (root / "project/spio.toml").string(),
-      }),
-      spio::kExitSuccess);
+  const fs::path explicit_marker = root / "explicit-probed";
+  const fs::path environment_marker = root / "environment-probed";
+  const fs::path explicit_styio = root / "explicit-styio";
+  const fs::path environment_styio = root / "environment-styio";
+  WriteExecutable(
+      environment_styio,
+      "#!/bin/sh\n"
+      "printf '%s\\n' environment > \"" + environment_marker.string() + "\"\n"
+      "exit 70\n");
+  WriteExecutable(
+      explicit_styio,
+      "#!/bin/sh\n"
+      "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
+      "  test -f \"" + (root / "spio.lock").string() + "\" || exit 71\n"
+      "  test -f \"" + (root / ".spio/resolution-v1.json").string() + "\" || exit 72\n"
+      "  printf '%s\\n' explicit > \"" + explicit_marker.string() + "\"\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"stable\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  exit 0\n"
+      "fi\n" +
+          spio::testsupport::FakeCompilePlanConsumerBody() +
+          "exit 64\n");
+  const ScopedEnvVar environment_styio_bin("PAFIO_STYIO_BIN", environment_styio.string());
 
   testing::internal::CaptureStdout();
   const int exit_code = spio::RunCli({
       "--json",
       "build",
-      "minimal",
       "--manifest-path",
-      (root / "project/spio.toml").string(),
-      "--source-root",
-      (root / "styio-source").string(),
+      (root / "spio.toml").string(),
+      "--styio-bin",
+      explicit_styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
 
   EXPECT_EQ(exit_code, spio::kExitSuccess);
   const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("toolchain_mode").get<std::string>(), "build");
-  EXPECT_EQ(payload.at("build_mode").get<std::string>(), "minimal");
-  EXPECT_EQ(payload.at("cloud").at("execution_lane").get<std::string>(), "isolated");
-  EXPECT_EQ(payload.at("styio").at("mode").get<std::string>(), "build");
-  EXPECT_EQ(payload.at("styio").at("source_root").get<std::string>(), CanonicalAbsolutePath(root / "styio-source").string());
-  EXPECT_TRUE(fs::exists(payload.at("styio").at("compiler_binary").get<std::string>()));
-  EXPECT_NE(ReadFile(root / "project/spio-toolchain.lock").find("[source]"), std::string::npos);
+  EXPECT_EQ(payload.at("action").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("status").get<std::string>(), "succeeded");
+  EXPECT_EQ(payload.at("intent").get<std::string>(), "build");
+  EXPECT_EQ(payload.at("sync").at("status").get<std::string>(), "succeeded");
+  EXPECT_EQ(payload.at("styio").at("process").at("status").get<std::string>(), "exited");
+  EXPECT_EQ(payload.at("styio").at("process").at("exit_code").get<int>(), 0);
+  EXPECT_TRUE(fs::exists(root / "spio.lock"));
+  EXPECT_TRUE(fs::exists(root / ".spio/resolution-v1.json"));
+  EXPECT_TRUE(fs::exists(explicit_marker));
+  EXPECT_FALSE(fs::exists(environment_marker));
 }

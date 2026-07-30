@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.styio_bin:
         env = dict(os.environ)
-        env["SPIO_STYIO_BIN"] = args.styio_bin
+        env["PAFIO_STYIO_BIN"] = args.styio_bin
         steps.append(
             run_step(
                 "compatibility_check",

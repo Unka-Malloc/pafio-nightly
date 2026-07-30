@@ -56,8 +56,7 @@ void WritePathDependencyProject(const fs::path &root)
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -71,8 +70,7 @@ void WritePathDependencyProject(const fs::path &root)
       "name = \"acme/util\"\n"
       "version = \"0.2.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -86,8 +84,7 @@ void WritePathDependencyProject(const fs::path &root)
       "name = \"acme/base\"\n"
       "version = \"0.3.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");
@@ -209,7 +206,7 @@ TEST(SyncCliTests, LockedSyncRequiresExistingFreshLockfile)
   const std::string missing_lock_error = testing::internal::GetCapturedStderr();
   EXPECT_NE(missing_lock_error.find("lockfile missing"), std::string::npos);
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
 
   testing::internal::CaptureStdout();
   EXPECT_EQ(
@@ -229,7 +226,7 @@ TEST(SyncCliTests, FrozenSyncUsesLockedOfflinePolicy)
   WritePathDependencyProject(root);
   const fs::path manifest_path = root / "spio.toml";
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
 
   testing::internal::CaptureStdout();
   EXPECT_EQ(

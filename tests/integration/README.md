@@ -6,7 +6,7 @@
 
 ## Requirements
 
-- Use `SPIO_STYIO_BIN` to locate the compiler.
+- Use `PAFIO_STYIO_BIN` to locate the compiler.
 - Create an isolated temporary project workspace per test.
 - Create an isolated temporary `SPIO_HOME` per test.
 - Use only fixture files under `fixtures/`.

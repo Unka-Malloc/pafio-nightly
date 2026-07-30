@@ -29,58 +29,6 @@ fs::path ProjectVendorRootForManifest(const fs::path &manifest_path)
   return CanonicalAbsolutePath(ProjectStateRootForManifest(manifest_path) / "vendor");
 }
 
-fs::path ProjectToolchainPinPathForManifest(const fs::path &manifest_path)
-{
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(manifest_path).parent_path() / "spio-toolchain.toml");
-}
-
-fs::path ProjectToolchainStatePathForManifest(const fs::path &manifest_path)
-{
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(manifest_path).parent_path() / "spio-toolchain.lock");
-}
-
-std::optional<fs::path> FindProjectToolchainPinPath(const fs::path &manifest_path)
-{
-  fs::path current = CanonicalAbsolutePath(manifest_path).parent_path();
-  while (true)
-  {
-    const fs::path candidate = CanonicalAbsolutePath(current / "spio-toolchain.toml");
-    if (fs::exists(candidate))
-    {
-      return candidate;
-    }
-
-    const fs::path parent = current.parent_path();
-    if (parent == current)
-    {
-      break;
-    }
-    current = parent;
-  }
-  return std::nullopt;
-}
-
-std::optional<fs::path> FindProjectToolchainStatePath(const fs::path &manifest_path)
-{
-  fs::path current = CanonicalAbsolutePath(manifest_path).parent_path();
-  while (true)
-  {
-    const fs::path candidate = CanonicalAbsolutePath(current / "spio-toolchain.lock");
-    if (fs::exists(candidate))
-    {
-      return candidate;
-    }
-
-    const fs::path parent = current.parent_path();
-    if (parent == current)
-    {
-      break;
-    }
-    current = parent;
-  }
-  return std::nullopt;
-}
-
 std::optional<fs::path> ResolveOptionalSpioHome()
 {
   if (const char *explicit_home = std::getenv("SPIO_HOME"); explicit_home != nullptr && explicit_home[0] != '\0')
@@ -102,55 +50,6 @@ fs::path ResolveSpioHome()
     throw CacheError("unable to resolve SPIO_HOME: set SPIO_HOME or HOME");
   }
   return *spio_home;
-}
-
-fs::path ManagedToolsRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "tools");
-}
-
-fs::path ManagedStyioRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(ManagedToolsRoot(spio_home) / "styio");
-}
-
-fs::path ManagedStyioInstallRoot(const fs::path &spio_home, const std::string &channel, const std::string &compiler_version)
-{
-  return CanonicalAbsolutePath(ManagedStyioRoot(spio_home) / channel / compiler_version);
-}
-
-fs::path ManagedStyioCurrentRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(ManagedStyioRoot(spio_home) / "current");
-}
-
-fs::path ManagedStyioBinaryPath(const fs::path &root)
-{
-  return CanonicalAbsolutePath(root / "bin" / "styio");
-}
-
-fs::path ManagedStyioMetadataPath(const fs::path &root)
-{
-  return CanonicalAbsolutePath(root / "install.json");
-}
-
-fs::path SourceStateRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "src" / "styio");
-}
-
-fs::path SourceCheckoutRoot(const fs::path &spio_home, const std::string &channel, const std::string &identity)
-{
-  return CanonicalAbsolutePath(SourceStateRoot(spio_home) / channel / identity / "source");
-}
-
-fs::path SourceToolchainBuildRoot(
-    const fs::path &spio_home,
-    const std::string &channel,
-    const std::string &identity,
-    const std::string &build_mode)
-{
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "toolchains" / "source" / channel / identity / build_mode);
 }
 
 fs::path RegistryCacheRoot(const fs::path &spio_home)
@@ -183,24 +82,9 @@ fs::path RegistryCheckoutRoot(const fs::path &spio_home)
   return CanonicalAbsolutePath(RegistryCacheRoot(spio_home) / "checkouts");
 }
 
-fs::path ServerStateRoot(const fs::path &spio_home)
+fs::path StaticRegistryKeyRoot(const fs::path &spio_home)
 {
-  return CanonicalAbsolutePath(CanonicalAbsolutePath(spio_home) / "server");
-}
-
-fs::path RegistryServerRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(ServerStateRoot(spio_home) / "registry");
-}
-
-fs::path RegistryPublishProfileRoot(const fs::path &spio_home)
-{
-  return CanonicalAbsolutePath(RegistryServerRoot(spio_home) / "publish-profiles");
-}
-
-fs::path RegistryPublishProfilePath(const fs::path &spio_home, const std::string &profile_name)
-{
-  return CanonicalAbsolutePath(RegistryPublishProfileRoot(spio_home) / (profile_name + ".toml"));
+  return CanonicalAbsolutePath(RegistryCacheRoot(spio_home) / "static" / "keys");
 }
 
 }  // namespace spio

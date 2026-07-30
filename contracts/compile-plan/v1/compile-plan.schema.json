@@ -31,7 +31,7 @@
       "properties": {
         "tool": {
           "type": "string",
-          "const": "spio"
+          "const": "pafio"
         },
         "version": {
           "type": "string",

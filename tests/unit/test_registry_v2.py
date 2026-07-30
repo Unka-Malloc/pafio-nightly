@@ -4,7 +4,6 @@ import concurrent.futures
 import io
 import json
 import pathlib
-import runpy
 import subprocess
 import sys
 import tarfile
@@ -47,8 +46,7 @@ class RegistryV2Tests(unittest.TestCase):
                         'edition = "2026"',
                         "publish = true",
                         "",
-                        "[toolchain]",
-                        'channel = "nightly"',
+                        "[build]",
                         "implicit-std = true",
                         "",
                         "[lib]",
@@ -88,8 +86,7 @@ class RegistryV2Tests(unittest.TestCase):
                         'edition = "2026"',
                         "publish = true",
                         "",
-                        "[toolchain]",
-                        'channel = "nightly"',
+                        "[build]",
                         "implicit-std = true",
                         "",
                         "[lib]",
@@ -268,27 +265,6 @@ class RegistryV2Tests(unittest.TestCase):
                 reader.read_bytes("config.json")
         finally:
             validator.urlopen = original_urlopen
-
-    def test_control_plane_request_timeout_is_reported(self) -> None:
-        module = runpy.run_path(str(ROOT / "scripts" / "registry-v2-control-plane-server.py"))
-        load_json_request = module["load_json_request"]
-
-        class FakeBody:
-            def read(self, length: int) -> bytes:
-                raise TimeoutError("timed out")
-
-        handler = type(
-            "Handler",
-            (),
-            {
-                "headers": {"Content-Length": "3"},
-                "rfile": FakeBody(),
-            },
-        )()
-
-        with self.assertRaises(ValueError) as ctx:
-            load_json_request(handler)
-        self.assertIn("timed out after", str(ctx.exception))
 
     def test_openssl_run_enforces_subprocess_timeout(self) -> None:
         original_run = common.subprocess.run

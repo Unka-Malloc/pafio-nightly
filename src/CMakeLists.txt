@@ -32,6 +32,7 @@ set(SPIO_MANIFEST_SOURCES
 
 set(SPIO_RESOLUTION_SOURCES
     SpioRegistryClient/Client.cpp
+    SpioResolve/MetadataContract.cpp
     SpioResolve/ResolutionContract.cpp
     SpioResolve/Resolver.cpp
     SpioSecurity/Ed25519.cpp
@@ -41,16 +42,8 @@ set(SPIO_RESOLUTION_SOURCES
     SpioSecurity/TufVerifier.cpp
 )
 
-set(SPIO_TOOLCHAIN_SERVICE_SOURCES
-    SpioCloud/Contract.cpp
-    SpioCloud/Execution.cpp
-    SpioCloud/Job.cpp
+set(SPIO_PLAN_SOURCES
     SpioPlan/CompilePlan.cpp
-    SpioTool/Contract.cpp
-    SpioTool/Install.cpp
-    SpioTool/PrebuiltInstall.cpp
-    SpioToolchain/SourceBuild.cpp
-    SpioToolchain/State.cpp
 )
 
 set(SPIO_PACKAGE_SERVICE_SOURCES
@@ -61,20 +54,14 @@ set(SPIO_PACKAGE_SERVICE_SOURCES
     SpioWorkflow/Dependencies.cpp
 )
 
-set(SPIO_PROJECT_SERVICE_SOURCES
-    SpioResolve/ProjectGraphContract.cpp
-)
-
 set(SPIO_CLI_SUPPORT_SOURCES
     SpioCLI/MachineInfoContract.cpp
     SpioCLI/Support.cpp
 )
 
 set(SPIO_CLI_COMMAND_SOURCES
-    SpioApp/CloudApp.cpp
     SpioApp/DoctorApp.cpp
     SpioApp/PackageApp.cpp
-    SpioApp/ToolApp.cpp
     SpioApp/WorkflowApp.cpp
 )
 
@@ -92,27 +79,23 @@ target_link_libraries(spio_manifest PUBLIC spio_foundation)
 spio_add_internal_static_library(spio_resolution ${SPIO_RESOLUTION_SOURCES})
 target_link_libraries(spio_resolution PUBLIC spio_foundation spio_manifest)
 
-spio_add_internal_static_library(spio_toolchain_service ${SPIO_TOOLCHAIN_SERVICE_SOURCES})
-target_link_libraries(spio_toolchain_service PUBLIC spio_foundation spio_manifest spio_resolution)
+spio_add_internal_static_library(spio_plan ${SPIO_PLAN_SOURCES})
+target_link_libraries(spio_plan PUBLIC spio_foundation spio_manifest spio_resolution)
 
 spio_add_internal_static_library(spio_package_service ${SPIO_PACKAGE_SERVICE_SOURCES})
 target_link_libraries(spio_package_service PUBLIC spio_foundation spio_manifest spio_resolution)
-
-spio_add_internal_static_library(spio_project_service ${SPIO_PROJECT_SERVICE_SOURCES})
-target_link_libraries(spio_project_service PUBLIC spio_foundation spio_manifest spio_resolution spio_toolchain_service)
 
 add_library(spio_backend_services INTERFACE)
 target_link_libraries(spio_backend_services INTERFACE
   spio_foundation
   spio_manifest
   spio_resolution
-  spio_toolchain_service
+  spio_plan
   spio_package_service
-  spio_project_service
 )
 
 spio_add_internal_static_library(spio_cli_support ${SPIO_CLI_SUPPORT_SOURCES})
-target_link_libraries(spio_cli_support PUBLIC spio_foundation spio_manifest spio_resolution spio_toolchain_service)
+target_link_libraries(spio_cli_support PUBLIC spio_foundation spio_manifest spio_resolution spio_plan)
 
 spio_add_internal_static_library(spio_cli_commands ${SPIO_CLI_COMMAND_SOURCES})
 target_link_libraries(spio_cli_commands PUBLIC spio_backend_services spio_cli_support)

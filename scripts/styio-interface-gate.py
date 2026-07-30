@@ -139,8 +139,7 @@ def write_temp_project(root: pathlib.Path) -> pathlib.Path:
         "version = \"0.1.0\"\n"
         "edition = \"2026\"\n"
         "publish = false\n\n"
-        "[toolchain]\n"
-        "channel = \"nightly\"\n"
+        "[build]\n"
         "implicit-std = true\n\n"
         "[[bin]]\n"
         "name = \"interop\"\n"
@@ -182,11 +181,11 @@ def main(argv: list[str] | None = None) -> int:
             validation_errors.append(str(err))
 
     compatibility_step = run_step(
-        "spio_check",
+        "spio_doctor",
         [
             spio_bin,
             "--json",
-            "check",
+            "doctor",
             "--manifest-path",
             str(check_manifest_path),
             "--styio-bin",
@@ -215,10 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         if dry_run_step["ok"]:
             try:
                 dry_run_payload = load_json(dry_run_step["stdout"], "spio build --dry-run")
-                plan_path = pathlib.Path(dry_run_payload["plan_path"])
-                build_root = pathlib.Path(dry_run_payload["build_root"])
-                artifact_dir = pathlib.Path(dry_run_payload["artifact_dir"])
-                diag_dir = pathlib.Path(dry_run_payload["diag_dir"])
+                plan_payload = dry_run_payload["plan"]
+                plan_path = pathlib.Path(plan_payload["path"])
+                build_root = pathlib.Path(plan_payload["build_root"])
+                artifact_dir = pathlib.Path(plan_payload["artifact_dir"])
+                diag_dir = pathlib.Path(plan_payload["diag_dir"])
                 receipt_path = build_root / "receipt.json"
                 diagnostics_path = diag_dir / "diagnostics.jsonl"
 

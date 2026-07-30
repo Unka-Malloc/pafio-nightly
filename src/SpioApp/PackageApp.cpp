@@ -77,7 +77,7 @@ fs::path RegistryV2KeyDirectory()
   {
     throw spio::PublishError("unable to resolve SPIO_HOME for registry v2 signing keys: set SPIO_HOME or HOME");
   }
-  return spio::RegistryServerRoot(*spio_home) / "v2" / "keys";
+  return spio::StaticRegistryKeyRoot(*spio_home);
 }
 
 void EnsureRegistryV2KeyDirectory(const fs::path &key_dir)
@@ -286,13 +286,6 @@ json BuildHttpPublishPayload(
     payload["registry_profile"] = *security.profile_name;
   }
   return payload;
-}
-
-void WriteCanonicalLockfile(const fs::path &lockfile_path, const std::string &rendered)
-{
-  const fs::path project_state = lockfile_path.parent_path();
-  const spio::FileLockGuard lock = spio::AcquireFileLock(project_state, spio::FileLockScope::kProject);
-  spio::AtomicWriteFile(lockfile_path, rendered);
 }
 
 }  // namespace
@@ -611,201 +604,6 @@ int HandleRemove(const std::vector<std::string> &args, bool as_json)
   }
 }
 
-int HandleFetch(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return PrintCommandUsage("fetch");
-  }
-
-  fs::path manifest_path = "spio.toml";
-  WorkflowFlags workflow_flags;
-  for (size_t index = 0; index < args.size(); ++index)
-  {
-    if (args[index] == "--manifest-path")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "fetch"}, as_json);
-      }
-      manifest_path = args[index];
-    }
-    else if (ConsumeWorkflowFlag(args[index], workflow_flags))
-    {
-      continue;
-    }
-    else
-    {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for fetch: " + args[index], "fetch"}, as_json);
-    }
-  }
-
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  if (const auto lock_policy_error = ValidateLockedPolicy(manifest_path, "fetch", workflow_flags, resolve_options);
-      lock_policy_error.has_value())
-  {
-    return EmitError(*lock_policy_error, as_json);
-  }
-
-  try
-  {
-    const FetchCommandResult result = FetchDependencies(manifest_path, resolve_options);
-    return EmitSuccess(
-        {
-            {"command", "fetch"},
-            {"message", "fetched dependency sources for " + std::to_string(result.package_count) + " package(s)"},
-            {"manifest_path", result.manifest_path.string()},
-            {"packages", result.package_count},
-            {"git_packages", result.git_package_count},
-            {"registry_packages", result.registry_package_count},
-            {"locked", workflow_flags.locked},
-            {"offline", workflow_flags.offline},
-        },
-        as_json);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "fetch"}, as_json);
-  }
-  catch (const WorkspaceError &err)
-  {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "fetch"}, as_json);
-  }
-  catch (const ResolutionError &err)
-  {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "fetch"}, as_json);
-  }
-  catch (const FetchError &err)
-  {
-    return EmitError({"FetchError", kExitFetch, err.what(), "fetch"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "fetch"}, as_json);
-  }
-}
-
-int HandleLock(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return PrintCommandUsage("lock");
-  }
-
-  fs::path manifest_path = "spio.toml";
-  bool check_only = false;
-  WorkflowFlags workflow_flags;
-  for (size_t index = 0; index < args.size(); ++index)
-  {
-    if (args[index] == "--manifest-path")
-    {
-      if (++index >= args.size())
-      {
-        return EmitError({"UsageError", kExitUsage, "--manifest-path requires a value", "lock"}, as_json);
-      }
-      manifest_path = args[index];
-    }
-    else if (args[index] == "--check")
-    {
-      check_only = true;
-    }
-    else if (args[index] == "--offline")
-    {
-      workflow_flags.offline = true;
-    }
-    else
-    {
-      return EmitError({"UsageError", kExitUsage, "unexpected argument for lock: " + args[index], "lock"}, as_json);
-    }
-  }
-
-  if (!fs::exists(manifest_path))
-  {
-    return EmitError({"ManifestError", kExitManifest, "manifest not found: " + manifest_path.string(), "lock"}, as_json);
-  }
-
-  LockGenerationResult generated;
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  try
-  {
-    generated = ResolveSingleVersionLockfile(manifest_path, resolve_options);
-  }
-  catch (const ValidationError &err)
-  {
-    return EmitError({"ManifestError", kExitManifest, err.what(), "lock"}, as_json);
-  }
-  catch (const WorkspaceError &err)
-  {
-    return EmitError({"WorkspaceError", kExitWorkspace, err.what(), "lock"}, as_json);
-  }
-  catch (const ResolutionError &err)
-  {
-    return EmitError({"ResolutionError", kExitResolve, err.what(), "lock"}, as_json);
-  }
-  catch (const FetchError &err)
-  {
-    return EmitError({"FetchError", kExitFetch, err.what(), "lock"}, as_json);
-  }
-  catch (const CacheError &err)
-  {
-    return EmitError({"CacheError", kExitCache, err.what(), "lock"}, as_json);
-  }
-
-  const std::string rendered = SerializeLockfileCanonical(generated.lockfile);
-  if (check_only)
-  {
-    if (!fs::exists(generated.lockfile_path))
-    {
-      return EmitError({"LockfileError", kExitLock, "lockfile missing: " + generated.lockfile_path.string(), "lock"}, as_json);
-    }
-
-    try
-    {
-      if (ReadFile(generated.lockfile_path) != rendered)
-      {
-        return EmitError({"LockfileError", kExitLock, "lockfile is stale: " + generated.lockfile_path.string(), "lock"}, as_json);
-      }
-    }
-    catch (const std::exception &err)
-    {
-      return EmitError({"LockfileError", kExitLock, err.what(), "lock"}, as_json);
-    }
-
-    return EmitSuccess(
-        {
-            {"command", "lock"},
-            {"message", "lockfile is up to date: " + generated.lockfile_path.string()},
-            {"manifest_path", generated.manifest_path.string()},
-            {"lockfile_path", generated.lockfile_path.string()},
-            {"mode", "check"},
-            {"packages", generated.lockfile.packages.size()},
-            {"offline", workflow_flags.offline},
-        },
-        as_json);
-  }
-
-  try
-  {
-    WriteCanonicalLockfile(generated.lockfile_path, rendered);
-  }
-  catch (const std::exception &err)
-  {
-    return EmitError({"LockfileError", kExitLock, err.what(), "lock"}, as_json);
-  }
-
-  return EmitSuccess(
-      {
-          {"command", "lock"},
-          {"message", "wrote lockfile: " + generated.lockfile_path.string()},
-          {"manifest_path", generated.manifest_path.string()},
-          {"lockfile_path", generated.lockfile_path.string()},
-          {"mode", "write"},
-          {"packages", generated.lockfile.packages.size()},
-          {"offline", workflow_flags.offline},
-      },
-      as_json);
-}
-
 int HandleSync(const std::vector<std::string> &args, bool as_json)
 {
   if (args.size() == 1 && args.front() == "--help")
@@ -835,112 +633,22 @@ int HandleSync(const std::vector<std::string> &args, bool as_json)
     }
   }
 
-  const ResolveOptions resolve_options = BuildResolveOptions(manifest_path, workflow_flags);
-  const fs::path requested_lockfile_path = manifest_path.parent_path() / "spio.lock";
-  if (workflow_flags.locked && !fs::exists(requested_lockfile_path))
-  {
-    return EmitError(
-        {
-            "LockfileError",
-            kExitLock,
-            "lockfile missing: " + requested_lockfile_path.string(),
-            "sync",
-        },
-        as_json);
-  }
-
   try
   {
-    const ResolvedGraphResult graph =
-        ResolveSingleVersionGraph(manifest_path, resolve_options);
-    const std::string rendered = SerializeLockfileCanonical(graph.lockfile);
-    const std::string manifest_bytes =
-        SerializeManifestCanonical(LoadManifest(graph.manifest_path));
-    const std::string manifest_sha256 = Sha256Text(manifest_bytes);
-    const std::string lock_sha256 = Sha256Text(rendered);
-    const std::string resolution_bytes =
-        SerializeResolutionCanonical(graph, manifest_sha256, lock_sha256);
-    const fs::path resolution_path =
-        ProjectStateRootForManifest(graph.manifest_path) / "resolution-v1.json";
-    std::string lockfile_mode = workflow_flags.locked ? "locked" : "unchanged";
-
-    size_t git_package_count = 0;
-    size_t registry_package_count = 0;
-    for (const ResolvedPackage &package : graph.packages)
-    {
-      if (package.source_kind == "git")
-      {
-        ++git_package_count;
-      }
-      else if (package.source_kind == "registry")
-      {
-        ++registry_package_count;
-      }
-    }
-
-    const FileLockGuard project_lock =
-        AcquireFileLock(graph.lockfile_path.parent_path(), FileLockScope::kProject);
-    const std::string current_manifest_bytes =
-        SerializeManifestCanonical(LoadManifest(graph.manifest_path));
-    if (Sha256Text(current_manifest_bytes) != manifest_sha256)
-    {
-      throw ValidationError(
-          "manifest changed while sync was preparing: " + graph.manifest_path.string());
-    }
-
-    if (workflow_flags.locked)
-    {
-      if (!fs::exists(graph.lockfile_path))
-      {
-        return EmitError(
-            {
-                "LockfileError",
-                kExitLock,
-                "lockfile missing: " + graph.lockfile_path.string(),
-                "sync",
-            },
-            as_json);
-      }
-      if (ReadFile(graph.lockfile_path) != rendered)
-      {
-        return EmitError(
-            {
-                "LockfileError",
-                kExitLock,
-                "lockfile is stale: " + graph.lockfile_path.string(),
-                "sync",
-            },
-            as_json);
-      }
-    }
-    else
-    {
-      const bool write_lockfile =
-          !fs::exists(graph.lockfile_path) ||
-          ReadFile(graph.lockfile_path) != rendered;
-      if (write_lockfile)
-      {
-        AtomicWriteFile(graph.lockfile_path, rendered);
-        lockfile_mode = "write";
-      }
-    }
-
-    if (!fs::exists(resolution_path) ||
-        ReadFile(resolution_path) != resolution_bytes)
-    {
-      AtomicWriteFile(resolution_path, resolution_bytes);
-    }
-
+    const SyncProjectResult result = SyncProjectDependencies(
+        manifest_path,
+        BuildResolveOptions(manifest_path, workflow_flags));
     return EmitSuccess(
         {
             {"command", "sync"},
-            {"message", "synced project dependencies for " + std::to_string(graph.packages.size()) + " package(s)"},
-            {"manifest_path", graph.manifest_path.string()},
-            {"lockfile_path", graph.lockfile_path.string()},
-            {"lockfile_mode", lockfile_mode},
-            {"packages", graph.packages.size()},
-            {"git_packages", git_package_count},
-            {"registry_packages", registry_package_count},
+            {"message", "synced project dependencies for " + std::to_string(result.package_count) + " package(s)"},
+            {"manifest_path", result.manifest_path.string()},
+            {"lockfile_path", result.graph.lockfile_path.string()},
+            {"resolution_path", result.resolution_path.string()},
+            {"lockfile_mode", result.lockfile_mode},
+            {"packages", result.package_count},
+            {"git_packages", result.git_package_count},
+            {"registry_packages", result.registry_package_count},
             {"locked", workflow_flags.locked},
             {"offline", workflow_flags.offline},
         },
@@ -966,7 +674,7 @@ int HandleSync(const std::vector<std::string> &args, bool as_json)
   {
     return EmitError({"CacheError", kExitCache, err.what(), "sync"}, as_json);
   }
-  catch (const std::exception &err)
+  catch (const SyncError &err)
   {
     return EmitError({"LockfileError", kExitLock, err.what(), "sync"}, as_json);
   }

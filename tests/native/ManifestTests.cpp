@@ -49,7 +49,7 @@ TEST(ManifestTests, LoadsSinglePackageFixture) {
 
   ASSERT_TRUE(manifest.package.has_value());
   EXPECT_EQ(manifest.package->name, "acme/demo");
-  EXPECT_EQ(manifest.package->toolchain.channel, "nightly");
+  EXPECT_TRUE(manifest.package->build.implicit_std);
   ASSERT_TRUE(manifest.package->lib.has_value());
   EXPECT_EQ(manifest.package->lib->path, "src/lib.styio");
   EXPECT_TRUE(manifest.package->bins.empty());
@@ -86,8 +86,7 @@ TEST(ManifestTests, LoadsExplicitTestTargets) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -113,8 +112,7 @@ TEST(ManifestTests, LoadsRegistryDependencySource) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -163,8 +161,7 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"zeta\"\n"
@@ -189,8 +186,7 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"alpha\"\n"
@@ -213,8 +209,7 @@ TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -235,8 +230,7 @@ TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -255,8 +249,7 @@ TEST(ManifestTests, CanonicalSerializerSortsTestTargets) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[test]]\n"
     "name = \"zeta\"\n"
@@ -278,8 +271,7 @@ TEST(ManifestTests, CanonicalSerializerSortsTestTargets) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"alpha\"\n"

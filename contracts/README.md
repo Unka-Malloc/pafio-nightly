@@ -14,8 +14,8 @@
 
 - `compile-plan/` — build orchestration contract from `spio` to `styio`
 - `compat/` — supported compiler matrix declarations used by `spio`
-- `hosted-control-plane/` — repo-hosted/cloud workspace API contract consumed by frontend clients
-- `registry-control-plane/` — shared native JSON service contract for operating a registry `v2` root; `styio-platform` hosts the service side while `spio` retains client compatibility
+- `metadata-v1/` — canonical project metadata consumed by editor and automation clients
+- `resolution-v1/` — resolved package roots bound to manifest and lock digests
 - `registry-v2/` — industrial static package-distribution contract with signed metadata and append-only package indexes
 
 Generated third-party API-description artifacts are not contract sources in this

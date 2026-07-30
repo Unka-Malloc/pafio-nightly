@@ -24,8 +24,7 @@ TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");
@@ -46,7 +45,7 @@ TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
   EXPECT_EQ(plan["workspace_root"], CanonicalAbsolutePath(root).string());
   EXPECT_EQ(plan["entry"]["target_kind"], "lib");
   EXPECT_EQ(plan["entry"]["file"], CanonicalAbsolutePath(root / "src/lib.styio").string());
-  EXPECT_EQ(plan["toolchain"]["std_package_id"], "builtin:std@nightly/2026");
+  EXPECT_EQ(plan["toolchain"]["std_package_id"], "builtin:std@unbound/2026");
   EXPECT_EQ(plan["profile"]["name"], "dev");
   EXPECT_EQ(plan["emit"]["error_format"], "jsonl");
   ASSERT_EQ(plan["packages"].size(), 1U);
@@ -65,8 +64,7 @@ TEST(BuildPlanTests, RejectsAmbiguousPackageTargetsWithoutExplicitSelection)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -102,8 +100,7 @@ TEST(BuildPlanTests, WorkspaceBuildRequiresExplicitPackageSelectionWhenMultipleR
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -118,8 +115,7 @@ TEST(BuildPlanTests, WorkspaceBuildRequiresExplicitPackageSelectionWhenMultipleR
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"tool\"\n"
@@ -153,8 +149,7 @@ TEST(BuildPlanTests, RejectsMixedEditionGraphForCompilePlanV1)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -171,8 +166,7 @@ TEST(BuildPlanTests, RejectsMixedEditionGraphForCompilePlanV1)
       "version = \"0.1.0\"\n"
       "edition = \"2027\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");

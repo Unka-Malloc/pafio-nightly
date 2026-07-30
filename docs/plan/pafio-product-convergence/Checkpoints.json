@@ -158,7 +158,7 @@
   },
   {
     "id": "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36",
-    "status": "pending",
+    "status": "completed",
     "role": "implementation",
     "prerequisites": [
       "799b8636-9571-4a8d-8afe-f6773b295444"
@@ -251,16 +251,76 @@
     },
     "acceptance_criteria": [
       {
-        "checked": false,
-        "text": "The parser exposes exactly the retained commands and removed commands are unknown."
+        "checked": true,
+        "text": "The parser exposes exactly the retained commands and removed commands are unknown.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
       },
       {
-        "checked": false,
-        "text": "Cold workflows sync before Styio and warm frozen workflows are byte-stable and network-free."
+        "checked": true,
+        "text": "Cold workflows sync before Styio and warm frozen workflows are byte-stable and network-free.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
       },
       {
-        "checked": false,
-        "text": "Discovery precedence, metadata allowlist, doctor, vendor, pack, and publish focused tests pass."
+        "checked": true,
+        "text": "Discovery precedence, metadata allowlist, doctor, vendor, pack, and publish focused tests pass.",
+        "evidence_refs": [
+          {
+            "type": "command",
+            "command_sha256": "a8e6b0a65060f336fdb61fc9a52b43b4e0893f22a368f2003892df4a1f75511f",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "bcaeb907ee0c4236f837e95604ee8e97aaad79208d7c64092cb753535a1729c4",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          },
+          {
+            "type": "command",
+            "command_sha256": "1e17053201b8e335f62caff15bf26ed00b167d4b4b8646c5bf1e9e914d0908e2",
+            "exit_code": 0,
+            "recorded_at": "2026-07-30T11:58:51Z"
+          }
+        ]
       }
     ],
     "commit": {
@@ -271,6 +331,7 @@
     "regression": {
       "scope": "focused",
       "commands": [
+        "cmake -S . -B build-convergence -DSPIO_BUILD_TESTS=ON",
         "cmake --build build-convergence -j4",
         "ctest --test-dir build-convergence -R 'Manifest|Lock|Sync|Metadata|Doctor|Build|Run|Test|Vendor|Pack|Publish|Security|Tuf' --output-on-failure"
       ],
@@ -283,11 +344,28 @@
         "src",
         "contracts",
         "tests/native"
-      ]
+      ],
+      "last_pass": {
+        "recorded_at": "2026-07-30T11:58:51Z",
+        "contract_digest": "37f95adf776809c532d11a2b66a60a3bde074783fe60b60884089559eb20efd9",
+        "content_fingerprint": "905bbcbc261a17c24b5bef189ca1e4db4a18c8fd62afabef9b49b9bf514ecdb6"
+      }
     },
     "next": [
       "d906ef44-89fa-4bb4-a70a-119e9c94f1bc"
-    ]
+    ],
+    "acceptance": {
+      "phase": "accepted",
+      "attempt": 4,
+      "outcome": "accepted",
+      "audit": {
+        "recorded_at": "2026-07-30T12:07:28Z",
+        "contract_digest": "37f95adf776809c532d11a2b66a60a3bde074783fe60b60884089559eb20efd9",
+        "content_fingerprint": "905bbcbc261a17c24b5bef189ca1e4db4a18c8fd62afabef9b49b9bf514ecdb6"
+      },
+      "design_digest": "823829f744886ecc33d991c85afdaa1627b742a4626a69e9c6b62ec35a331418",
+      "acceptance_fingerprint": "c3646b30e1966cd72819c05028c4e1b19e6815e2cffb834bdd00c8f0ae7810ca"
+    }
   },
   {
     "id": "d906ef44-89fa-4bb4-a70a-119e9c94f1bc",

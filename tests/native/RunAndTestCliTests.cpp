@@ -27,8 +27,7 @@ TEST(RunCliTests, DryRunEmitsRunIntentForUniqueBinaryTarget)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -57,8 +56,7 @@ TEST(RunCliTests, RejectsLibSelection)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -89,8 +87,7 @@ TEST(RunCliTests, NonDryRunRunRejectsCompilerWithoutRequiredCompilePlanVersion)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -131,8 +128,7 @@ TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -157,7 +153,9 @@ TEST(RunCliTests, NonDryRunRunExecutesPublishedCompilePlan)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "run");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
-  const json receipt = json::parse(ReadFile(fs::path(payload.at("build_root").get<std::string>()) / "receipt.json"));
+  const json receipt = json::parse(
+    ReadFile(fs::path(payload.at("plan").at("build_root").get<std::string>()) / "receipt.json")
+  );
   EXPECT_EQ(receipt.at("intent").get<std::string>(), "run");
 }
 
@@ -173,8 +171,7 @@ TEST(TestCliTests, DryRunEmitsTestIntentForUniqueTestTarget)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -205,8 +202,7 @@ TEST(TestCliTests, RejectsBinSelection)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -238,8 +234,7 @@ TEST(TestCliTests, NonDryRunTestRejectsCompilerWithoutRequiredCompilePlanVersion
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -280,8 +275,7 @@ TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"smoke\"\n"
@@ -306,6 +300,8 @@ TEST(TestCliTests, NonDryRunTestExecutesPublishedCompilePlan)
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("intent").get<std::string>(), "test");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
-  const json receipt = json::parse(ReadFile(fs::path(payload.at("build_root").get<std::string>()) / "receipt.json"));
+  const json receipt = json::parse(
+    ReadFile(fs::path(payload.at("plan").at("build_root").get<std::string>()) / "receipt.json")
+  );
   EXPECT_EQ(receipt.at("intent").get<std::string>(), "test");
 }

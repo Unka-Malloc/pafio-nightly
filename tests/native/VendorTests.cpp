@@ -208,8 +208,7 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
       "name = \"acme/feed\"\n"
       "version = \"1.2.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -226,8 +225,7 @@ std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string 
           util_version +
           "\"\n"
           "edition = \"2026\"\n\n"
-          "[toolchain]\n"
-          "channel = \"nightly\"\n"
+          "[build]\n"
           "implicit-std = true\n\n"
           "[lib]\n"
           "path = \"src/lib.styio\"\n");
@@ -258,8 +256,7 @@ TEST(VendorCliTests, WritesProjectLocalVendorSnapshotsAndMetadata)
           "name = \"acme/app\"\n"
           "version = \"0.1.0\"\n"
           "edition = \"2026\"\n\n"
-          "[toolchain]\n"
-          "channel = \"nightly\"\n"
+          "[build]\n"
           "implicit-std = true\n\n"
           "[[bin]]\n"
           "name = \"app\"\n"
@@ -285,7 +282,7 @@ TEST(VendorCliTests, WritesProjectLocalVendorSnapshotsAndMetadata)
   EXPECT_TRUE(fs::exists(metadata.at("git_snapshots")[0].at("path").get<std::string>()));
 }
 
-TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
+TEST(SyncCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
 {
   const fs::path root = MakeTempDir("vendor-offline-fetch");
   const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
@@ -302,8 +299,7 @@ TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
           "name = \"acme/app\"\n"
           "version = \"0.1.0\"\n"
           "edition = \"2026\"\n\n"
-          "[toolchain]\n"
-          "channel = \"nightly\"\n"
+          "[build]\n"
           "implicit-std = true\n\n"
           "[[bin]]\n"
           "name = \"app\"\n"
@@ -317,7 +313,9 @@ TEST(FetchCliTests, OfflineUsesVendoredSnapshotsWithoutGlobalCache)
   fs::remove_all(root / ".spio-home");
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--offline", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(
+      spio::RunCli({"--json", "sync", "--offline", "--manifest-path", manifest_path.string()}),
+      spio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 
   EXPECT_TRUE(payload.at("offline").get<bool>());
@@ -339,8 +337,7 @@ TEST(CheckCliTests, LockedRequiresAdjacentLockfile)
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -363,8 +360,7 @@ TEST(BuildCliTests, FrozenDryRunRequiresAdjacentLockfile)
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");

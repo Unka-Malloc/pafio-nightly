@@ -31,8 +31,7 @@ version = "0.2.0"
 edition = "2026"
 publish = true
 
-[toolchain]
-channel = "nightly"
+[build]
 implicit-std = true
 
 [lib]
@@ -76,8 +75,7 @@ name = "acme/app"
 version = "0.1.0"
 edition = "2026"
 
-[toolchain]
-channel = "nightly"
+[build]
 implicit-std = true
 
 [[bin]]

@@ -17,3 +17,12 @@ private paths, user information, and backend runtime data.
 - Contract digest: `5afb6ba6087d683d4305bca890cd48b7ec9bc83c606162756809f2def962e251`
 - Content fingerprint: `cf8b851efd82ed7b6e572733fe0669e5e8a776a3a8edfda419ca218486b9f124`
 - Result: manifest validation and documentation audit both reported zero issues.
+
+## Pafio product surface regression
+
+- Gate: focused configure, build, and product-surface regression passed; independent audit passed
+- Recorded at: `2026-07-30T11:58:51Z`
+- Contract digest: `37f95adf776809c532d11a2b66a60a3bde074783fe60b60884089559eb20efd9`
+- Content fingerprint: `905bbcbc261a17c24b5bef189ca1e4db4a18c8fd62afabef9b49b9bf514ecdb6`
+- Result: the retained command surface, shared sync workflow, metadata v1,
+  external Styio discovery, read-only doctor, and package lifecycle passed.

@@ -21,22 +21,12 @@ struct WorkflowFlags
   bool offline = false;
 };
 
-struct SourceWorkflowFlags
-{
-  bool allow_fetch = true;
-  bool assume_yes = false;
-  bool non_interactive = false;
-  std::optional<std::filesystem::path> source_root;
-  std::optional<std::string> source_revision;
-};
-
 struct ParsedPlanInvocation
 {
   BuildPlanRequest request;
   std::optional<std::string> styio_bin;
   bool dry_run = false;
   WorkflowFlags workflow_flags;
-  SourceWorkflowFlags source_flags;
 };
 
 int EmitError(const CommandError &error, bool as_json);
@@ -53,11 +43,6 @@ bool IsHttpRegistryRoot(const std::string &value);
 bool IsFileRegistryRoot(const std::string &value);
 std::filesystem::path FileRegistryUrlToPath(const std::string &value);
 bool ConsumeWorkflowFlag(const std::string &argument, WorkflowFlags &flags);
-bool ConsumeSourceWorkflowFlag(
-    std::string_view command_name,
-    const std::vector<std::string> &args,
-    size_t &index,
-    SourceWorkflowFlags &flags);
 ResolveOptions BuildResolveOptions(
     const std::filesystem::path &manifest_path,
     const WorkflowFlags &flags,

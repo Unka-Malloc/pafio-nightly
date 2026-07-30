@@ -21,6 +21,7 @@ struct BuildPlanRequest
   std::string profile = "dev";
   std::string build_mode = "minimal";
   std::optional<std::string> compiler_version;
+  std::optional<std::string> compiler_channel;
   bool offline = false;
   std::optional<std::filesystem::path> vendor_root;
 };
@@ -45,5 +46,8 @@ struct BuildPlanResult
 };
 
 BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request);
+BuildPlanResult WriteBuildCompilePlan(
+    const BuildPlanRequest &request,
+    const ResolvedGraphResult &graph);
 
 }  // namespace spio

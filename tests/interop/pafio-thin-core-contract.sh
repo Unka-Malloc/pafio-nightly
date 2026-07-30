@@ -38,8 +38,7 @@ version = "0.2.0"
 edition = "2026"
 publish = true
 
-[toolchain]
-channel = "nightly"
+[build]
 implicit-std = true
 
 [lib]
@@ -150,8 +149,7 @@ version = "0.1.0"
 edition = "2026"
 publish = false
 
-[toolchain]
-channel = "nightly"
+[build]
 implicit-std = true
 
 [[bin]]
@@ -171,8 +169,7 @@ version = "0.1.0"
 edition = "2026"
 publish = false
 
-[toolchain]
-channel = "nightly"
+[build]
 implicit-std = true
 
 [lib]

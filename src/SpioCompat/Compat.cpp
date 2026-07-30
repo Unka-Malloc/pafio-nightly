@@ -18,6 +18,12 @@
 #include <nlohmann/json.hpp>
 #include <toml++/toml.h>
 
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
@@ -233,54 +239,49 @@ std::vector<int> LoadIntArray(const toml::table &table, const std::string &key)
   return values;
 }
 
-struct ProjectToolchainPin
+bool IsExecutable(const fs::path &path)
 {
-  fs::path pin_path;
-  std::string compiler_version;
-  std::string compiler_channel;
-};
+#if defined(_WIN32)
+  return _access(path.string().c_str(), 0) == 0;
+#else
+  return access(path.string().c_str(), X_OK) == 0;
+#endif
+}
 
-std::optional<ProjectToolchainPin> LoadProjectToolchainPin(const fs::path &manifest_path)
+std::optional<fs::path> FindStyioOnPath()
 {
-  const std::optional<fs::path> pin_path = spio::FindProjectToolchainPinPath(manifest_path);
-  if (!pin_path.has_value())
+  const char *path_value = std::getenv("PATH");
+  if (path_value == nullptr || *path_value == '\0')
   {
     return std::nullopt;
   }
 
-  toml::table doc;
-  try
-  {
-    doc = toml::parse_file(pin_path->string());
-  }
-  catch (const toml::parse_error &err)
-  {
-    throw spio::ToolError(
-        "failed to parse project toolchain pin '" + pin_path->string() + "': " + std::string(err.description()));
-  }
+#if defined(_WIN32)
+  constexpr char kPathSeparator = ';';
+  constexpr std::array<std::string_view, 2> kNames{"styio.exe", "styio"};
+#else
+  constexpr char kPathSeparator = ':';
+  constexpr std::array<std::string_view, 1> kNames{"styio"};
+#endif
 
-  const toml::table *styio_table = doc["styio"].as_table();
-  if (styio_table == nullptr)
+  std::stringstream entries(path_value);
+  std::string entry;
+  while (std::getline(entries, entry, kPathSeparator))
   {
-    throw spio::ToolError("project toolchain pin is missing [styio]: " + pin_path->string());
+    if (entry.empty())
+    {
+      continue;
+    }
+    for (const std::string_view name : kNames)
+    {
+      const fs::path candidate = fs::path(entry) / name;
+      if (fs::is_regular_file(candidate) && IsExecutable(candidate))
+      {
+        return spio::CanonicalAbsolutePath(candidate);
+      }
+    }
   }
-
-  const auto compiler_version = styio_table->get_as<std::string>("version");
-  const auto compiler_channel = styio_table->get_as<std::string>("channel");
-  if (compiler_version == nullptr || compiler_version->get().empty())
-  {
-    throw spio::ToolError("project toolchain pin is missing styio.version: " + pin_path->string());
-  }
-  if (compiler_channel == nullptr || compiler_channel->get().empty())
-  {
-    throw spio::ToolError("project toolchain pin is missing styio.channel: " + pin_path->string());
-  }
-
-  return ProjectToolchainPin{
-      .pin_path = *pin_path,
-      .compiler_version = compiler_version->get(),
-      .compiler_channel = compiler_channel->get(),
-  };
+  return std::nullopt;
 }
 
 }  // namespace
@@ -289,15 +290,14 @@ namespace spio
 {
 
 std::optional<fs::path> ResolveStyioBinary(
-    const std::optional<std::string> &explicit_path,
-    const std::optional<fs::path> &manifest_path)
+    const std::optional<std::string> &explicit_path)
 {
   if (explicit_path.has_value() && !explicit_path->empty())
   {
     return CanonicalAbsolutePath(*explicit_path);
   }
 
-  if (const char *env = std::getenv("SPIO_STYIO_BIN"))
+  if (const char *env = std::getenv("PAFIO_STYIO_BIN"))
   {
     if (*env != '\0')
     {
@@ -305,34 +305,7 @@ std::optional<fs::path> ResolveStyioBinary(
     }
   }
 
-  if (manifest_path.has_value())
-  {
-    if (const std::optional<ProjectToolchainPin> pin = LoadProjectToolchainPin(*manifest_path); pin.has_value())
-    {
-      const fs::path spio_home = ResolveSpioHome();
-      const fs::path managed_binary =
-          ManagedStyioBinaryPath(ManagedStyioInstallRoot(spio_home, pin->compiler_channel, pin->compiler_version));
-      if (!fs::exists(managed_binary) || !fs::is_regular_file(managed_binary))
-      {
-        throw ToolError(
-            "project toolchain pin requires an installed managed styio compiler: " + pin->compiler_channel + "/" +
-            pin->compiler_version + " (" + pin->pin_path.string() + ")");
-      }
-      return managed_binary;
-    }
-  }
-
-  const std::optional<fs::path> spio_home = ResolveOptionalSpioHome();
-  if (spio_home.has_value())
-  {
-    const fs::path managed_binary = ManagedStyioBinaryPath(ManagedStyioCurrentRoot(*spio_home));
-    if (fs::exists(managed_binary))
-    {
-      return managed_binary;
-    }
-  }
-
-  return std::nullopt;
+  return FindStyioOnPath();
 }
 
 CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)

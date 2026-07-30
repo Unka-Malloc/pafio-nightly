@@ -207,22 +207,17 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
   return parsed;
 }
 
-spio::Toolchain
-ParseToolchain(const toml::table &doc) {
-  const toml::table &toolchain_table = RequireTable(doc, "toolchain", "package manifest");
+spio::BuildConfig
+ParseBuildConfig(const toml::table &doc) {
+  const toml::table &build_table = RequireTable(doc, "build", "package manifest");
 
-  spio::Toolchain toolchain;
-  toolchain.channel = RequireValue<std::string>(toolchain_table, "channel", "[toolchain]");
-  if (toolchain.channel.empty()) {
-    throw spio::ValidationError("[toolchain].channel must be a non-empty string");
-  }
-
-  const auto implicit_std = OptionalBool(toolchain_table, "implicit-std");
+  spio::BuildConfig build;
+  const auto implicit_std = OptionalBool(build_table, "implicit-std");
   if (!implicit_std.has_value()) {
-    throw spio::ValidationError("[toolchain].implicit-std must be a boolean");
+    throw spio::ValidationError("[build].implicit-std must be a boolean");
   }
-  toolchain.implicit_std = *implicit_std;
-  return toolchain;
+  build.implicit_std = *implicit_std;
+  return build;
 }
 
 std::optional<spio::LibTarget>
@@ -313,7 +308,7 @@ ParsePackage(const toml::table &doc) {
   package.version = RequireValue<std::string>(package_table, "version", "[package]");
   package.edition = RequireValue<std::string>(package_table, "edition", "[package]");
   package.publish = OptionalBool(package_table, "publish").value_or(false);
-  package.toolchain = ParseToolchain(doc);
+  package.build = ParseBuildConfig(doc);
   package.lib = ParseLib(doc);
   package.bins = ParseBins(doc);
   package.tests = ParseTests(doc);
@@ -442,8 +437,7 @@ BuildScaffoldManifest(const std::string &package_name, const std::string &kind) 
   package.version = "0.1.0";
   package.edition = "2026";
   package.publish = false;
-  package.toolchain = {
-    .channel = "nightly",
+  package.build = {
     .implicit_std = true,
   };
 
@@ -524,9 +518,8 @@ SerializeManifestCanonical(const ManifestDocument &manifest) {
     out << "edition = " << spio::QuoteTomlString(package.edition) << "\n";
     out << "publish = " << (package.publish ? "true" : "false") << "\n";
 
-    out << "\n[toolchain]\n";
-    out << "channel = " << spio::QuoteTomlString(package.toolchain.channel) << "\n";
-    out << "implicit-std = " << (package.toolchain.implicit_std ? "true" : "false") << "\n";
+    out << "\n[build]\n";
+    out << "implicit-std = " << (package.build.implicit_std ? "true" : "false") << "\n";
 
     if (package.lib.has_value()) {
       out << "\n[lib]\n";

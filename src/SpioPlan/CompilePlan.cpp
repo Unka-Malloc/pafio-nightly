@@ -397,7 +397,7 @@ ProfileConfig ResolveProfile(std::string_view profile_name)
   throw spio::PlanError("unsupported build profile: " + std::string(profile_name));
 }
 
-void ValidateUniformToolchain(const spio::ResolvedGraphResult &graph)
+void ValidateUniformBuildConfig(const spio::ResolvedGraphResult &graph)
 {
   if (graph.packages.empty())
   {
@@ -412,23 +412,20 @@ void ValidateUniformToolchain(const spio::ResolvedGraphResult &graph)
       throw spio::PlanError(
           "compile-plan v1 requires a uniform package.edition across the resolved graph");
     }
-    if (package.package.toolchain.channel != baseline.package.toolchain.channel)
+    if (package.package.build.implicit_std != baseline.package.build.implicit_std)
     {
       throw spio::PlanError(
-          "compile-plan v1 requires a uniform [toolchain].channel across the resolved graph");
-    }
-    if (package.package.toolchain.implicit_std != baseline.package.toolchain.implicit_std)
-    {
-      throw spio::PlanError(
-          "compile-plan v1 requires a uniform [toolchain].implicit-std across the resolved graph");
+          "compile-plan v1 requires a uniform [build].implicit-std across the resolved graph");
     }
   }
 }
 
-std::string BuildStdPackageId(const spio::ResolvedPackage &entry_package)
+std::string BuildStdPackageId(
+    const spio::ResolvedPackage &entry_package,
+    std::string_view compiler_channel)
 {
-  const std::string prefix = entry_package.package.toolchain.implicit_std ? "builtin:std@" : "builtin:std-disabled@";
-  return prefix + entry_package.package.toolchain.channel + "/" + entry_package.package.edition;
+  const std::string prefix = entry_package.package.build.implicit_std ? "builtin:std@" : "builtin:std-disabled@";
+  return prefix + std::string(compiler_channel) + "/" + entry_package.package.edition;
 }
 
 std::vector<std::string> BuildPackageOrder(const spio::ResolvedGraphResult &graph)
@@ -614,7 +611,19 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   resolve_options.offline = request.offline;
   resolve_options.vendor_root = request.vendor_root;
   const ResolvedGraphResult graph = ResolveSingleVersionGraph(request.manifest_path, resolve_options);
-  ValidateUniformToolchain(graph);
+  return WriteBuildCompilePlan(request, graph);
+}
+
+BuildPlanResult WriteBuildCompilePlan(
+    const BuildPlanRequest &request,
+    const ResolvedGraphResult &graph)
+{
+  if (!fs::exists(request.manifest_path))
+  {
+    throw PlanError("manifest not found: " + request.manifest_path.string());
+  }
+  ValidateIntent(request.intent);
+  ValidateUniformBuildConfig(graph);
 
   const ResolvedPackage &entry_package = ResolveEntryPackage(request, graph);
   const SelectedTarget entry_target = ResolveEntryTarget(request, entry_package);
@@ -622,9 +631,11 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   const std::vector<std::string> package_order = BuildPackageOrder(graph);
   const std::string source_hash = BuildSourceHash(graph);
   const std::string compiler_version = request.compiler_version.value_or("unbound");
+  const std::string compiler_channel = request.compiler_channel.value_or("unbound");
 
   const std::string cache_material =
       "compiler=" + compiler_version +
+      ";compiler-channel=" + compiler_channel +
       ";compile-plan=1" +
       ";intent=" + request.intent +
       ";edition=" + entry_package.package.edition +
@@ -649,7 +660,7 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
   json plan{
       {"plan_version", 1},
       {"generated_by", {
-                           {"tool", "spio"},
+                           {"tool", "pafio"},
                            {"version", std::string(kVersion)},
                        }},
       {"intent", request.intent},
@@ -661,10 +672,10 @@ BuildPlanResult WriteBuildCompilePlan(const BuildPlanRequest &request)
                     {"file", entry_target.file.string()},
                 }},
       {"toolchain", {
-                        {"channel", entry_package.package.toolchain.channel},
+                        {"channel", compiler_channel},
                         {"edition", entry_package.package.edition},
-                        {"implicit_std", entry_package.package.toolchain.implicit_std},
-                        {"std_package_id", BuildStdPackageId(entry_package)},
+                        {"implicit_std", entry_package.package.build.implicit_std},
+                        {"std_package_id", BuildStdPackageId(entry_package, compiler_channel)},
                     }},
       {"profile", {
                        {"name", profile.name},

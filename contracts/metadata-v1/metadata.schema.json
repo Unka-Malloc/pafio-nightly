@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://styio.io/contracts/pafio/metadata/v1",
+  "title": "Pafio metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "package",
+    "workspace",
+    "dependencies",
+    "targets",
+    "lock",
+    "resolution",
+    "vendor"
+  ],
+  "properties": {
+    "package": {
+      "type": "object"
+    },
+    "workspace": {
+      "type": "object"
+    },
+    "dependencies": {
+      "type": "array"
+    },
+    "targets": {
+      "type": "array"
+    },
+    "lock": {
+      "type": "object"
+    },
+    "resolution": {
+      "type": "object"
+    },
+    "vendor": {
+      "type": "object"
+    }
+  }
+}

@@ -2,8 +2,6 @@
 
 #include "SpioCore/Paths.hpp"
 #include "SpioManifest/Lockfile.hpp"
-#include "SpioToolchain/State.hpp"
-#include "SpioToolchain/Vocabulary.hpp"
 
 #include <algorithm>
 #include <array>
@@ -38,17 +36,11 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "doctor",
-        "usage: spio doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]\n",
+        "usage: spio doctor [--json] [--manifest-path <path>] [--styio-bin <path>]\n",
     },
     UsageCommandEntry{
-        "project-graph",
-        "usage: spio project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]\n",
-    },
-    UsageCommandEntry{
-        "cloud",
-        "usage: spio cloud <status|plan> ...\n"
-        "  spio cloud status [--json] [--manifest-path <path>]\n"
-        "  spio cloud plan --json <build|run|test> [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib|--test <name>] [--profile <dev|release>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n",
+        "metadata",
+        "usage: spio metadata --json [--manifest-path <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
         "new",
@@ -57,23 +49,6 @@ constexpr std::array kUsageCommands = {
     UsageCommandEntry{
         "init",
         "usage: spio init [--name <package-name>] [--lib|--bin]\n",
-    },
-    UsageCommandEntry{
-        "install",
-        "usage: spio install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n",
-    },
-    UsageCommandEntry{
-        "use",
-        "usage: spio use <binary|build> [--manifest-path <path>]\n",
-    },
-    UsageCommandEntry{
-        "set",
-        "usage:\n"
-        "  spio set channel as <stable|nightly> [--manifest-path <path>]\n"
-        "  spio set build as <minimal> [--manifest-path <path>]\n"
-        "  spio set risk as <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]\n"
-        "  spio set lane as <isolated|warm-shared> [--manifest-path <path>]\n"
-        "  spio set security as <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]\n",
     },
     UsageCommandEntry{
         "check",
@@ -92,14 +67,6 @@ constexpr std::array kUsageCommands = {
         "usage: spio sync [--manifest-path <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
-        "fetch",
-        "usage: spio fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n",
-    },
-    UsageCommandEntry{
-        "lock",
-        "usage: spio lock [--manifest-path <path>] [--check] [--offline]\n",
-    },
-    UsageCommandEntry{
         "tree",
         "usage: spio tree [--manifest-path <path>]\n",
     },
@@ -109,15 +76,15 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "build",
-        "usage: spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n",
+        "usage: spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
         "run",
-        "usage: spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n",
+        "usage: spio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
         "test",
-        "usage: spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n",
+        "usage: spio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
         "pack",
@@ -132,17 +99,6 @@ constexpr std::array kUsageCommands = {
         "usage:\n"
         "  spio registry trust import <descriptor-url|descriptor-file>\n"
         "  spio registry trust status --json\n",
-    },
-    UsageCommandEntry{
-        "tool",
-        "usage:\n"
-        "  spio tool install --styio-bin <path>\n"
-        "  spio tool list [--json]\n"
-        "  spio tool status --json [--manifest-path <path>]\n"
-        "  spio tool update [styio[@latest]] [--release-root <url>] [--channel <stable|nightly>]\n"
-        "  spio tool uninstall --version <compiler-version> [--channel <channel>]\n"
-        "  spio tool use --version <compiler-version> [--channel <channel>]\n"
-        "  spio tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n",
     },
 };
 
@@ -211,41 +167,23 @@ int PrintGlobalHelp()
       << "  spio [--help] [--version] [--json] <command> [command-args...]\n\n"
       << "commands:\n"
       << "  machine-info [--json]\n"
-      << "  doctor [--json] [--manifest-path <path>] [--release-root <url>] [--channel <stable|nightly>]\n"
-      << "  project-graph --json [--manifest-path <path>] [--locked|--offline|--frozen]\n"
-      << "  cloud status [--json] [--manifest-path <path>]\n"
-      << "  cloud plan --json <build|run|test> [...]\n"
+      << "  doctor [--json] [--manifest-path <path>] [--styio-bin <path>]\n"
+      << "  metadata --json [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
-      << "  install styio[@latest] [--release-root <url>] [--source|--prebuilt-only] [--source-root <path>] [--source-rev <ref>] [--channel <stable|nightly>] [--build <minimal>] [--yes|--no-fetch|--offline|--non-interactive]\n"
-      << "  use <binary|build> [--manifest-path <path>]\n"
-      << "  set channel [as] <stable|nightly> [--manifest-path <path>]\n"
-      << "  set build [as] <minimal> [--manifest-path <path>]\n"
-      << "  set risk [as] <trusted-internal|partner-controlled|untrusted-user> [--manifest-path <path>]\n"
-      << "  set lane [as] <isolated|warm-shared> [--manifest-path <path>]\n"
-      << "  set security [as] <sandbox-default|partner-restricted|trusted-warm> [--manifest-path <path>]\n"
       << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
       << "  sync [--manifest-path <path>] [--locked|--offline|--frozen]\n"
-      << "  fetch [--manifest-path <path>] [--locked|--offline|--frozen]\n"
-      << "  lock [--manifest-path <path>] [--check] [--offline]\n"
       << "  tree [--manifest-path <path>]\n"
       << "  vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n"
-      << "  build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n"
-      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n"
-      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--source-root <path>] [--source-rev <rev>] [--yes|--no-fetch|--non-interactive] [--locked|--offline|--frozen]\n"
+      << "  build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
       << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
       << "  registry trust import <descriptor-url|descriptor-file>\n"
-      << "  registry trust status --json\n"
-      << "  tool install --styio-bin <path>\n"
-      << "  tool list [--json]\n"
-      << "  tool status --json [--manifest-path <path>]\n"
-      << "  tool update [styio[@latest]] [--release-root <url>] [--channel <stable|nightly>]\n"
-      << "  tool uninstall --version <compiler-version> [--channel <channel>]\n"
-      << "  tool use --version <compiler-version> [--channel <channel>]\n"
-      << "  tool pin (--version <compiler-version> [--channel <channel>] | --clear) [--manifest-path <path>]\n";
+      << "  registry trust status --json\n";
   return kExitSuccess;
 }
 
@@ -365,58 +303,6 @@ bool ConsumeWorkflowFlag(const std::string &argument, WorkflowFlags &flags)
   return false;
 }
 
-bool ConsumeSourceWorkflowFlag(
-    std::string_view command_name,
-    const std::vector<std::string> &args,
-    size_t &index,
-    SourceWorkflowFlags &flags)
-{
-  if (args[index] == "--yes")
-  {
-    flags.assume_yes = true;
-    return true;
-  }
-  if (args[index] == "--no-fetch")
-  {
-    flags.allow_fetch = false;
-    return true;
-  }
-  if (args[index] == "--non-interactive")
-  {
-    flags.non_interactive = true;
-    return true;
-  }
-  if (args[index] == "--source-root")
-  {
-    if (++index >= args.size())
-    {
-      throw CommandError{
-          .category = "UsageError",
-          .code = kExitUsage,
-          .message = "--source-root requires a value",
-          .command = std::string(command_name),
-      };
-    }
-    flags.source_root = fs::path(args[index]);
-    return true;
-  }
-  if (args[index] == "--source-rev")
-  {
-    if (++index >= args.size())
-    {
-      throw CommandError{
-          .category = "UsageError",
-          .code = kExitUsage,
-          .message = "--source-rev requires a value",
-          .command = std::string(command_name),
-      };
-    }
-    flags.source_revision = args[index];
-    return true;
-  }
-  return false;
-}
-
 ResolveOptions BuildResolveOptions(
     const fs::path &manifest_path,
     const WorkflowFlags &flags,
@@ -464,7 +350,7 @@ std::optional<CommandError> ParsePlanInvocation(
   if (command_name == "build" && !args.empty() && !args.front().starts_with("--"))
   {
     parsed.request.build_mode = NormalizeSetKeyword(args.front());
-    if (!IsSupportedBuildMode(parsed.request.build_mode))
+    if (parsed.request.build_mode != "minimal")
     {
       return CommandError{"UsageError", kExitUsage, "build currently supports only the 'minimal' mode", std::string(command_name)};
     }
@@ -542,10 +428,6 @@ std::optional<CommandError> ParsePlanInvocation(
           return CommandError{"UsageError", kExitUsage, "--styio-bin requires a value", std::string(command_name)};
         }
         parsed.styio_bin = args[index];
-      }
-      else if (ConsumeSourceWorkflowFlag(command_name, args, index, parsed.source_flags))
-      {
-        continue;
       }
       else if (ConsumeWorkflowFlag(args[index], parsed.workflow_flags))
       {

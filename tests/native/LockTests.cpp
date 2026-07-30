@@ -17,7 +17,6 @@
 
 #include "SpioCLI/CLI.hpp"
 #include "SpioCore/Errors.hpp"
-#include "SpioCore/Sha256.hpp"
 #include "SpioManifest/Lockfile.hpp"
 #include "SpioResolve/Resolver.hpp"
 
@@ -205,44 +204,6 @@ TryResolveLockfileMessage(const fs::path &manifest_path) {
   }
 }
 
-fs::path
-FindOnlySourceArtifactOrAssert(const fs::path &registry_root) {
-  fs::path found;
-  for (const fs::directory_entry &entry : fs::recursive_directory_iterator(registry_root / "artifacts" / "source")) {
-    if (entry.is_regular_file() && entry.path().filename().string().ends_with(".spio.src.tar")) {
-      if (!found.empty()) {
-        throw std::runtime_error("expected exactly one source artifact");
-      }
-      found = entry.path();
-    }
-  }
-  if (found.empty()) {
-    throw std::runtime_error("expected one source artifact");
-  }
-  return found;
-}
-
-void
-WriteMaliciousRegistryTarOrAssert(const fs::path &archive_path) {
-  const std::string script =
-    "import io, pathlib, sys, tarfile\n"
-    "target = pathlib.Path(sys.argv[1])\n"
-    "target.parent.mkdir(parents=True, exist_ok=True)\n"
-    "def add_file(archive, name, data):\n"
-    "    payload = data.encode('utf-8')\n"
-    "    info = tarfile.TarInfo(name=name)\n"
-    "    info.size = len(payload)\n"
-    "    info.mtime = 0\n"
-    "    info.mode = 0o644\n"
-    "    archive.addfile(info, io.BytesIO(payload))\n"
-    "with tarfile.open(target, 'w') as archive:\n"
-    "    add_file(archive, 'util-0.2.0/spio.toml', '[spio]\\nmanifest-version = 1\\n\\n[package]\\nname = \"acme/util\"\\nversion = \"0.2.0\"\\nedition = \"2026\"\\n\\n[toolchain]\\nchannel = \"nightly\"\\nimplicit-std = true\\n\\n[lib]\\npath = \"src/lib.styio\"\\n')\n"
-    "    add_file(archive, 'util-0.2.0/src/lib.styio', '# util\\n')\n"
-    "    add_file(archive, '../escape.txt', 'escape\\n')\n";
-  const ChildProcessResult result = RunChildProcess("python3", {"-c", script, archive_path.string()});
-  ASSERT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
-}
-
 std::string
 GitHeadRev(const fs::path &repo_root) {
   const ChildProcessResult result = RunChildProcess("git", {"-C", repo_root.string(), "rev-parse", "HEAD"});
@@ -271,8 +232,7 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
     "name = \"acme/feed\"\n"
     "version = \"1.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n\n"
@@ -291,8 +251,7 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
       +
       "\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n"
@@ -320,8 +279,7 @@ TEST(LockGenerationTests, GeneratesLockfileForSinglePackage) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -357,8 +315,7 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "name = \"acme/app\"\n"
     "version = \"0.5.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -376,8 +333,7 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -390,8 +346,7 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "name = \"acme/core\"\n"
     "version = \"0.3.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -444,8 +399,7 @@ TEST(ResolverTests, ResolvesPinnedGitWorkspaceAndTransitivePathDependencies) {
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -530,8 +484,7 @@ TEST(ResolverTests, ResolvesLargeGitSnapshotsWithoutArchiveTruncation) {
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -560,8 +513,7 @@ TEST(ResolverTests, ReportsFullCyclePathOnLockResolution) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -577,8 +529,7 @@ TEST(ResolverTests, ReportsFullCyclePathOnLockResolution) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n\n"
@@ -605,8 +556,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -624,8 +574,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
       "name = \"acme/left\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -642,8 +591,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
       "name = \"acme/right\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -659,8 +607,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "name = \"acme/util\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -673,8 +620,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -711,8 +657,7 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "name = \"acme/app\"\n"
     "version = \"0.5.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -730,8 +675,7 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -744,8 +688,7 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "name = \"acme/core\"\n"
     "version = \"0.3.1\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -778,8 +721,7 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -799,8 +741,7 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
     "name = \"acme/util\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -824,8 +765,7 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n"
     "publish = true\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -843,8 +783,7 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
       "version = \"1.2.0\"\n"
       "edition = \"2026\"\n"
       "publish = true\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -865,8 +804,7 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -934,8 +872,7 @@ TEST(TreeCliTests, RendersAsciiTreeForPinnedGitWorkspaceGraph) {
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -969,14 +906,12 @@ TEST(TreeCliTests, EmitsJsonGraphWithRootIds) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
     "path = \"src/main.styio\"\n"
   );
-
   testing::internal::CaptureStdout();
   EXPECT_EQ(spio::RunCli({"--json", "tree", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
@@ -1006,8 +941,7 @@ TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1023,8 +957,7 @@ TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n\n"
@@ -1053,8 +986,7 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1068,8 +1000,7 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -1090,8 +1021,7 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -1122,8 +1052,7 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1147,8 +1076,7 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -1179,8 +1107,7 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n"
     "publish = true\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
@@ -1196,8 +1123,7 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1221,8 +1147,7 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -1255,8 +1180,7 @@ TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1272,14 +1196,13 @@ TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails) {
     "name = \"acme/util\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
   const std::string original_manifest = ReadFile(manifest_path);
   const std::string original_lock = ReadFile(root / "spio.lock");
 
@@ -1304,8 +1227,7 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1321,14 +1243,13 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
   EXPECT_EQ(
     spio::RunCli({"remove", "acme/util", "--manifest-path", manifest_path.string()}),
     spio::kExitSuccess
@@ -1344,8 +1265,7 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -1356,197 +1276,6 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
   const auto lockfile = spio::LoadLockfile(root / "spio.lock");
   ASSERT_EQ(lockfile.packages.size(), 1U);
   EXPECT_EQ(lockfile.packages[0].id, "workspace:acme/app@0.1.0");
-}
-
-TEST(FetchCliTests, FetchesGitSourcesWithoutWritingLockfile) {
-  const fs::path root = MakeTempDir("fetch-git");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path git_repo = root / "remote-feed";
-  const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
-
-  WriteFile(
-    manifest_path,
-    std::string(
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n\n"
-      "[dependencies]\n"
-      "feed = { package = \"acme/feed\", git = \""
-    ) + CanonicalAbsolutePath(git_repo).generic_string()
-      + "\", rev = \"" + rev + "\" }\n"
-  );
-
-  testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
-  const json payload = json::parse(testing::internal::GetCapturedStdout());
-
-  EXPECT_EQ(payload.at("command").get<std::string>(), "fetch");
-  EXPECT_EQ(payload.at("packages").get<size_t>(), 3U);
-  EXPECT_EQ(payload.at("git_packages").get<size_t>(), 2U);
-  EXPECT_FALSE(fs::exists(root / "spio.lock"));
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "git" / "repos"));
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "git" / "checkouts"));
-  EXPECT_FALSE(fs::is_empty(root / ".spio-home" / "git" / "repos"));
-  EXPECT_FALSE(fs::is_empty(root / ".spio-home" / "git" / "checkouts"));
-}
-
-TEST(FetchCliTests, FetchesRegistrySourcesWithoutWritingLockfile) {
-  const fs::path root = MakeTempDir("fetch-registry");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path registry_root = root / "registry";
-  const std::string registry_url = FileUrl(registry_root);
-  const fs::path manifest_path = root / "spio.toml";
-
-  WriteFile(
-    root / "publish/util/spio.toml",
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/util\"\n"
-    "version = \"0.2.0\"\n"
-    "edition = \"2026\"\n"
-    "publish = true\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[lib]\n"
-    "path = \"src/lib.styio\"\n"
-  );
-  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
-
-  WriteFile(
-    manifest_path,
-    std::string(
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n\n"
-      "[dependencies]\n"
-      "util = { package = \"acme/util\", version = \"0.2.0\", registry = \""
-    ) + registry_url
-      + "\" }\n"
-  );
-
-  testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
-  const json payload = json::parse(testing::internal::GetCapturedStdout());
-
-  EXPECT_EQ(payload.at("command").get<std::string>(), "fetch");
-  EXPECT_EQ(payload.at("packages").get<size_t>(), 2U);
-  EXPECT_EQ(payload.at("git_packages").get<size_t>(), 0U);
-  EXPECT_EQ(payload.at("registry_packages").get<size_t>(), 1U);
-  EXPECT_FALSE(fs::exists(root / "spio.lock"));
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "blobs" / "sha256"));
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "checkouts" / "acme" / "util" / "0.2.0"));
-}
-
-TEST(FetchCliTests, RejectsRegistryArchiveTraversalBeforeExtraction) {
-  const fs::path root = MakeTempDir("fetch-registry-traversal");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path registry_root = root / "registry";
-  const std::string registry_url = FileUrl(registry_root);
-  const fs::path manifest_path = root / "spio.toml";
-
-  WriteFile(
-    root / "publish/util/spio.toml",
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/util\"\n"
-    "version = \"0.2.0\"\n"
-    "edition = \"2026\"\n"
-    "publish = true\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[lib]\n"
-    "path = \"src/lib.styio\"\n"
-  );
-  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
-
-  const fs::path artifact = FindOnlySourceArtifactOrAssert(registry_root);
-  const fs::path malicious_archive = root / "malicious" / "util-0.2.0.tar";
-  WriteMaliciousRegistryTarOrAssert(malicious_archive);
-  fs::copy_file(malicious_archive, artifact, fs::copy_options::overwrite_existing);
-  const std::string malicious_sha256 = spio::Sha256File(artifact);
-  const uintmax_t malicious_size = fs::file_size(artifact);
-
-  const fs::path index_path = registry_root / "index" / "acme" / "util.jsonl";
-  json record = json::parse(ReadFile(index_path));
-  record["source_artifact"]["sha256"] = malicious_sha256;
-  record["source_artifact"]["size_bytes"] = malicious_size;
-  WriteFile(index_path, record.dump() + "\n");
-
-  // Publishing another package refreshes and signs the registry metadata after
-  // this intentionally malicious artifact has been installed. This keeps the
-  // test focused on archive path validation instead of failing earlier at TUF
-  // target-integrity verification.
-  WriteFile(
-    root / "publish/refresh/spio.toml",
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/refresh\"\n"
-    "version = \"0.1.0\"\n"
-    "edition = \"2026\"\n"
-    "publish = true\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[lib]\n"
-    "path = \"src/lib.styio\"\n"
-  );
-  WriteFile(root / "publish/refresh/src/lib.styio", "# metadata refresh\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/refresh/spio.toml", registry_root);
-
-  WriteFile(
-    manifest_path,
-    std::string(
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n\n"
-      "[dependencies]\n"
-      "util = { package = \"acme/util\", version = \"0.2.0\", registry = \""
-    ) + registry_url
-      + "\" }\n"
-  );
-
-  testing::internal::CaptureStdout();
-  testing::internal::CaptureStderr();
-  EXPECT_EQ(spio::RunCli({"--json", "fetch", "--manifest-path", manifest_path.string()}), spio::kExitCache);
-  (void)testing::internal::GetCapturedStdout();
-  const std::string stderr_text = testing::internal::GetCapturedStderr();
-  EXPECT_NE(stderr_text.find("prescan.traversal"), std::string::npos) << stderr_text;
-  EXPECT_FALSE(fs::exists(root / "escape.txt"));
 }
 
 TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile) {
@@ -1562,8 +1291,7 @@ TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1588,15 +1316,14 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
     "path = \"src/main.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
   WriteFile(
     manifest_path,
     "[spio]\n"
@@ -1605,8 +1332,7 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -1622,14 +1348,16 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
     "name = \"acme/util\"\n"
     "version = \"0.2.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
   );
 
-  EXPECT_EQ(spio::RunCli({"check", "--manifest-path", manifest_path.string()}), spio::kExitLock);
+  EXPECT_EQ(
+    spio::RunCli({"check", "--manifest-path", manifest_path.string(), "--locked"}),
+    spio::kExitLock
+  );
 }
 
 TEST(CheckCliTests, EmitsPackageCountForResolvedGraph) {
@@ -1645,97 +1373,24 @@ TEST(CheckCliTests, EmitsPackageCountForResolvedGraph) {
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
     "path = \"src/main.styio\"\n"
   );
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "check", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(
+    spio::RunCli({"--json", "check", "--manifest-path", manifest_path.string(), "--dry-run"}),
+    spio::kExitSuccess
+  );
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 
+  EXPECT_EQ(payload.at("action").get<std::string>(), "check");
   EXPECT_EQ(payload.at("command").get<std::string>(), "check");
-  EXPECT_EQ(payload.at("packages").get<size_t>(), 1U);
-  EXPECT_FALSE(payload.at("lockfile_present").get<bool>());
-}
-
-TEST(LockCliTests, WritesAdjacentLockfileAndCheckPasses) {
-  const fs::path root = MakeTempDir("cli-write-and-check");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
-  WriteFile(
-    manifest_path,
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/app\"\n"
-    "version = \"0.1.0\"\n"
-    "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[[bin]]\n"
-    "name = \"app\"\n"
-    "path = \"src/main.styio\"\n"
-  );
-
-  EXPECT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
-  ASSERT_TRUE(fs::exists(root / "spio.lock"));
-  EXPECT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string(), "--check"}), spio::kExitSuccess);
-
-  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
-  ASSERT_EQ(lockfile.packages.size(), 1U);
-  EXPECT_EQ(lockfile.packages[0].id, "workspace:acme/app@0.1.0");
-}
-
-TEST(LockCliTests, CheckFailsWhenLockfileIsMissing) {
-  const fs::path root = MakeTempDir("cli-missing-lock");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
-  WriteFile(
-    manifest_path,
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/app\"\n"
-    "version = \"0.1.0\"\n"
-    "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[[bin]]\n"
-    "name = \"app\"\n"
-    "path = \"src/main.styio\"\n"
-  );
-
-  EXPECT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string(), "--check"}), spio::kExitLock);
-}
-
-TEST(LockCliTests, CheckFailsWhenLockfileIsStale) {
-  const fs::path root = MakeTempDir("cli-stale-lock");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
-  WriteFile(
-    manifest_path,
-    "[spio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/app\"\n"
-    "version = \"0.1.0\"\n"
-    "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
-    "implicit-std = true\n\n"
-    "[[bin]]\n"
-    "name = \"app\"\n"
-    "path = \"src/main.styio\"\n"
-  );
-
-  ASSERT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
-  WriteFile(root / "spio.lock", ReadFile(root / "spio.lock") + "# stale\n");
-
-  EXPECT_EQ(spio::RunCli({"lock", "--manifest-path", manifest_path.string(), "--check"}), spio::kExitLock);
+  EXPECT_EQ(payload.at("status").get<std::string>(), "planned");
+  EXPECT_EQ(payload.at("sync").at("status").get<std::string>(), "succeeded");
+  EXPECT_EQ(payload.at("sync").at("packages").get<size_t>(), 1U);
 }

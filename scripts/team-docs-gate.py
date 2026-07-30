@@ -30,8 +30,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
             "src/",
             "tests/",
             "CMakeLists.txt",
-            "scripts/bootstrap-check.py",
-            "scripts/install-spio.sh",
             "scripts/native-check.sh",
             "scripts/checkpoint-health.sh",
         ),
@@ -43,7 +41,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         (
             "docs/registry/",
             "scripts/registry-promote.py",
-            "scripts/registry-server-gate.py",
         ),
     ),
     TeamRule(

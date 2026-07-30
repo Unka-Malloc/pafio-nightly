@@ -13,7 +13,7 @@
 ## Isolation Rules
 
 - Every test run must set a fresh temporary `SPIO_HOME`.
-- Integration tests must use `SPIO_STYIO_BIN` and must not assume a source checkout of `styio`.
+- Integration tests must use `PAFIO_STYIO_BIN` and must not assume a source checkout of `styio`.
 - Tests must not write into the repository root except under explicit temporary directories created for the run.
 
 ## Acceptance Gates
@@ -29,22 +29,11 @@
 - `spio_cli_gate`
 - `spio_workflow_gate`
 - `spio_extractability_gate`
-- `spio_registry_server_gate`
 - `spio_registry_promotion_gate`
-- `spio_registry_split_origin_http_gate`
 - `spio_registry_v2_unit_gate`
 - `spio_registry_v2_contract_gate`
 - `spio_registry_v2_publish_gate`
 - `spio_registry_v2_static_http_gate`
-- `spio_registry_control_plane_contract_gate`
-- `spio_registry_control_plane_http_gate`
-- `spio_native_contract_source_gate`
-- `spio_hosted_api_contract_unit_gate`
-- `spio_hosted_api_contract_integration_gate`
-- `spio_hosted_api_contract_regression_gate`
-- `spio_hosted_api_contract_smoke_gate`
-- `spio_hosted_api_contract_fuzz_gate`
-- `spio_cloud_compile_stress_gate`
 - `styio_contract_compat_gate`
 - `styio_compile_plan_contract_gate`
 
@@ -57,5 +46,4 @@ See also:
 
 - `../docs/operations/Spio-Verification-Matrix.md`
 - `../scripts/preflight-readiness-check.py`
-- `../scripts/registry-server-gate.py`
 - `../scripts/styio-interface-gate.py`

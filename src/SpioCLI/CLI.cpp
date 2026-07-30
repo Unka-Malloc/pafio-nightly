@@ -1,9 +1,7 @@
 #include "SpioCLI/CLI.hpp"
 
-#include "SpioApp/CloudApp.hpp"
 #include "SpioApp/DoctorApp.hpp"
 #include "SpioApp/PackageApp.hpp"
-#include "SpioApp/ToolApp.hpp"
 #include "SpioApp/WorkflowApp.hpp"
 #include "SpioCLI/MachineInfoContract.hpp"
 #include "SpioCLI/Support.hpp"
@@ -19,77 +17,26 @@
 namespace
 {
 
-enum class ToolSubcommand
-{
-  Install,
-  List,
-  Status,
-  Update,
-  Uninstall,
-  Use,
-  Pin,
-};
-
 enum class TopLevelCommand
 {
   MachineInfo,
   Doctor,
-  ProjectGraph,
-  Cloud,
+  Metadata,
   New,
   Init,
-  Install,
-  Use,
-  Set,
   Check,
   Add,
   Remove,
   Sync,
-  Fetch,
   Build,
   Run,
   Test,
-  Lock,
   Tree,
   Vendor,
   Pack,
   Publish,
   Registry,
-  Tool,
 };
-
-std::optional<ToolSubcommand> ParseToolSubcommand(std::string_view raw)
-{
-  if (raw == "install")
-  {
-    return ToolSubcommand::Install;
-  }
-  if (raw == "list")
-  {
-    return ToolSubcommand::List;
-  }
-  if (raw == "status")
-  {
-    return ToolSubcommand::Status;
-  }
-  if (raw == "update")
-  {
-    return ToolSubcommand::Update;
-  }
-  if (raw == "uninstall")
-  {
-    return ToolSubcommand::Uninstall;
-  }
-  if (raw == "use")
-  {
-    return ToolSubcommand::Use;
-  }
-  if (raw == "pin")
-  {
-    return ToolSubcommand::Pin;
-  }
-  return std::nullopt;
-}
 
 std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
 {
@@ -101,13 +48,9 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   {
     return TopLevelCommand::Doctor;
   }
-  if (raw == "project-graph")
+  if (raw == "metadata")
   {
-    return TopLevelCommand::ProjectGraph;
-  }
-  if (raw == "cloud")
-  {
-    return TopLevelCommand::Cloud;
+    return TopLevelCommand::Metadata;
   }
   if (raw == "new")
   {
@@ -116,18 +59,6 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   if (raw == "init")
   {
     return TopLevelCommand::Init;
-  }
-  if (raw == "install")
-  {
-    return TopLevelCommand::Install;
-  }
-  if (raw == "use")
-  {
-    return TopLevelCommand::Use;
-  }
-  if (raw == "set")
-  {
-    return TopLevelCommand::Set;
   }
   if (raw == "check")
   {
@@ -145,10 +76,6 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   {
     return TopLevelCommand::Sync;
   }
-  if (raw == "fetch")
-  {
-    return TopLevelCommand::Fetch;
-  }
   if (raw == "build")
   {
     return TopLevelCommand::Build;
@@ -160,10 +87,6 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   if (raw == "test")
   {
     return TopLevelCommand::Test;
-  }
-  if (raw == "lock")
-  {
-    return TopLevelCommand::Lock;
   }
   if (raw == "tree")
   {
@@ -185,62 +108,7 @@ std::optional<TopLevelCommand> ParseTopLevelCommand(std::string_view raw)
   {
     return TopLevelCommand::Registry;
   }
-  if (raw == "tool")
-  {
-    return TopLevelCommand::Tool;
-  }
   return std::nullopt;
-}
-
-int HandleToolCommand(const std::vector<std::string> &args, bool as_json)
-{
-  if (args.size() == 1 && args.front() == "--help")
-  {
-    return spio::PrintCommandUsage("tool");
-  }
-  if (args.empty())
-  {
-    return spio::EmitError(
-        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
-        as_json);
-  }
-
-  const std::string subcommand = args.front();
-  const std::vector<std::string> tail(args.begin() + 1, args.end());
-  const auto parsed_subcommand = ParseToolSubcommand(subcommand);
-  if (!parsed_subcommand.has_value())
-  {
-    return spio::EmitError(
-        {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
-        as_json);
-  }
-
-  switch (*parsed_subcommand)
-  {
-    case ToolSubcommand::Install:
-      return spio::HandleToolInstall(tail, as_json);
-    case ToolSubcommand::List:
-      return spio::HandleToolList(tail, as_json);
-    case ToolSubcommand::Status:
-    {
-      if (tail.size() == 1 && tail.front() == "--help")
-      {
-        return spio::PrintCommandUsage("tool");
-      }
-      return spio::HandleToolStatus(tail, as_json);
-    }
-    case ToolSubcommand::Update:
-      return spio::HandleToolUpdate(tail, as_json);
-    case ToolSubcommand::Uninstall:
-      return spio::HandleToolUninstall(tail, as_json);
-    case ToolSubcommand::Use:
-      return spio::HandleToolUse(tail, as_json);
-    case ToolSubcommand::Pin:
-      return spio::HandleToolPin(tail, as_json);
-  }
-  return spio::EmitError(
-      {"UsageError", spio::kExitUsage, "tool requires the 'install', 'list', 'status', 'update', 'uninstall', 'use', or 'pin' subcommand", "tool"},
-      as_json);
 }
 
 }  // namespace
@@ -308,20 +176,12 @@ int RunCli(const std::vector<std::string> &argv)
       return kExitSuccess;
     case TopLevelCommand::Doctor:
       return HandleDoctor(args, global_json);
-    case TopLevelCommand::ProjectGraph:
-      return HandleProjectGraph(args, global_json);
-    case TopLevelCommand::Cloud:
-      return HandleCloud(args, global_json);
+    case TopLevelCommand::Metadata:
+      return HandleMetadata(args, global_json);
     case TopLevelCommand::New:
       return HandleNew(args, global_json);
     case TopLevelCommand::Init:
       return HandleInit(args, global_json);
-    case TopLevelCommand::Install:
-      return HandleInstall(args, global_json);
-    case TopLevelCommand::Use:
-      return HandleUse(args, global_json);
-    case TopLevelCommand::Set:
-      return HandleSet(args, global_json);
     case TopLevelCommand::Check:
       return HandleCheck(args, global_json);
     case TopLevelCommand::Add:
@@ -330,16 +190,12 @@ int RunCli(const std::vector<std::string> &argv)
       return HandleRemove(args, global_json);
     case TopLevelCommand::Sync:
       return HandleSync(args, global_json);
-    case TopLevelCommand::Fetch:
-      return HandleFetch(args, global_json);
     case TopLevelCommand::Build:
       return HandleBuild(args, global_json);
     case TopLevelCommand::Run:
       return HandleRun(args, global_json);
     case TopLevelCommand::Test:
       return HandleTest(args, global_json);
-    case TopLevelCommand::Lock:
-      return HandleLock(args, global_json);
     case TopLevelCommand::Tree:
       return HandleTree(args, global_json);
     case TopLevelCommand::Vendor:
@@ -350,8 +206,6 @@ int RunCli(const std::vector<std::string> &argv)
       return HandlePublish(args, global_json);
     case TopLevelCommand::Registry:
       return HandleRegistry(args, global_json);
-    case TopLevelCommand::Tool:
-      return HandleToolCommand(args, global_json);
   }
   return EmitError({"UsageError", kExitUsage, "unknown command: " + command, command}, global_json);
 }
