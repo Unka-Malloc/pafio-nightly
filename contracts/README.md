@@ -1,6 +1,6 @@
-# spio Contracts
+# pafio Contracts
 
-**Purpose:** Hold the source-of-truth machine contracts owned by the `spio` side of the `spio` / `styio` boundary.
+**Purpose:** Hold the source-of-truth machine contracts owned by the `pafio` side of the `pafio` / `styio` boundary.
 
 **Last updated:** 2026-04-21
 
@@ -12,8 +12,8 @@
 
 ## Contents
 
-- `compile-plan/` — build orchestration contract from `spio` to `styio`
-- `compat/` — supported compiler matrix declarations used by `spio`
+- `compile-plan/` — build orchestration contract from `pafio` to `styio`
+- `compat/` — supported compiler matrix declarations used by `pafio`
 - `metadata-v1/` — canonical project metadata consumed by editor and automation clients
 - `resolution-v1/` — resolved package roots bound to manifest and lock digests
 

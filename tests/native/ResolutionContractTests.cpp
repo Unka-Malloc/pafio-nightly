@@ -1,7 +1,7 @@
-#include "SpioResolve/ResolutionContract.hpp"
+#include "PafioResolve/ResolutionContract.hpp"
 
-#include "SpioCore/Errors.hpp"
-#include "SpioResolve/Resolver.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioResolve/Resolver.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -30,22 +30,22 @@ constexpr std::string_view kRegistryDigest =
 
 fs::path MakeTempDir(const std::string &label)
 {
-  const fs::path root = fs::temp_directory_path() / "spio-resolution-contract-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-resolution-contract-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return fs::absolute(root).lexically_normal();
 }
 
-spio::ResolvedPackage MakePackage(
+pafio::ResolvedPackage MakePackage(
     const fs::path &root,
     std::string id,
     std::string source_kind,
     std::optional<std::string> content_sha256,
-    std::vector<spio::ResolvedDependencyAlias> aliases = {})
+    std::vector<pafio::ResolvedDependencyAlias> aliases = {})
 {
   fs::create_directories(root);
   return {
-      .manifest_path = root / "spio.toml",
+      .manifest_path = root / "pafio.toml",
       .root_dir = root,
       .package = {},
       .id = std::move(id),
@@ -55,16 +55,16 @@ spio::ResolvedPackage MakePackage(
   };
 }
 
-spio::ResolvedGraphResult MakeCanonicalFixture(const fs::path &root)
+pafio::ResolvedGraphResult MakeCanonicalFixture(const fs::path &root)
 {
   const std::string app_id = "workspace:acme/app@1.0.0";
   const std::string bridge_id = "path:acme/bridge@1.1.0";
   const std::string tool_id = "workspace:acme/tool@1.0.0";
   const std::string util_id = "registry:acme/util@2.0.0#" + std::string(kRegistryDigest);
 
-  spio::ResolvedGraphResult graph;
-  graph.manifest_path = root / "spio.toml";
-  graph.lockfile_path = root / "spio.lock";
+  pafio::ResolvedGraphResult graph;
+  graph.manifest_path = root / "pafio.toml";
+  graph.lockfile_path = root / "pafio.lock";
   graph.root_ids = {tool_id, app_id};
   graph.packages = {
       MakePackage(root / "tool", tool_id, "workspace", std::nullopt),
@@ -103,23 +103,23 @@ std::set<std::string> ObjectKeys(const json &value)
 TEST(ResolutionContractTests, SerializesOnlyTheCanonicalMinimalDocument)
 {
   const fs::path root = MakeTempDir("canonical");
-  const spio::ResolvedGraphResult graph = MakeCanonicalFixture(root);
+  const pafio::ResolvedGraphResult graph = MakeCanonicalFixture(root);
 
   const std::string first =
-      spio::SerializeResolutionCanonical(graph, kManifestDigest, kLockDigest);
+      pafio::SerializeResolutionCanonical(graph, kManifestDigest, kLockDigest);
   ASSERT_FALSE(first.empty());
   EXPECT_EQ(first.back(), '\n');
   EXPECT_TRUE(first.size() < 2U || first[first.size() - 2U] != '\n');
 
-  spio::ResolvedGraphResult reordered = graph;
+  pafio::ResolvedGraphResult reordered = graph;
   std::reverse(reordered.root_ids.begin(), reordered.root_ids.end());
   std::reverse(reordered.packages.begin(), reordered.packages.end());
-  for (spio::ResolvedPackage &package : reordered.packages)
+  for (pafio::ResolvedPackage &package : reordered.packages)
   {
     std::reverse(package.dependency_aliases.begin(), package.dependency_aliases.end());
   }
   EXPECT_EQ(
-      spio::SerializeResolutionCanonical(reordered, kManifestDigest, kLockDigest),
+      pafio::SerializeResolutionCanonical(reordered, kManifestDigest, kLockDigest),
       first);
 
   const json payload = json::parse(first);
@@ -187,65 +187,65 @@ TEST(ResolutionContractTests, SerializesOnlyTheCanonicalMinimalDocument)
 TEST(ResolutionContractTests, RejectsInvalidDigestsAndGraphReferences)
 {
   const fs::path root = MakeTempDir("invalid");
-  const spio::ResolvedGraphResult valid = MakeCanonicalFixture(root);
+  const pafio::ResolvedGraphResult valid = MakeCanonicalFixture(root);
 
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(valid, "not-a-sha256", kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(valid, "not-a-sha256", kLockDigest),
+      pafio::ResolutionError);
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(valid, kManifestDigest, "not-a-sha256"),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(valid, kManifestDigest, "not-a-sha256"),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult duplicate_id = valid;
+  pafio::ResolvedGraphResult duplicate_id = valid;
   duplicate_id.packages.push_back(duplicate_id.packages.front());
   duplicate_id.packages.back().root_dir = root / "duplicate";
   fs::create_directories(duplicate_id.packages.back().root_dir);
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(duplicate_id, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(duplicate_id, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult dangling_root = valid;
+  pafio::ResolvedGraphResult dangling_root = valid;
   dangling_root.root_ids.push_back("workspace:acme/missing@1.0.0");
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(dangling_root, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(dangling_root, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult dangling_alias = valid;
+  pafio::ResolvedGraphResult dangling_alias = valid;
   dangling_alias.packages[1].dependency_aliases.push_back(
       {.alias = "missing", .package_id = "registry:acme/missing@1.0.0#dddd"});
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(dangling_alias, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(dangling_alias, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult duplicate_alias = valid;
+  pafio::ResolvedGraphResult duplicate_alias = valid;
   duplicate_alias.packages[1].dependency_aliases.push_back(
       duplicate_alias.packages[1].dependency_aliases.front());
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(duplicate_alias, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(duplicate_alias, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult relative_root = valid;
+  pafio::ResolvedGraphResult relative_root = valid;
   relative_root.packages.front().root_dir = "relative/source";
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(relative_root, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(relative_root, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult missing_root = valid;
+  pafio::ResolvedGraphResult missing_root = valid;
   missing_root.packages.front().root_dir = root / "does-not-exist";
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(missing_root, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(missing_root, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 
-  spio::ResolvedGraphResult wrong_registry_digest = valid;
+  pafio::ResolvedGraphResult wrong_registry_digest = valid;
   const auto registry = std::find_if(
       wrong_registry_digest.packages.begin(),
       wrong_registry_digest.packages.end(),
-      [](const spio::ResolvedPackage &package) {
+      [](const pafio::ResolvedPackage &package) {
         return package.source_kind == "registry";
       });
   ASSERT_NE(registry, wrong_registry_digest.packages.end());
   registry->sha256 = "eeee";
   EXPECT_THROW(
-      spio::SerializeResolutionCanonical(wrong_registry_digest, kManifestDigest, kLockDigest),
-      spio::ResolutionError);
+      pafio::SerializeResolutionCanonical(wrong_registry_digest, kManifestDigest, kLockDigest),
+      pafio::ResolutionError);
 }

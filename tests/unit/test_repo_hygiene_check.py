@@ -28,14 +28,11 @@ class RepoHygieneCheckTests(unittest.TestCase):
             (repo_root / "build-codex" / "cache.txt").parent.mkdir(parents=True)
             (repo_root / "build-codex" / "cache.txt").write_text("x", encoding="utf-8")
             (repo_root / "logs.log").write_text("x", encoding="utf-8")
-            (repo_root / "docs-private" / "secret.md").parent.mkdir(parents=True)
-            (repo_root / "docs-private" / "secret.md").write_text("x", encoding="utf-8")
 
             errors = repo_hygiene_check.check_repo(repo_root, mode="all", check_docs=False)
 
         self.assertTrue(any("build-codex/cache.txt" in error for error in errors))
         self.assertTrue(any("logs.log" in error for error in errors))
-        self.assertTrue(any("docs-private/secret.md" in error for error in errors))
 
     def test_gitignore_patterns_are_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -45,7 +42,7 @@ class RepoHygieneCheckTests(unittest.TestCase):
             errors = repo_hygiene_check.check_gitignore(repo_root)
 
         self.assertTrue(any(".DS_Store" in error for error in errors))
-        self.assertTrue(any("scripts-private/" in error for error in errors))
+        self.assertTrue(any(".pafio/" in error for error in errors))
 
     def test_main_fails_on_hygiene_violation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

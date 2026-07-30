@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -49,9 +49,9 @@ exit 64
 EOF
 chmod +x "$FAKE_STYIO"
 
-export SPIO_HOME="$TMP/spio-home"
+export PAFIO_HOME="$TMP/pafio-home"
 python3 "$ROOT/scripts/styio-interface-gate.py" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --styio-bin "$FAKE_STYIO" \
   --require-compile-plan \
   --json >"$TMP/out.json"

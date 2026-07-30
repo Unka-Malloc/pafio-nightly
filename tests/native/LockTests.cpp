@@ -15,10 +15,10 @@
 #include <string>
 #include <vector>
 
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
-#include "SpioManifest/Lockfile.hpp"
-#include "SpioResolve/Resolver.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioManifest/Lockfile.hpp"
+#include "PafioResolve/Resolver.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -143,7 +143,7 @@ CanonicalAbsolutePath(const fs::path &path) {
 
 fs::path
 MakeTempDir(const std::string &label) {
-  const fs::path root = fs::temp_directory_path() / "spio-native-lock-tests" / label;
+  const fs::path root = fs::temp_directory_path() / "pafio-native-lock-tests" / label;
   fs::remove_all(root);
   fs::create_directories(root);
   return root;
@@ -182,24 +182,24 @@ RunGitOrAssert(const std::vector<std::string> &args) {
 void
 PublishIntoFilesystemRegistryOrAssert(const fs::path &manifest_path, const fs::path &registry_root) {
   ASSERT_EQ(
-    spio::RunCli({
+    pafio::RunCli({
       "publish",
       "--manifest-path",
       manifest_path.string(),
       "--registry",
       registry_root.string(),
     }),
-    spio::kExitSuccess
+    pafio::kExitSuccess
   );
 }
 
 std::optional<std::string>
 TryResolveLockfileMessage(const fs::path &manifest_path) {
   try {
-    (void)spio::ResolveSingleVersionLockfile(manifest_path);
+    (void)pafio::ResolveSingleVersionLockfile(manifest_path);
     return std::nullopt;
   }
-  catch (const spio::ResolutionError &error) {
+  catch (const pafio::ResolutionError &error) {
     return std::string(error.what());
   }
 }
@@ -217,16 +217,16 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
   RunGitOrAssert({"init", "--initial-branch=main", repo_root.string()});
 
   WriteFile(
-    repo_root / "spio.toml",
-    "[spio]\n"
+    repo_root / "pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[workspace]\n"
     "members = [\"packages/feed\", \"packages/util\"]\n"
     "resolver = \"1\"\n"
   );
   WriteFile(
-    repo_root / "packages/feed/spio.toml",
-    "[spio]\n"
+    repo_root / "packages/feed/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/feed\"\n"
@@ -240,9 +240,9 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
     "util = { package = \"acme/util\", path = \"../util\" }\n"
   );
   WriteFile(
-    repo_root / "packages/util/spio.toml",
+    repo_root / "packages/util/pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/util\"\n"
@@ -258,10 +258,10 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
   );
 
   RunGitOrAssert(
-    {"-C", repo_root.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "add", "."}
+    {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "add", "."}
   );
   RunGitOrAssert(
-    {"-C", repo_root.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "commit", "--quiet", "-m", "initial"}
+    {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "commit", "--quiet", "-m", "initial"}
   );
   return GitHeadRev(repo_root);
 }
@@ -270,10 +270,10 @@ CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_versio
 
 TEST(LockGenerationTests, GeneratesLockfileForSinglePackage) {
   const fs::path root = MakeTempDir("single-package");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-    root / "spio.toml",
-    "[spio]\n"
+    root / "pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -286,9 +286,9 @@ TEST(LockGenerationTests, GeneratesLockfileForSinglePackage) {
     "path = \"src/main.styio\"\n"
   );
 
-  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto generated = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
 
-  EXPECT_EQ(generated.lockfile.generated_by, "spio 0.1.0-dev");
+  EXPECT_EQ(generated.lockfile.generated_by, "pafio 0.1.0-dev");
   EXPECT_EQ(generated.lockfile.resolver, "single-version-v1");
   ASSERT_EQ(generated.lockfile.packages.size(), 1U);
   EXPECT_EQ(generated.lockfile.packages[0].id, "workspace:acme/app@0.1.0");
@@ -298,18 +298,18 @@ TEST(LockGenerationTests, GeneratesLockfileForSinglePackage) {
 
 TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
   const fs::path root = MakeTempDir("workspace-and-path");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-    root / "spio.toml",
-    "[spio]\n"
+    root / "pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[workspace]\n"
     "members = [\"packages/app\", \"packages/util\"]\n"
     "resolver = \"1\"\n"
   );
   WriteFile(
-    root / "packages/app/spio.toml",
-    "[spio]\n"
+    root / "packages/app/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -326,8 +326,8 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "util = { package = \"acme/util\", path = \"../util\" }\n"
   );
   WriteFile(
-    root / "packages/util/spio.toml",
-    "[spio]\n"
+    root / "packages/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -339,8 +339,8 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "path = \"src/lib.styio\"\n"
   );
   WriteFile(
-    root / "vendor/core/spio.toml",
-    "[spio]\n"
+    root / "vendor/core/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/core\"\n"
@@ -352,15 +352,15 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
     "path = \"src/lib.styio\"\n"
   );
 
-  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto generated = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
 
   ASSERT_EQ(generated.lockfile.packages.size(), 3U);
   EXPECT_EQ(
-    spio::SerializeLockfileCanonical(generated.lockfile),
+    pafio::SerializeLockfileCanonical(generated.lockfile),
     std::string(
       "lock-version = 1\n\n"
       "[metadata]\n"
-      "generated-by = \"spio 0.1.0-dev\"\n"
+      "generated-by = \"pafio 0.1.0-dev\"\n"
       "resolver = \"single-version-v1\"\n\n"
       "[[package]]\n"
       "id = \"path:acme/core@0.3.0\"\n"
@@ -386,14 +386,14 @@ TEST(LockGenerationTests, GeneratesWorkspaceAndPathGraph) {
 
 TEST(ResolverTests, ResolvesPinnedGitWorkspaceAndTransitivePathDependencies) {
   const fs::path root = MakeTempDir("git-workspace");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
 
   WriteFile(
-    root / "spio.toml",
+    root / "pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -410,14 +410,14 @@ TEST(ResolverTests, ResolvesPinnedGitWorkspaceAndTransitivePathDependencies) {
       + "\", rev = \"" + rev + "\" }\n"
   );
 
-  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto generated = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
 
   ASSERT_EQ(generated.lockfile.packages.size(), 3U);
   const std::string expected =
     std::string(
       "lock-version = 1\n\n"
       "[metadata]\n"
-      "generated-by = \"spio 0.1.0-dev\"\n"
+      "generated-by = \"pafio 0.1.0-dev\"\n"
       "resolver = \"single-version-v1\"\n\n"
       "[[package]]\n"
       "id = \"git:acme/feed@1.2.0#"
@@ -457,28 +457,28 @@ TEST(ResolverTests, ResolvesPinnedGitWorkspaceAndTransitivePathDependencies) {
     "source-kind = \"workspace\"\n"
     "dependencies = [\"git:acme/feed@1.2.0#"
     + rev + "\"]\n";
-  EXPECT_EQ(spio::SerializeLockfileCanonical(generated.lockfile), expected);
+  EXPECT_EQ(pafio::SerializeLockfileCanonical(generated.lockfile), expected);
 }
 
 TEST(ResolverTests, ResolvesLargeGitSnapshotsWithoutArchiveTruncation) {
   const fs::path root = MakeTempDir("git-workspace-large-snapshot");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   (void)CreateWorkspaceGitRepo(git_repo, "0.9.0");
 
   WriteFile(git_repo / "packages/feed/assets/large.txt", std::string(1U << 21, 'x'));
   RunGitOrAssert(
-    {"-C", git_repo.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "add", "."}
+    {"-C", git_repo.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "add", "."}
   );
   RunGitOrAssert(
-    {"-C", git_repo.string(), "-c", "user.email=spio-tests@example.com", "-c", "user.name=spio-tests", "commit", "--quiet", "-m", "large snapshot"}
+    {"-C", git_repo.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "commit", "--quiet", "-m", "large snapshot"}
   );
   const std::string rev = GitHeadRev(git_repo);
 
   WriteFile(
-    root / "spio.toml",
+    root / "pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -495,19 +495,19 @@ TEST(ResolverTests, ResolvesLargeGitSnapshotsWithoutArchiveTruncation) {
       + "\", rev = \"" + rev + "\" }\n"
   );
 
-  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto generated = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
   ASSERT_EQ(generated.lockfile.packages.size(), 3U);
   EXPECT_EQ(generated.lockfile.packages.back().source_kind, "workspace");
 }
 
 TEST(ResolverTests, ReportsFullCyclePathOnLockResolution) {
   const fs::path root = MakeTempDir("lock-cycle-path");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -522,8 +522,8 @@ TEST(ResolverTests, ReportsFullCyclePathOnLockResolution) {
     "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -546,11 +546,11 @@ TEST(ResolverTests, ReportsFullCyclePathOnLockResolution) {
 
 TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
   const fs::path root = MakeTempDir("diamond-version-conflict");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
 
   WriteFile(
-    root / "spio.toml",
-    "[spio]\n"
+    root / "pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -566,9 +566,9 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "right = { package = \"acme/right\", path = \"vendor/right\" }\n"
   );
   WriteFile(
-    root / "vendor/left/spio.toml",
+    root / "vendor/left/pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/left\"\n"
@@ -583,9 +583,9 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     )
   );
   WriteFile(
-    root / "vendor/right/spio.toml",
+    root / "vendor/right/pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/right\"\n"
@@ -600,8 +600,8 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     )
   );
   WriteFile(
-    root / "vendor/util-a/spio.toml",
-    "[spio]\n"
+    root / "vendor/util-a/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -613,8 +613,8 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "path = \"src/lib.styio\"\n"
   );
   WriteFile(
-    root / "vendor/util-b/spio.toml",
-    "[spio]\n"
+    root / "vendor/util-b/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -626,7 +626,7 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
     "path = \"src/lib.styio\"\n"
   );
 
-  const std::optional<std::string> message = TryResolveLockfileMessage(root / "spio.toml");
+  const std::optional<std::string> message = TryResolveLockfileMessage(root / "pafio.toml");
   ASSERT_TRUE(message.has_value());
   EXPECT_NE(message->find("single-version-v1 conflict"), std::string::npos);
   EXPECT_NE(message->find("required by:"), std::string::npos);
@@ -640,18 +640,18 @@ TEST(ResolverTests, ReportsBothChainsOnDiamondVersionConflict) {
 
 TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
   const fs::path root = MakeTempDir("golden-lock-repeat");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   WriteFile(
-    root / "spio.toml",
-    "[spio]\n"
+    root / "pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[workspace]\n"
     "members = [\"packages/app\", \"packages/util\"]\n"
     "resolver = \"1\"\n"
   );
   WriteFile(
-    root / "packages/app/spio.toml",
-    "[spio]\n"
+    root / "packages/app/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -668,8 +668,8 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "util = { package = \"acme/util\", path = \"../util\" }\n"
   );
   WriteFile(
-    root / "packages/util/spio.toml",
-    "[spio]\n"
+    root / "packages/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -681,8 +681,8 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "path = \"src/lib.styio\"\n"
   );
   WriteFile(
-    root / "vendor/core/spio.toml",
-    "[spio]\n"
+    root / "vendor/core/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/core\"\n"
@@ -694,8 +694,8 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
     "path = \"src/lib.styio\"\n"
   );
 
-  const auto first = spio::ResolveSingleVersionLockfile(root / "spio.toml");
-  const auto second = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto first = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
+  const auto second = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
 
   ASSERT_EQ(first.lockfile.packages.size(), second.lockfile.packages.size());
   for (size_t i = 0; i < first.lockfile.packages.size(); ++i) {
@@ -708,14 +708,14 @@ TEST(ResolverTests, ProducesDeterministicLockfileAcrossRepeatedResolution) {
 
 TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
   const fs::path root = MakeTempDir("single-version-conflict");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
 
   WriteFile(
-    root / "spio.toml",
+    root / "pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -734,8 +734,8 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
       "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -747,18 +747,18 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
     "path = \"src/lib.styio\"\n"
   );
 
-  EXPECT_THROW(spio::ResolveSingleVersionLockfile(root / "spio.toml"), spio::ResolutionError);
+  EXPECT_THROW(pafio::ResolveSingleVersionLockfile(root / "pafio.toml"), pafio::ResolutionError);
 }
 
 TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
   const fs::path root = MakeTempDir("registry-workspace");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = FileUrl(registry_root);
 
   WriteFile(
-    root / "publish/util/spio.toml",
-    "[spio]\n"
+    root / "publish/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -771,12 +771,12 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
     "path = \"src/lib.styio\"\n"
   );
   WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/pafio.toml", registry_root);
 
   WriteFile(
-    root / "publish/feed/spio.toml",
+    root / "publish/feed/pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/feed\"\n"
@@ -793,12 +793,12 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
       + "\" }\n"
   );
   WriteFile(root / "publish/feed/src/lib.styio", "# feed\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/feed/spio.toml", registry_root);
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/feed/pafio.toml", registry_root);
 
   WriteFile(
-    root / "spio.toml",
+    root / "pafio.toml",
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -815,15 +815,15 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
       + "\" }\n"
   );
 
-  const auto generated = spio::ResolveSingleVersionLockfile(root / "spio.toml");
+  const auto generated = pafio::ResolveSingleVersionLockfile(root / "pafio.toml");
   ASSERT_EQ(generated.lockfile.packages.size(), 3U);
 
-  const auto find_package = [&](const std::string &name) -> const spio::LockPackage &
+  const auto find_package = [&](const std::string &name) -> const pafio::LockPackage &
   {
     const auto it = std::find_if(
       generated.lockfile.packages.begin(),
       generated.lockfile.packages.end(),
-      [&](const spio::LockPackage &package)
+      [&](const pafio::LockPackage &package)
       {
         return package.name == name;
       }
@@ -832,7 +832,7 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
     return *it;
   };
 
-  const spio::LockPackage &feed = find_package("acme/feed");
+  const pafio::LockPackage &feed = find_package("acme/feed");
   EXPECT_EQ(feed.source_kind, "registry");
   EXPECT_EQ(feed.registry.value_or(""), registry_url);
   ASSERT_TRUE(feed.sha256.has_value());
@@ -841,32 +841,32 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
   ASSERT_EQ(feed.dependencies.size(), 1U);
   EXPECT_TRUE(feed.dependencies[0].starts_with("registry:acme/util@0.2.0#"));
 
-  const spio::LockPackage &util = find_package("acme/util");
+  const pafio::LockPackage &util = find_package("acme/util");
   EXPECT_EQ(util.source_kind, "registry");
   EXPECT_EQ(util.registry.value_or(""), registry_url);
   ASSERT_TRUE(util.sha256.has_value());
   EXPECT_EQ(util.sha256->size(), 64U);
 
-  const spio::LockPackage &app = find_package("acme/app");
+  const pafio::LockPackage &app = find_package("acme/app");
   EXPECT_EQ(app.source_kind, "workspace");
   ASSERT_EQ(app.dependencies.size(), 1U);
   EXPECT_EQ(app.dependencies[0], feed.id);
 
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "blobs" / "sha256"));
-  EXPECT_TRUE(fs::exists(root / ".spio-home" / "registry" / "checkouts" / "acme" / "feed" / "1.2.0" / feed.sha256.value()));
+  EXPECT_TRUE(fs::exists(root / ".pafio-home" / "registry" / "blobs" / "sha256"));
+  EXPECT_TRUE(fs::exists(root / ".pafio-home" / "registry" / "checkouts" / "acme" / "feed" / "1.2.0" / feed.sha256.value()));
 }
 
 TEST(TreeCliTests, RendersAsciiTreeForPinnedGitWorkspaceGraph) {
   const fs::path root = MakeTempDir("tree-git-workspace");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -884,7 +884,7 @@ TEST(TreeCliTests, RendersAsciiTreeForPinnedGitWorkspaceGraph) {
   );
 
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"tree", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"tree", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const std::string output = testing::internal::GetCapturedStdout();
 
   EXPECT_EQ(
@@ -895,12 +895,12 @@ TEST(TreeCliTests, RendersAsciiTreeForPinnedGitWorkspaceGraph) {
 
 TEST(TreeCliTests, EmitsJsonGraphWithRootIds) {
   const fs::path root = MakeTempDir("tree-json");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -913,7 +913,7 @@ TEST(TreeCliTests, EmitsJsonGraphWithRootIds) {
     "path = \"src/main.styio\"\n"
   );
   testing::internal::CaptureStdout();
-  EXPECT_EQ(spio::RunCli({"--json", "tree", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  EXPECT_EQ(pafio::RunCli({"--json", "tree", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 
   EXPECT_EQ(payload.at("command").get<std::string>(), "tree");
@@ -926,16 +926,16 @@ TEST(TreeCliTests, EmitsJsonGraphWithRootIds) {
 }
 
 TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
-  // single-version-v1 is fail-closed on cycles: `spio tree` must reject the
+  // single-version-v1 is fail-closed on cycles: `pafio tree` must reject the
   // graph with a ResolutionError that includes the full cycle path, not render
   // a soft "(cycle)" marker under a successful exit.
   const fs::path root = MakeTempDir("tree-cycle");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -950,8 +950,8 @@ TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
     "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -966,7 +966,7 @@ TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
   );
 
   testing::internal::CaptureStderr();
-  EXPECT_EQ(spio::RunCli({"tree", "--manifest-path", manifest_path.string()}), 13);
+  EXPECT_EQ(pafio::RunCli({"tree", "--manifest-path", manifest_path.string()}), 13);
   const std::string err = testing::internal::GetCapturedStderr();
   EXPECT_NE(err.find("acyclic dependency graph"), std::string::npos);
   EXPECT_NE(err.find("workspace:acme/app@0.1.0"), std::string::npos);
@@ -975,12 +975,12 @@ TEST(TreeCliTests, MarksCyclesInAsciiOutput) {
 
 TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
   const fs::path root = MakeTempDir("add-path");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -993,8 +993,8 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
     "path = \"src/main.styio\"\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -1007,14 +1007,14 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
   );
 
   EXPECT_EQ(
-    spio::RunCli({"add", "acme/util", "--path", "vendor/util", "--manifest-path", manifest_path.string()}),
-    spio::kExitSuccess
+    pafio::RunCli({"add", "acme/util", "--path", "vendor/util", "--manifest-path", manifest_path.string()}),
+    pafio::kExitSuccess
   );
 
   EXPECT_EQ(
     ReadFile(manifest_path),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -1031,7 +1031,7 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
     )
   );
 
-  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
+  const auto lockfile = pafio::LoadLockfile(root / "pafio.lock");
   ASSERT_EQ(lockfile.packages.size(), 2U);
   EXPECT_EQ(lockfile.packages[0].id, "path:acme/util@0.2.0");
   EXPECT_EQ(lockfile.packages[1].id, "workspace:acme/app@0.1.0");
@@ -1039,14 +1039,14 @@ TEST(AddCliTests, AddsPathDependencyAndRefreshesLockfile) {
 
 TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
   const fs::path root = MakeTempDir("add-git-dev");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1060,16 +1060,16 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
   );
 
   EXPECT_EQ(
-    spio::RunCli(
+    pafio::RunCli(
       {"add", "acme/feed", "--git", CanonicalAbsolutePath(git_repo).generic_string(), "--rev", rev, "--dev", "--manifest-path", manifest_path.string()}
     ),
-    spio::kExitSuccess
+    pafio::kExitSuccess
   );
 
   EXPECT_EQ(
     ReadFile(manifest_path),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -1087,20 +1087,20 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
       + "\", rev = \"" + rev + "\" }\n"
   );
 
-  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
+  const auto lockfile = pafio::LoadLockfile(root / "pafio.lock");
   ASSERT_EQ(lockfile.packages.size(), 3U);
 }
 
 TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
   const fs::path root = MakeTempDir("add-registry");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = FileUrl(registry_root);
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
-    root / "publish/util/spio.toml",
-    "[spio]\n"
+    root / "publish/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -1113,11 +1113,11 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
     "path = \"src/lib.styio\"\n"
   );
   WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/spio.toml", registry_root);
+  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/pafio.toml", registry_root);
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1131,16 +1131,16 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
   );
 
   EXPECT_EQ(
-    spio::RunCli(
+    pafio::RunCli(
       {"add", "acme/util", "--registry", registry_url, "--version", "0.2.0", "--manifest-path", manifest_path.string()}
     ),
-    spio::kExitSuccess
+    pafio::kExitSuccess
   );
 
   EXPECT_EQ(
     ReadFile(manifest_path),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -1158,7 +1158,7 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
       + "\" }\n"
   );
 
-  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
+  const auto lockfile = pafio::LoadLockfile(root / "pafio.lock");
   ASSERT_EQ(lockfile.packages.size(), 2U);
   EXPECT_TRUE(lockfile.packages[0].id.starts_with("registry:acme/util@0.2.0#"));
   EXPECT_EQ(lockfile.packages[0].registry.value_or(""), registry_url);
@@ -1167,14 +1167,14 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
 
 TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails) {
   const fs::path root = MakeTempDir("add-rollback");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
   const fs::path git_repo = root / "remote-feed";
   const std::string rev = CreateWorkspaceGitRepo(git_repo, "0.9.0");
-  const fs::path manifest_path = root / "spio.toml";
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1189,8 +1189,8 @@ TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails) {
     "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -1202,26 +1202,26 @@ TEST(AddCliTests, RollsBackManifestAndLockWhenResolutionFails) {
     "path = \"src/lib.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(pafio::RunCli({"sync", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   const std::string original_manifest = ReadFile(manifest_path);
-  const std::string original_lock = ReadFile(root / "spio.lock");
+  const std::string original_lock = ReadFile(root / "pafio.lock");
 
   EXPECT_EQ(
-    spio::RunCli({"add", "acme/feed", "--git", CanonicalAbsolutePath(git_repo).generic_string(), "--rev", rev, "--manifest-path", manifest_path.string()}),
-    spio::kExitResolve
+    pafio::RunCli({"add", "acme/feed", "--git", CanonicalAbsolutePath(git_repo).generic_string(), "--rev", rev, "--manifest-path", manifest_path.string()}),
+    pafio::kExitResolve
   );
   EXPECT_EQ(ReadFile(manifest_path), original_manifest);
-  EXPECT_EQ(ReadFile(root / "spio.lock"), original_lock);
+  EXPECT_EQ(ReadFile(root / "pafio.lock"), original_lock);
 }
 
 TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
   const fs::path root = MakeTempDir("remove-package");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1236,8 +1236,8 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
     "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -1249,16 +1249,16 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
     "path = \"src/lib.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(pafio::RunCli({"sync", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   EXPECT_EQ(
-    spio::RunCli({"remove", "acme/util", "--manifest-path", manifest_path.string()}),
-    spio::kExitSuccess
+    pafio::RunCli({"remove", "acme/util", "--manifest-path", manifest_path.string()}),
+    pafio::kExitSuccess
   );
 
   EXPECT_EQ(
     ReadFile(manifest_path),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -1273,19 +1273,19 @@ TEST(RemoveCliTests, RemovesDependencyByPackageNameAndRefreshesLockfile) {
     )
   );
 
-  const auto lockfile = spio::LoadLockfile(root / "spio.lock");
+  const auto lockfile = pafio::LoadLockfile(root / "pafio.lock");
   ASSERT_EQ(lockfile.packages.size(), 1U);
   EXPECT_EQ(lockfile.packages[0].id, "workspace:acme/app@0.1.0");
 }
 
 TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile) {
   const fs::path root = MakeTempDir("check-broken-path");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1300,17 +1300,17 @@ TEST(CheckCliTests, RejectsBrokenPathDependencyWithoutLockfile) {
     "util = { package = \"acme/util\", path = \"vendor/missing\" }\n"
   );
 
-  EXPECT_EQ(spio::RunCli({"check", "--manifest-path", manifest_path.string()}), spio::kExitResolve);
+  EXPECT_EQ(pafio::RunCli({"check", "--manifest-path", manifest_path.string()}), pafio::kExitResolve);
 }
 
 TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
   const fs::path root = MakeTempDir("check-stale-lock");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1323,10 +1323,10 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
     "path = \"src/main.styio\"\n"
   );
 
-  ASSERT_EQ(spio::RunCli({"sync", "--manifest-path", manifest_path.string()}), spio::kExitSuccess);
+  ASSERT_EQ(pafio::RunCli({"sync", "--manifest-path", manifest_path.string()}), pafio::kExitSuccess);
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1341,8 +1341,8 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
     "util = { package = \"acme/util\", path = \"vendor/util\" }\n"
   );
   WriteFile(
-    root / "vendor/util/spio.toml",
-    "[spio]\n"
+    root / "vendor/util/pafio.toml",
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/util\"\n"
@@ -1355,19 +1355,19 @@ TEST(CheckCliTests, RejectsStaleLockfileAgainstResolver) {
   );
 
   EXPECT_EQ(
-    spio::RunCli({"check", "--manifest-path", manifest_path.string(), "--locked"}),
-    spio::kExitLock
+    pafio::RunCli({"check", "--manifest-path", manifest_path.string(), "--locked"}),
+    pafio::kExitLock
   );
 }
 
 TEST(CheckCliTests, EmitsPackageCountForResolvedGraph) {
   const fs::path root = MakeTempDir("check-json");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path manifest_path = root / "spio.toml";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
     manifest_path,
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
@@ -1383,8 +1383,8 @@ TEST(CheckCliTests, EmitsPackageCountForResolvedGraph) {
 
   testing::internal::CaptureStdout();
   EXPECT_EQ(
-    spio::RunCli({"--json", "check", "--manifest-path", manifest_path.string(), "--dry-run"}),
-    spio::kExitSuccess
+    pafio::RunCli({"--json", "check", "--manifest-path", manifest_path.string(), "--dry-run"}),
+    pafio::kExitSuccess
   );
   const json payload = json::parse(testing::internal::GetCapturedStdout());
 

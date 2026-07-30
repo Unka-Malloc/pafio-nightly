@@ -48,7 +48,7 @@ class PrescanParityTests(unittest.TestCase):
         self.assertEqual(code, "prescan.listing_overflow")
 
     def test_accepts_relative_safe_paths(self) -> None:
-        ok, code = prescan_paths(["pkg-1.0.0/spio.toml", "pkg-1.0.0/src/lib.styio"])
+        ok, code = prescan_paths(["pkg-1.0.0/pafio.toml", "pkg-1.0.0/src/lib.styio"])
         self.assertTrue(ok)
         self.assertEqual(code, "ok")
 

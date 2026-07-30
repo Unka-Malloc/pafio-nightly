@@ -21,4 +21,4 @@ rsync -a \
   "${EXCLUDE_ARGS[@]}" \
   "$ROOT"/ "$TARGET"/
 
-echo "copied spio subtree to: $TARGET"
+echo "copied pafio subtree to: $TARGET"

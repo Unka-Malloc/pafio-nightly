@@ -1,4 +1,4 @@
-#include "SpioResolve/MetadataContract.hpp"
+#include "PafioResolve/MetadataContract.hpp"
 
 #include <array>
 #include <filesystem>
@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 TEST(MetadataTests, SerializerExposesOnlyTheMetadataV1TopLevelFields)
 {
-  const spio::MetadataDocument document{
+  const pafio::MetadataDocument document{
       .package = {{"name", "acme/app"}},
       .workspace = {{"root", "."}},
       .dependencies = nlohmann::json::array({{{"name", "acme/util"}}}),
@@ -22,7 +22,7 @@ TEST(MetadataTests, SerializerExposesOnlyTheMetadataV1TopLevelFields)
       .vendor = {{"present", false}},
   };
 
-  const nlohmann::json payload = spio::SerializeMetadataV1(document);
+  const nlohmann::json payload = pafio::SerializeMetadataV1(document);
   constexpr std::array<const char *, 7> expected{
       "package",
       "workspace",
@@ -64,14 +64,14 @@ TEST(MetadataTests, SerializerExposesOnlyTheMetadataV1TopLevelFields)
 TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
 {
   const fs::path project_root =
-      fs::temp_directory_path() / "spio-metadata-v1-project-snapshot";
+      fs::temp_directory_path() / "pafio-metadata-v1-project-snapshot";
   fs::remove_all(project_root);
   fs::create_directories(project_root);
-  const fs::path manifest_path = project_root / "spio.toml";
+  const fs::path manifest_path = project_root / "pafio.toml";
   {
     std::ofstream manifest(manifest_path);
     manifest
-        << "[spio]\n"
+        << "[pafio]\n"
         << "manifest-version = 1\n\n"
         << "[package]\n"
         << "name = \"acme/app\"\n"
@@ -84,7 +84,7 @@ TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
         << "path = \"src/main.styio\"\n";
   }
 
-  spio::PackageConfig application{
+  pafio::PackageConfig application{
       .name = "acme/app",
       .version = "1.0.0",
       .edition = "2026",
@@ -93,20 +93,20 @@ TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
   application.dependencies.push_back({
       .alias = "core",
       .package = "acme/core",
-      .source_kind = spio::DependencySourceKind::kPath,
+      .source_kind = pafio::DependencySourceKind::kPath,
       .source = "../core",
   });
   application.dev_dependencies.push_back({
       .alias = "fixtures",
       .package = "acme/fixtures",
-      .source_kind = spio::DependencySourceKind::kRegistry,
+      .source_kind = pafio::DependencySourceKind::kRegistry,
       .source = "https://registry.example.invalid",
       .version = "2.0.0",
   });
 
-  const spio::ResolvedGraphResult graph{
+  const pafio::ResolvedGraphResult graph{
       .manifest_path = manifest_path,
-      .lockfile_path = project_root / "spio.lock",
+      .lockfile_path = project_root / "pafio.lock",
       .root_ids = {"workspace:acme/app@1.0.0"},
       .packages = {
           {
@@ -130,7 +130,7 @@ TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
           },
           {
               .manifest_path = project_root.parent_path() / "core" /
-                               "spio.toml",
+                               "pafio.toml",
               .root_dir = project_root.parent_path() / "core",
               .package = {
                   .name = "acme/core",
@@ -142,7 +142,7 @@ TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
           },
           {
               .manifest_path = project_root / ".cache" / "fixtures" /
-                               "spio.toml",
+                               "pafio.toml",
               .root_dir = project_root / ".cache" / "fixtures",
               .package = {
                   .name = "acme/fixtures",
@@ -155,8 +155,8 @@ TEST(MetadataTests, ProjectSnapshotCarriesWorkspacePackagesAndDependencySources)
       },
   };
 
-  const nlohmann::json payload = spio::SerializeMetadataV1(
-      spio::BuildMetadataDocument(manifest_path, graph));
+  const nlohmann::json payload = pafio::SerializeMetadataV1(
+      pafio::BuildMetadataDocument(manifest_path, graph));
 
   ASSERT_EQ(payload.at("workspace").at("packages").size(), 3U);
   EXPECT_EQ(

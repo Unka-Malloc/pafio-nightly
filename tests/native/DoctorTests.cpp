@@ -1,7 +1,7 @@
 #include "BuildTestSupport.hpp"
 
-#include "SpioCLI/CLI.hpp"
-#include "SpioCore/Errors.hpp"
+#include "PafioCLI/CLI.hpp"
+#include "PafioCore/Errors.hpp"
 
 #include <filesystem>
 #include <map>
@@ -14,11 +14,11 @@
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
-using spio::testsupport::MakeTempDir;
-using spio::testsupport::ReadFile;
-using spio::testsupport::ScopedEnvVar;
-using spio::testsupport::WriteExecutable;
-using spio::testsupport::WriteFile;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::ScopedEnvVar;
+using pafio::testsupport::WriteExecutable;
+using pafio::testsupport::WriteFile;
 
 namespace
 {
@@ -43,11 +43,11 @@ std::map<std::string, std::string> SnapshotTree(const fs::path &root)
 TEST(DoctorTests, DiagnosesOwnedStateWithoutRepairingOrInstallingAnything)
 {
   const fs::path root = MakeTempDir("doctor-read-only");
-  const fs::path home = root / ".spio-home";
-  const ScopedEnvVar spio_home("SPIO_HOME", home.string());
+  const fs::path home = root / ".pafio-home";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", home.string());
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
@@ -73,18 +73,18 @@ TEST(DoctorTests, DiagnosesOwnedStateWithoutRepairingOrInstallingAnything)
 
   const auto before = SnapshotTree(root);
   testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
+  const int exit_code = pafio::RunCli({
       "--json",
       "doctor",
       "--manifest-path",
-      (root / "spio.toml").string(),
+      (root / "pafio.toml").string(),
       "--styio-bin",
       styio.string(),
   });
   const std::string stdout_text = testing::internal::GetCapturedStdout();
   const auto after = SnapshotTree(root);
 
-  EXPECT_NE(exit_code, spio::kExitUsage);
+  EXPECT_NE(exit_code, pafio::kExitUsage);
   ASSERT_FALSE(stdout_text.empty());
   const json payload = json::parse(stdout_text);
   EXPECT_EQ(payload.at("command"), "doctor");
@@ -110,7 +110,7 @@ TEST(DoctorTests, DiagnosesOwnedStateWithoutRepairingOrInstallingAnything)
   EXPECT_FALSE(payload.contains("tool_status"));
   EXPECT_FALSE(payload.contains("managed_toolchain"));
   EXPECT_EQ(after, before);
-  EXPECT_FALSE(fs::exists(root / "spio.lock"));
-  EXPECT_FALSE(fs::exists(root / ".spio"));
+  EXPECT_FALSE(fs::exists(root / "pafio.lock"));
+  EXPECT_FALSE(fs::exists(root / ".pafio"));
   EXPECT_FALSE(fs::exists(home));
 }

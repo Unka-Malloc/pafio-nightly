@@ -17,7 +17,7 @@
         "README.md",
         "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md",
         "docs/governance/Pafio-CLI-Contract.md",
-        "docs/governance/Spio-Manifest-and-Lock-Conventions.md",
+        "docs/governance/Pafio-Manifest-and-Lock-Conventions.md",
         "docs/plan/README.md",
         "docs/plan/pafio-thin-core/Architecture.md",
         "docs/plan/pafio-thin-core/Requirements.md"
@@ -124,11 +124,11 @@
       ],
       "paths": [
         "README.md",
-        "docs/adr/ADR-0004-workflow-compile-plan-and-toolchain-state.md",
+        "docs/adr/ADR-0004-project-workflows-and-external-styio.md",
         "docs/adr/ADR-0005-packaging-publish-and-registry-transport.md",
         "docs/adr/ADR-0008-pafio-product-and-ecosystem-boundary.md",
         "docs/governance/Pafio-CLI-Contract.md",
-        "docs/governance/Spio-Manifest-and-Lock-Conventions.md",
+        "docs/governance/Pafio-Manifest-and-Lock-Conventions.md",
         "docs/plan/README.md",
         "docs/plan/pafio-thin-core/Architecture.md",
         "docs/plan/pafio-thin-core/Requirements.md",
@@ -178,18 +178,18 @@
     "design": {
       "artifact": "docs/plan/pafio-product-convergence/Architecture.md",
       "owned_paths": [
-        "src/SpioApp",
-        "src/SpioCLI",
-        "src/SpioManifest",
-        "src/SpioPlan",
-        "src/SpioWorkflow",
-        "src/SpioResolve/MetadataContract.cpp",
-        "src/SpioResolve/MetadataContract.hpp",
+        "src/PafioApp",
+        "src/PafioCLI",
+        "src/PafioManifest",
+        "src/PafioPlan",
+        "src/PafioWorkflow",
+        "src/PafioResolve/MetadataContract.cpp",
+        "src/PafioResolve/MetadataContract.hpp",
         "contracts/metadata-v1/metadata.schema.json"
       ],
       "scaffold_paths": [
-        "src/SpioResolve/MetadataContract.cpp",
-        "src/SpioResolve/MetadataContract.hpp",
+        "src/PafioResolve/MetadataContract.cpp",
+        "src/PafioResolve/MetadataContract.hpp",
         "contracts/metadata-v1/metadata.schema.json"
       ],
       "acceptance_paths": [
@@ -199,14 +199,14 @@
       ],
       "symbols": [
         {
-          "path": "src/SpioResolve/MetadataContract.hpp",
+          "path": "src/PafioResolve/MetadataContract.hpp",
           "kind": "type",
           "name": "MetadataDocument",
           "operation": "add",
           "signature": "metadata v1 project snapshot"
         },
         {
-          "path": "src/SpioApp",
+          "path": "src/PafioApp",
           "kind": "function",
           "name": "HandleWorkflow",
           "operation": "modify",
@@ -216,7 +216,7 @@
       "interfaces": [
         {
           "name": "metadata-v1",
-          "producer": "src/SpioResolve/MetadataContract.cpp",
+          "producer": "src/PafioResolve/MetadataContract.cpp",
           "consumers": [
             "tests/native/MetadataTests.cpp"
           ],
@@ -230,8 +230,8 @@
       ],
       "dependencies": [
         {
-          "from": "src/SpioApp",
-          "to": "src/SpioWorkflow",
+          "from": "src/PafioApp",
+          "to": "src/PafioWorkflow",
           "reason": "All compiler workflows reuse the same sync transaction."
         }
       ],
@@ -331,7 +331,7 @@
     "regression": {
       "scope": "focused",
       "commands": [
-        "cmake -S . -B build-convergence -DSPIO_BUILD_TESTS=ON",
+        "cmake -S . -B build-convergence -DPAFIO_BUILD_TESTS=ON",
         "cmake --build build-convergence -j4",
         "ctest --test-dir build-convergence -R 'Manifest|Lock|Sync|Metadata|Doctor|Build|Run|Test|Vendor|Pack|Publish|Security|Tuf' --output-on-failure"
       ],
@@ -369,7 +369,7 @@
   },
   {
     "id": "d906ef44-89fa-4bb4-a70a-119e9c94f1bc",
-    "status": "pending",
+    "status": "in_progress",
     "role": "implementation",
     "prerequisites": [
       "504a94c8-ed86-4dbd-aa8b-bbbcf0c42f36"
@@ -377,7 +377,7 @@
     "platform": "any",
     "difficulty": "deep",
     "goal": "Cut ecosystem consumers and services over to their owner-specific Pafio, Styio, and Platform contracts.",
-    "description": "Scope: Closure: scenario - one local, hosted, registry, worker, and editor integration path. Context: owner repositories encode the retired producer identity and Pafio-owned toolchain/hosted assumptions. Target: Styio accepts Pafio plans, Platform owns registry/worker behavior, Vityo composes three owner APIs, and site/audit follow them. Design Considerations: keep contracts at producers and validate fixed revisions. Design Value: makes ownership executable. Constraints & Risks: isolated worktrees only and no live service data.",
+    "description": "Scope: Closure: scenario - one local, hosted, registry, worker, and editor integration path. Context: owner repositories encode the retired producer identity and Pafio-owned toolchain/hosted assumptions, while Pafio still emits a schema-invalid legacy build_mode profile and bootstrap capability. Target: remove those producer-side leftovers, make Styio accept Pafio plans, make Platform the sole registry/control-plane and worker owner, make Vityo compose Pafio metadata, Styio machine contracts, and Platform hosted APIs, and align site/audit entry points. Design Considerations: keep contracts at producers, keep Pafio registry behavior client-only, validate immutable revisions without reading original dirty worktrees, and never record machine paths or live service data. Design Value: makes ownership executable. Constraints & Risks: isolated worktrees only, no compatibility adapters, no PAFIO_HOME reads, and focused tests only.",
     "requirements": [
       "REQ-CONV-009"
     ],
@@ -467,7 +467,18 @@
     },
     "next": [
       "767563ec-2ace-4dc6-82b3-40f96d8cb743"
-    ]
+    ],
+    "acceptance": {
+      "phase": "executor_running",
+      "attempt": 1,
+      "dispatch": {
+        "id": "86964820-ae54-40f4-954f-9ea77c14d1d3",
+        "role": "executor"
+      },
+      "outcome": "none",
+      "design_digest": "7018050c07dcca35ac273713cdf8de094b763114f0eb38c03edc23462ca1d7aa",
+      "acceptance_fingerprint": "a4e93f9254fc0d9d047aac7921889bbbc6685b3b7646ad10f39b818e270080af"
+    }
   },
   {
     "id": "767563ec-2ace-4dc6-82b3-40f96d8cb743",

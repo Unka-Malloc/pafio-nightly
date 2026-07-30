@@ -11,12 +11,12 @@
 
 | 能力 | 当前证据 |
 |---|---|
-| manifest / lock | `src/SpioManifest/Manifest.*`, `src/SpioManifest/Lockfile.*` |
-| 确定性图解析 | `src/SpioResolve/Resolver.*` |
-| registry 只读客户端 | `src/SpioRegistryClient/Client.*` |
-| TUF 与制品安全 | `src/SpioSecurity/` |
-| 文件锁与原子写 | `src/SpioCore/FileLock.*`, `src/SpioCore/AtomicFile.*` |
-| add/remove/sync | `src/SpioWorkflow/Dependencies.*`, `src/SpioApp/PackageApp.*` |
+| manifest / lock | `src/PafioManifest/Manifest.*`, `src/PafioManifest/Lockfile.*` |
+| 确定性图解析 | `src/PafioResolve/Resolver.*` |
+| registry 只读客户端 | `src/PafioRegistryClient/Client.*` |
+| TUF 与制品安全 | `src/PafioSecurity/` |
+| 文件锁与原子写 | `src/PafioCore/FileLock.*`, `src/PafioCore/AtomicFile.*` |
+| add/remove/sync | `src/PafioWorkflow/Dependencies.*`, `src/PafioApp/PackageApp.*` |
 | 现有针对性测试 | `tests/native/ManifestTests.cpp`, `LockTests.cpp`, `SyncTests.cpp`, `SecurityTests.cpp`, `TufTests.cpp` |
 
 `docs/plan/package-manager-roadmap/Checkpoints.json` 已记录 TUF、归档预扫描、trust descriptor、绝对
@@ -25,18 +25,18 @@
 
 ### 当前膨胀面
 
-`src/SpioCLI/CLI.cpp` 当前路由了 new/init/doctor/project-graph/cloud/install/use/set/check、
+`src/PafioCLI/CLI.cpp` 当前路由了 new/init/doctor/project-graph/cloud/install/use/set/check、
 add/remove/sync/fetch/build/run/test/lock/tree/vendor/pack/publish/registry/tool 等二十余个入口。
 
 源码的主要体积也集中在超出薄核心的领域：
 
 | 领域 | 代表文件 |
 |---|---|
-| 编译工作流与 compile-plan | `src/SpioApp/WorkflowApp.cpp`, `src/SpioPlan/CompilePlan.cpp` |
-| 编译器安装与 toolchain | `src/SpioApp/ToolApp.cpp`, `src/SpioTool/`, `src/SpioToolchain/` |
-| 云策略与任务 | `src/SpioApp/CloudApp.cpp`, `src/SpioCloud/`, `src/spio_cloud_stress/` |
-| IDE/Vityo 聚合载荷 | `src/SpioResolve/ProjectGraphContract.cpp` |
-| registry 服务端/控制面 | `src/spio_registry_v2/`, `scripts/registry-v2-control-plane-server.py`, hosted/control-plane contracts |
+| 编译工作流与 compile-plan | `src/PafioApp/WorkflowApp.cpp`, `src/PafioPlan/CompilePlan.cpp` |
+| 编译器安装与 toolchain | `src/PafioApp/ToolApp.cpp`, `src/PafioTool/`, `src/PafioToolchain/` |
+| 云策略与任务 | `src/PafioApp/CloudApp.cpp`, `src/PafioCloud/`, `src/pafio_cloud_stress/` |
+| IDE/Vityo 聚合载荷 | `src/PafioResolve/ProjectGraphContract.cpp` |
+| registry 服务端/控制面 | `src/pafio_registry_v2/`, `scripts/registry-v2-control-plane-server.py`, hosted/control-plane contracts |
 
 `ProjectGraphContract.cpp` 直接依赖 cloud、tool、toolchain 和 lock 状态，说明所谓“project graph”
 已不再是包图，而是跨产品聚合对象。继续完成原路线中的 workflow receipts、Vityo payloads 和
@@ -48,7 +48,7 @@ platform policy 会加深这一耦合。
 - 循环和版本/来源冲突已经能输出依赖链；
 - registry blob 已按 SHA-256 布局并在获取时校验；
 - Git cache 仍以 FNV 快捷键组织，证明 Git 来源会额外引入身份、进程、归档和跨平台复杂度；
-- `docs/governance/Spio-Manifest-and-Lock-Conventions.md` 已冻结精确版本与 canonical lock 输出。
+- `docs/governance/Pafio-Manifest-and-Lock-Conventions.md` 已冻结精确版本与 canonical lock 输出。
 
 因此最快路线是把已经工作的 path + registry 消费链收成一个事务，而不是先替换求解器或继续
 增加工作流命令。

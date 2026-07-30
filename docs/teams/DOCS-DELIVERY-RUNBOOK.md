@@ -24,6 +24,8 @@ the Better Plan workspace, and release evidence.
 4. Regenerate indexes after the docs tree changes.
 5. Keep the public Pafio command inventory aligned with executable help.
 6. Publish no site or release wording before the fixed-revision product matrix passes.
+7. Remove superseded owner documents during a clean break; do not retain legacy
+   names, compatibility notes, or permanent migration gates as active policy.
 
 ## Change Classes
 

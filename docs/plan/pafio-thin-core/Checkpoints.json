@@ -18,25 +18,25 @@
     "design": {
       "artifact": "docs/plan/pafio-thin-core/Architecture.md",
       "owned_paths": [
-        "src/SpioManifest",
-        "src/SpioResolve/Resolver.cpp",
-        "src/SpioResolve/Resolver.hpp",
-        "src/SpioResolve/ResolutionContract.cpp",
-        "src/SpioResolve/ResolutionContract.hpp",
-        "src/SpioRegistryClient",
-        "src/SpioSecurity",
-        "src/SpioCore/AtomicFile.cpp",
-        "src/SpioCore/AtomicFile.hpp",
-        "src/SpioCore/FileLock.cpp",
-        "src/SpioCore/FileLock.hpp",
-        "src/SpioWorkflow/Dependencies.cpp",
-        "src/SpioWorkflow/Dependencies.hpp",
-        "src/SpioApp/PackageApp.cpp",
+        "src/PafioManifest",
+        "src/PafioResolve/Resolver.cpp",
+        "src/PafioResolve/Resolver.hpp",
+        "src/PafioResolve/ResolutionContract.cpp",
+        "src/PafioResolve/ResolutionContract.hpp",
+        "src/PafioRegistryClient",
+        "src/PafioSecurity",
+        "src/PafioCore/AtomicFile.cpp",
+        "src/PafioCore/AtomicFile.hpp",
+        "src/PafioCore/FileLock.cpp",
+        "src/PafioCore/FileLock.hpp",
+        "src/PafioWorkflow/Dependencies.cpp",
+        "src/PafioWorkflow/Dependencies.hpp",
+        "src/PafioApp/PackageApp.cpp",
         "contracts/resolution-v1/resolution.schema.json"
       ],
       "scaffold_paths": [
-        "src/SpioResolve/ResolutionContract.cpp",
-        "src/SpioResolve/ResolutionContract.hpp",
+        "src/PafioResolve/ResolutionContract.cpp",
+        "src/PafioResolve/ResolutionContract.hpp",
         "contracts/resolution-v1/resolution.schema.json"
       ],
       "acceptance_paths": [
@@ -51,28 +51,28 @@
       ],
       "symbols": [
         {
-          "path": "src/SpioResolve/ResolutionContract.hpp",
+          "path": "src/PafioResolve/ResolutionContract.hpp",
           "kind": "type",
           "name": "ResolutionDocument",
           "operation": "add",
           "signature": "ResolutionDocument{schema_version, manifest_sha256, lock_sha256, roots, packages}"
         },
         {
-          "path": "src/SpioResolve/ResolutionContract.hpp",
+          "path": "src/PafioResolve/ResolutionContract.hpp",
           "kind": "function",
           "name": "SerializeResolutionCanonical",
           "operation": "add",
           "signature": "std::string SerializeResolutionCanonical(const ResolvedGraphResult &, std::string_view manifest_sha256, std::string_view lock_sha256)"
         },
         {
-          "path": "src/SpioResolve/Resolver.cpp",
+          "path": "src/PafioResolve/Resolver.cpp",
           "kind": "function",
           "name": "ResolveSingleVersionGraph",
           "operation": "modify",
           "signature": "ResolvedGraphResult ResolveSingleVersionGraph(const std::filesystem::path &, const ResolveOptions &)"
         },
         {
-          "path": "src/SpioApp/PackageApp.cpp",
+          "path": "src/PafioApp/PackageApp.cpp",
           "kind": "function",
           "name": "HandleSync",
           "operation": "modify",
@@ -82,9 +82,9 @@
       "interfaces": [
         {
           "name": "sync transaction",
-          "producer": "src/SpioApp/PackageApp.cpp",
+          "producer": "src/PafioApp/PackageApp.cpp",
           "consumers": [
-            "src/SpioCLI/CLI.cpp",
+            "src/PafioCLI/CLI.cpp",
             "tests/native/SyncTests.cpp"
           ],
           "inputs": "validated manifest, optional lock, resolve flags and registry/cache state",
@@ -99,7 +99,7 @@
         },
         {
           "name": "resolution-v1",
-          "producer": "src/SpioResolve/ResolutionContract.cpp",
+          "producer": "src/PafioResolve/ResolutionContract.cpp",
           "consumers": [
             "docs/external/for-styio/Styio-External-Interface-Requirement-Spec.md",
             "tests/interop/pafio-thin-core-contract.sh"
@@ -116,13 +116,13 @@
       ],
       "dependencies": [
         {
-          "from": "src/SpioRegistryClient/Client.cpp",
-          "to": "src/SpioSecurity/TufVerifier.cpp",
+          "from": "src/PafioRegistryClient/Client.cpp",
+          "to": "src/PafioSecurity/TufVerifier.cpp",
           "reason": "Registry metadata must be verified before it can enter resolution or the content-addressed store."
         },
         {
-          "from": "src/SpioApp/PackageApp.cpp",
-          "to": "src/SpioCore/AtomicFile.cpp",
+          "from": "src/PafioApp/PackageApp.cpp",
+          "to": "src/PafioCore/AtomicFile.cpp",
           "reason": "The sync transaction commits each file atomically in lock-then-resolution order so digest mismatch rejects an interrupted cross-file commit."
         },
         {
@@ -308,9 +308,9 @@
       "scope": "focused",
       "commands": [
         "cmake -S . -B build-codex",
-        "cmake --build build-codex --target spio spio_native_tests",
-        "./build-codex/bin/spio_native_tests --gtest_filter=ManifestTests.*:LockfileTests.*:LockGenerationTests.*:ResolverTests.*:SyncCliTests.*:SecurityTests.*:TufVerifierTests.*:ResolutionContractTests.*",
-        "ctest --test-dir build-codex -R 'spio_(cli_sync_help|registry_http_fetch|registry_v2_http_read|registry_v2_unit|tuf_parity_unit|thin_core_contract)$' --output-on-failure --no-tests=error"
+        "cmake --build build-codex --target pafio pafio_native_tests",
+        "./build-codex/bin/pafio_native_tests --gtest_filter=ManifestTests.*:LockfileTests.*:LockGenerationTests.*:ResolverTests.*:SyncCliTests.*:SecurityTests.*:TufVerifierTests.*:ResolutionContractTests.*",
+        "ctest --test-dir build-codex -R 'pafio_(cli_sync_help|registry_http_fetch|registry_v2_http_read|registry_v2_unit|tuf_parity_unit|thin_core_contract)$' --output-on-failure --no-tests=error"
       ],
       "criteria": [
         0,
@@ -320,14 +320,14 @@
         4
       ],
       "paths": [
-        "src/SpioManifest",
-        "src/SpioResolve",
-        "src/SpioRegistryClient",
-        "src/SpioSecurity",
-        "src/SpioCore/AtomicFile.cpp",
-        "src/SpioCore/FileLock.cpp",
-        "src/SpioWorkflow/Dependencies.cpp",
-        "src/SpioApp/PackageApp.cpp",
+        "src/PafioManifest",
+        "src/PafioResolve",
+        "src/PafioRegistryClient",
+        "src/PafioSecurity",
+        "src/PafioCore/AtomicFile.cpp",
+        "src/PafioCore/FileLock.cpp",
+        "src/PafioWorkflow/Dependencies.cpp",
+        "src/PafioApp/PackageApp.cpp",
         "contracts/resolution-v1",
         "tests/native",
         "tests/interop/pafio-thin-core-contract.sh"

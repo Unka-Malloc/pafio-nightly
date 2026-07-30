@@ -24,7 +24,7 @@ The GitHub Actions CI floor is the repository-local `local-ci-gate` workflow.
 It owns the range-aware docs/repo hygiene checks, native submit gate,
 extractability gate, performance smoke gate, and delivery package gate that
 were previously split across `styio-ci`, `repo-hygiene`, and `Submit Gate`.
-`local-ci-gate` is the spio repository's own CI surface; it is not the shared
+`local-ci-gate` is the pafio repository's own CI surface; it is not the shared
 Styio ecosystem resource gate modeled by upstream `styio-ci-gate`.
 Inside that workflow, `Linux / Debian 13 trixie gate` is the blocking repository
 gate. `macOS / latest native smoke` and `Windows / latest native smoke` are

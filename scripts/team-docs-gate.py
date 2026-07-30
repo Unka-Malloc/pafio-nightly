@@ -49,7 +49,7 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         (
             "contracts/",
             "docs/external/for-styio/",
-            "docs/governance/Spio-CLI-Contract.md",
+            "docs/governance/Pafio-CLI-Contract.md",
             "scripts/styio-interface-gate.py",
             "scripts/preflight-readiness-check.py",
         ),
@@ -288,7 +288,7 @@ def run_gate(changed_paths: Sequence[Path], verbose: bool) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Require spio team runbook updates when owned folders change.")
+    parser = argparse.ArgumentParser(description="Require pafio team runbook updates when owned folders change.")
     parser.add_argument("--mode", choices=["worktree", "staged"], default="worktree")
     parser.add_argument("--base", default=os.environ.get("STYIO_TEAM_DOC_GATE_BASE"))
     parser.add_argument("--verbose", action="store_true")

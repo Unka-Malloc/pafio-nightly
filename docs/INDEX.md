@@ -1,4 +1,4 @@
-# spio Docs Index
+# pafio Docs Index
 
 **Purpose:** Provide the generated inventory for `docs/`; directory boundaries and maintenance rules live in [README.md](./README.md).
 
@@ -10,16 +10,16 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for spio/docs/adr/, which holds durable design and implementation decisions for the standalone spio project. |
+| `adr/` | [ADR Index](./adr/INDEX.md) | Define the conventions and scope for pafio/docs/adr/, which holds durable design and implementation decisions for the standalone pafio project. |
 | `assets/` | [Assets Index](./assets/INDEX.md) | Define the reusable workflow and gate asset boundary under docs/assets/; concrete entries live in INDEX.md. |
 | `audit/` | [Audit Index](./audit/INDEX.md) | Define the repository-local audit queue for security, correctness, and design defects discovered before they are converted into normal tracked work. |
-| `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that spio shares with sibling Styio repositories. |
-| `governance/` | [Governance Index](./governance/INDEX.md) | Hold normative spio rules. These files define stable contracts, policy, and compatibility constraints. |
-| `operations/` | [Operations Index](./operations/INDEX.md) | Hold executable verification and migration procedures for spio. |
+| `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that pafio shares with sibling Styio repositories. |
+| `governance/` | [Governance Index](./governance/INDEX.md) | Hold the normative product and project-contract rules owned by Pafio. |
+| `operations/` | [Operations Index](./operations/INDEX.md) | Hold repository-local, client-side build, artifact, and delivery procedures. |
 | `plan/` | [Plan Index](./plan/INDEX.md) | Identify the single active Pafio delivery plan and completed internal dependency-kernel baseline. |
-| `registry/` | [Registry Index](./registry/INDEX.md) | Separate local package-manager registry client and offline package rules from server-side package distribution and registry control-plane ownership now moved to styio-platform. |
-| `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for spio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
-| `security/` | [Security Index](./security/INDEX.md) | Define the public/private boundary for security-sensitive spio code so registry auth, account policy, and trust decisions do not leak into the open-source tree. |
+| `registry/` | [Registry Index](./registry/INDEX.md) | Define the registry trust, read, cache, pack, and publish-client behavior owned by Pafio. |
+| `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for pafio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
+| `security/` | [Security Index](./security/INDEX.md) | Define Pafio's local supply-chain and subprocess security boundary. |
 | `specs/` | [Specs Index](./specs/INDEX.md) | Define the scope and naming rules for docs/specs/; generated inventory lives in INDEX.md. |
 | `teams/` | [Teams Index](./teams/INDEX.md) | Define the scope, naming rules, and maintenance rules for docs/teams/; product semantics, package-manager contracts, and registry behavior remain owned by their existing SSOT documents. |
 
@@ -27,4 +27,4 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `BUILD-AND-DEV-ENV.md` | [spio Build And Dev Environment](./BUILD-AND-DEV-ENV.md) | Provide the repository-level entry point for bootstrapping a fresh machine, configuring the native build, and finding the next operational docs. |
+| `BUILD-AND-DEV-ENV.md` | [Pafio Build and Development Environment](./BUILD-AND-DEV-ENV.md) | Define the supported local build, test, and Styio handoff workflow for Pafio contributors. |

@@ -142,7 +142,7 @@ jobs:
           python3 --version
 
       - name: Configure native build
-        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-macos -DSPIO_BUILD_TESTS=ON
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-macos -DPAFIO_BUILD_TESTS=ON
 
       - name: Build native targets
         run: cmake --build pafio-nightly/build-ci-macos --parallel 4
@@ -175,22 +175,22 @@ jobs:
 
       - name: Configure native build
         shell: pwsh
-        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DSPIO_BUILD_TESTS=OFF
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DPAFIO_BUILD_TESTS=OFF
 
       - name: Build native CLI
         shell: pwsh
-        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target spio --parallel 4
+        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target pafio --parallel 4
 
       - name: Probe native CLI
         shell: pwsh
         run: |
-          $spio = "pafio-nightly/build-ci-windows/bin/Debug/spio.exe"
-          if (!(Test-Path $spio)) {
-            $match = Get-ChildItem -Path pafio-nightly/build-ci-windows -Filter spio.exe -Recurse | Select-Object -First 1
+          $pafio = "pafio-nightly/build-ci-windows/bin/Debug/pafio.exe"
+          if (!(Test-Path $pafio)) {
+            $match = Get-ChildItem -Path pafio-nightly/build-ci-windows -Filter pafio.exe -Recurse | Select-Object -First 1
             if ($null -eq $match) {
-              throw "spio.exe was not produced"
+              throw "pafio.exe was not produced"
             }
-            $spio = $match.FullName
+            $pafio = $match.FullName
           }
-          & $spio --version
-          & $spio machine-info --json
+          & $pafio --version
+          & $pafio machine-info --json

@@ -10,11 +10,8 @@
 
 | Path | Entry | Summary |
 |------|-------|---------|
-| `Docs-Maintenance-Model.md` | [Docs Maintenance Model](./Docs-Maintenance-Model.md) | Keep spio documentation modular and maintainable by assigning a single owner module to each kind of knowledge. |
+| `Docs-Maintenance-Model.md` | [Docs Maintenance Model](./Docs-Maintenance-Model.md) | Assign one documentation owner to every active Pafio knowledge class. |
 | `Pafio-CLI-Contract.md` | [Pafio CLI Contract](./Pafio-CLI-Contract.md) | Freeze Pafio's terminal entry, external Styio discovery, and stable machine contracts. |
-| `Spio-API-Engineering-Standards.md` | [Spio API Engineering Standards](./Spio-API-Engineering-Standards.md) | Freeze the native JSON engineering standards used for public spio HTTP contract packages so clients and backend services can develop independently against the same interface artifacts. |
-| `Spio-CLI-Contract.md` | [Spio CLI Contract](./Spio-CLI-Contract.md) | Freeze the command surface, exit code ranges, and machine-readable output rules for the spio bootstrap phase so later implementations can evolve behind a stable interface. |
-| `Spio-Entry-Argument-Index.md` | [Spio Entry and Argument Index](./Spio-Entry-Argument-Index.md) | Provide the single entrypoint index for user-visible spio arguments, repository-maintainer script arguments, and public environment variables so parameter lists do not drift across code, scripts, and contract documents. |
-| `Spio-Local-Offline-Package-Contract.md` | [Spio Local Offline Package Contract](./Spio-Local-Offline-Package-Contract.md) | Define the local-first package-manager contract for offline package use, local import/export, and project-local Styio environment optimization. |
-| `Spio-Manifest-and-Lock-Conventions.md` | [Pafio Manifest and Lock Conventions](./Spio-Manifest-and-Lock-Conventions.md) | Define Pafio manifest v1, deterministic lock state, and project-local generated state. |
-| `Spio-Version-Decoupling-Constraints.md` | [Spio Version Decoupling Constraints](./Spio-Version-Decoupling-Constraints.md) | Freeze the compatibility, release, protocol, and cache isolation rules that let spio and styio evolve as separately maintained projects without accidental version coupling. |
+| `Pafio-Local-Offline-Package-Contract.md` | [Pafio Local Offline Package Contract](./Pafio-Local-Offline-Package-Contract.md) | Define deterministic local, vendored, cached, offline, and frozen dependency behavior. |
+| `Pafio-Manifest-and-Lock-Conventions.md` | [Pafio Manifest and Lock Conventions](./Pafio-Manifest-and-Lock-Conventions.md) | Define Pafio manifest v1, deterministic lock state, and project-local generated state. |
+| `Pafio-Version-Decoupling-Constraints.md` | [Pafio Version Decoupling Constraints](./Pafio-Version-Decoupling-Constraints.md) | Keep Pafio, Styio, language editions, and machine contracts independently versioned. |
