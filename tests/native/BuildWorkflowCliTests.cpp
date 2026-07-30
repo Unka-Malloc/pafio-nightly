@@ -96,6 +96,7 @@ TEST(BuildCliTests, NonDryRunBuildExecutesPublishedCompilePlan)
   EXPECT_EQ(payload.at("mode").get<std::string>(), "execute");
   EXPECT_EQ(payload.at("intent").get<std::string>(), "build");
   EXPECT_EQ(payload.at("sync").at("status").get<std::string>(), "succeeded");
+  EXPECT_EQ(payload.at("styio").at("compiler_channel").get<std::string>(), "nightly");
   EXPECT_EQ(payload.at("styio").at("integration_phase").get<std::string>(), "compile-plan-live");
   EXPECT_EQ(payload.at("styio").at("process").at("status").get<std::string>(), "exited");
   EXPECT_EQ(payload.at("styio").at("process").at("exit_code").get<int>(), 0);
