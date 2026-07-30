@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -76,7 +75,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "build",
-        "usage: spio build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n",
+        "usage: spio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n",
     },
     UsageCommandEntry{
         "run",
@@ -92,7 +91,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "publish",
-        "usage: spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n",
+        "usage: spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n",
     },
     UsageCommandEntry{
         "registry",
@@ -177,11 +176,11 @@ int PrintGlobalHelp()
       << "  sync [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  tree [--manifest-path <path>]\n"
       << "  vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n"
-      << "  build [minimal] [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
+      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
-      << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
+      << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]\n"
       << "  registry trust import <descriptor-url|descriptor-file>\n"
       << "  registry trust status --json\n";
   return kExitSuccess;
@@ -326,14 +325,6 @@ ResolveOptions BuildResolveOptions(
   return options;
 }
 
-std::string NormalizeSetKeyword(std::string value)
-{
-  std::transform(value.begin(), value.end(), value.begin(), [](const unsigned char ch) {
-    return static_cast<char>(std::tolower(ch));
-  });
-  return value;
-}
-
 std::optional<CommandError> ParsePlanInvocation(
     std::string_view command_name,
     std::string_view intent,
@@ -346,20 +337,9 @@ std::optional<CommandError> ParsePlanInvocation(
   parsed = {};
   parsed.request.intent = std::string(intent);
 
-  size_t start_index = 0;
-  if (command_name == "build" && !args.empty() && !args.front().starts_with("--"))
-  {
-    parsed.request.build_mode = NormalizeSetKeyword(args.front());
-    if (parsed.request.build_mode != "minimal")
-    {
-      return CommandError{"UsageError", kExitUsage, "build currently supports only the 'minimal' mode", std::string(command_name)};
-    }
-    start_index = 1;
-  }
-
   try
   {
-    for (size_t index = start_index; index < args.size(); ++index)
+    for (size_t index = 0; index < args.size(); ++index)
     {
       if (args[index] == "--manifest-path")
       {

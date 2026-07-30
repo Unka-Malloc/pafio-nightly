@@ -71,7 +71,7 @@ spio [--help] [--version] [--json] <command> [command-args...]
 - `spio tree [--manifest-path <path>]`
 - `spio vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]`
 - `spio pack [--manifest-path <path>] [--package <package-name>] [--output <path>]`
-- `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]`
+- `spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]`
 - `spio tool install --styio-bin <path>`
 - `spio tool status --json [--manifest-path <path>]`
 - `spio tool use --version <compiler-version> [--channel <channel>]`
@@ -958,7 +958,7 @@ Behavior summary:
 Canonical form:
 
 ```text
-spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <path-or-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]
+spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]
 ```
 
 Arguments:
@@ -975,10 +975,10 @@ Arguments:
   - optional
   - explicit publish-candidate archive output path
   - if omitted, the native core writes `<package-root>/dist/<short-name>-<version>.tar`
-- `--registry <path-or-url>`
+- `--registry <http(s)-url>`
   - optional for `--dry-run`
   - required for non-dry-run publish
-  - selects a local filesystem registry root or an HTTP(S) registry origin
+  - selects an HTTP(S) platform registry origin
 - `--registry-profile <name>`
   - optional
   - only valid for non-dry-run publish to `http://` or `https://` registry roots
@@ -1006,18 +1006,13 @@ Behavior summary:
 - requires `package.publish = true`
 - allows dependency entries only when they are themselves registry-addressable
 - stages the same deterministic source archive shape used by `spio pack`
-- non-dry-run `publish` writes into the registry `v2` static read plane or calls the registry `v2` control plane rooted at `--registry <path-or-url>`
-- local paths and `file://...` publish directly into a filesystem registry `v2` root
-- `http://...` and `https://...` publish through `/api/spio-registry-control/v1/publish`
+- non-dry-run `publish` calls the platform control plane rooted at `--registry <http(s)-url>`
+- local paths and `file://...` are rejected before candidate packing
+- `http://...` and `https://...` publish through `/api/pafio-registry-control/v1/publish`
 - when a private security module accepts `--registry-profile <name>`, `--registry-policy-file <path>`, or `--registry-header <name:value>`, those options affect only remote publish against the write origin and do not affect client-side fetch semantics
-- publish writes:
-  - registry config: `<registry-root>/config.json`
-  - signed namespace targets: `<registry-root>/trust/targets/<namespace>.json`
-  - append-only package index: `<registry-root>/index/<namespace>/<name>.jsonl`
-  - source artifact: `<registry-root>/artifacts/source/sha256/<xx>/<yy>/<sha256>.spio.src.tar`
-  - transparency metadata: `<registry-root>/log/...`
-- index records store package name, version, archive digest, archive size, publish timestamp, and dependency metadata for `[dependencies]` and `[dev-dependencies]`
-- remote publish currently requires a registry control-plane service that preserves append-only index and immutable artifact semantics
+- the bounded request carries package/version, archive name/content/digest/size,
+  canonical dependency and development-dependency arrays, and publisher identity
+- the platform-owned service preserves append-only index and immutable artifact semantics
 - publish JSON stays redacted and may expose only security-provider metadata, security mode, header count, and optional profile name
 - auth/account behavior is intentionally kept behind the private security-module boundary
 - republishing an existing package version into the same registry fails explicitly
@@ -1586,41 +1581,6 @@ Behavior:
 - when a private security module is under test, can attach a write-origin policy file through `--publish-policy-file <path>`
 - when a private security module is under test, can attach explicit write-origin headers through `--publish-header <name:value>`
 - retries fetch within `--sync-timeout-seconds` when publish and fetch roots are decoupled
-
-### `scripts/registry-promote.py`
-
-Canonical form:
-
-```text
-./scripts/registry-promote.py --source-root <path-or-file-url> --dest-root <path-or-file-url> [--package <namespace/name>] [--version <x.y.z>] [--json]
-```
-
-Arguments:
-
-- `--source-root <path-or-file-url>`
-  - required
-  - writable source registry `v2` root that already contains canonical `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects
-- `--dest-root <path-or-file-url>`
-  - required
-  - read-side registry root that will serve the promoted objects
-- `--package <namespace/name>`
-  - optional
-  - limits promotion to one package namespace/name
-- `--version <x.y.z>`
-  - optional
-  - limits promotion to one specific package version
-  - requires `--package`
-- `--json`
-  - optional
-  - emits a machine-readable summary payload
-
-Behavior:
-
-- supports only local paths and `file://` roots
-- validates the source registry `v2` root shape
-- copies `config/`, `trust/`, `index/`, `artifacts/`, and `log/` objects into the destination root
-- treats destination objects as immutable and fails if an existing object differs from the source
-- supports idempotent repeated promotion runs
 
 ### `scripts/copy-to-external-repo.sh`
 

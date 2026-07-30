@@ -109,12 +109,5 @@ if(SPIO_PRIVATE_SOURCES)
   target_link_libraries(spio_cli_shell PUBLIC spio_private_extensions)
 endif()
 
-# Transitional compatibility aggregation for tests and internal link points.
-add_library(spio_core INTERFACE)
-target_link_libraries(spio_core INTERFACE spio_cli_shell)
-if(TARGET spio_private_extensions)
-  target_link_libraries(spio_core INTERFACE spio_private_extensions)
-endif()
-
 add_executable(spio main.cpp)
 target_link_libraries(spio PRIVATE spio_cli_shell)

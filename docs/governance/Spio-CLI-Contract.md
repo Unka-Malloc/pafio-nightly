@@ -345,21 +345,14 @@ Optional keys:
 - `spio publish --dry-run` performs local publish preflight and stages the same local source archive shape used by `spio pack`
 - `spio publish --dry-run` requires `package.publish = true`
 - published packages may include dependency entries only when those dependencies are themselves registry-addressable
-- non-dry-run `spio publish` is active for an explicit registry root passed through `--registry <path-or-url>`
-- local paths and `file://...` roots publish into the local `registry v2` static read plane by generating signing keys under `SPIO_HOME/server/registry/v2/keys` on first use
-- `http://...` and `https://...` roots publish through the versioned registry control-plane route family rooted at `/api/spio-registry-control/v1`
+- non-dry-run `spio publish` requires an explicit HTTP(S) registry root passed through `--registry <http(s)-url>`
+- local paths and `file://...` roots are rejected before candidate packing begins
+- remote publish uses the platform-owned control-plane route family rooted at `/api/pafio-registry-control/v1`
+- the request carries a bounded base64 source archive, its name, SHA-256 and exact size, plus canonical package, version, dependency, development-dependency, and publisher metadata
 - `--registry-profile <name>`, `--registry-policy-file <path>`, and `--registry-header <name:value>` reserve the private write-side security interface for remote publish
 - the tracked open-source core rejects those three options unless a private security module is linked from `src-private/`
 - when a private security module accepts them, they apply only to remote publish against the write origin and do not affect read-side fetch behavior
-- local publish writes:
-  - registry config: `<registry-root>/config.json`
-  - signed namespace targets: `<registry-root>/trust/targets/<namespace>.json`
-  - append-only package index: `<registry-root>/index/<namespace>/<name>.jsonl`
-  - immutable source artifact: `<registry-root>/artifacts/source/sha256/<xx>/<yy>/<sha256>.spio.src.tar`
-  - transparency leaf/checkpoint: `<registry-root>/log/...`
-- registry `v2` index records store dependency metadata for `[dependencies]` and `[dev-dependencies]`
-- publish must reject republishing an existing package version record
-- remote publish assumes a control-plane service that appends releases and refreshes signed metadata without exposing raw static-root writes
+- the platform control plane owns duplicate-version rejection, signed metadata, immutable artifact storage, and append-only release records
 - publish JSON must not expose raw request headers or resolved private policy file paths; it may expose only redacted security metadata
 - first-class auth/account policy remains outside the tracked public tree behind the private security-module boundary
 - registry dependency roots in manifests use `file://`, `http://`, or `https://`

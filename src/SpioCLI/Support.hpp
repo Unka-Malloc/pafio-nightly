@@ -47,7 +47,6 @@ ResolveOptions BuildResolveOptions(
     const std::filesystem::path &manifest_path,
     const WorkflowFlags &flags,
     const std::optional<std::filesystem::path> &vendor_root_override = std::nullopt);
-std::string NormalizeSetKeyword(std::string value);
 std::optional<CommandError> ParsePlanInvocation(
     std::string_view command_name,
     std::string_view intent,

@@ -47,6 +47,7 @@ TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
   EXPECT_EQ(plan["entry"]["file"], CanonicalAbsolutePath(root / "src/lib.styio").string());
   EXPECT_EQ(plan["toolchain"]["std_package_id"], "builtin:std@unbound/2026");
   EXPECT_EQ(plan["profile"]["name"], "dev");
+  EXPECT_FALSE(plan["profile"].contains("build_mode"));
   EXPECT_EQ(plan["emit"]["error_format"], "jsonl");
   ASSERT_EQ(plan["packages"].size(), 1U);
   EXPECT_EQ(plan["packages"][0]["targets"]["lib"], CanonicalAbsolutePath(root / "src/lib.styio").string());

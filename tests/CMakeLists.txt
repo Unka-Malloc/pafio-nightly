@@ -26,13 +26,13 @@ add_executable(spio_native_tests
   native/TufTests.cpp
   native/VendorTests.cpp
 )
-target_link_libraries(spio_native_tests PRIVATE spio_core GTest::gtest_main)
+target_link_libraries(spio_native_tests PRIVATE spio_cli_shell GTest::gtest_main)
 
 gtest_discover_tests(spio_native_tests DISCOVERY_TIMEOUT 30)
 
 add_test(
   NAME spio_cli_machine_info_json
-  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"metadata\":\\[1\\]' && printf '%s\n' \"$out\" | grep -q '\"resolution\":\\[1\\]' && ! printf '%s\n' \"$out\" | grep -q 'cloud_execution_policy'"
+  COMMAND bash -c "out=$(\n\"$<TARGET_FILE:spio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"metadata\":\\[1\\]' && printf '%s\n' \"$out\" | grep -q '\"resolution\":\\[1\\]' && ! printf '%s\n' \"$out\" | grep -q '\"bootstrap\"' && ! printf '%s\n' \"$out\" | grep -q 'cloud_execution_policy'"
 )
 
 add_test(
@@ -87,7 +87,12 @@ add_test(
 
 add_test(
   NAME spio_cli_build_help
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" build --help | grep -q '^usage: spio build \\[minimal\\] \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" build --help | grep -q '^usage: spio build \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+)
+
+add_test(
+  NAME spio_cli_build_rejects_positional_mode
+  COMMAND bash -c "out_file=\$(mktemp) && err_file=\$(mktemp) && trap 'rm -f \"\$out_file\" \"\$err_file\"' EXIT && ! \"$<TARGET_FILE:spio>\" build minimal >\"\$out_file\" 2>\"\$err_file\" && grep -q 'unexpected argument for build: minimal' \"\$err_file\""
 )
 
 add_test(
@@ -112,45 +117,5 @@ add_test(
 
 add_test(
   NAME spio_cli_publish_help
-  COMMAND bash -c "\"$<TARGET_FILE:spio>\" publish --help | grep -q '^usage: spio publish \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--output <path>\\] \\[--registry <path-or-url>\\] \\[--registry-profile <name>\\] \\[--registry-policy-file <path>\\] \\[--registry-header <name:value>\\] \\[--dry-run\\]$'"
-)
-
-add_test(
-  NAME spio_registry_http_fetch
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-http-fetch.sh" "$<TARGET_FILE:spio>"
-)
-
-add_test(
-  NAME spio_thin_core_contract
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/pafio-thin-core-contract.sh" "$<TARGET_FILE:spio>"
-)
-
-add_test(
-  NAME spio_registry_split_origin_promotion
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-split-origin-promotion.sh" "$<TARGET_FILE:spio>"
-)
-
-add_test(
-  NAME spio_registry_v2_unit
-  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_registry_v2.py"
-)
-
-add_test(
-  NAME spio_tuf_parity_unit
-  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/unit/test_tuf_parity.py"
-)
-
-add_test(
-  NAME spio_registry_v2_contract
-  COMMAND python3 "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-contract-gate.py"
-)
-
-add_test(
-  NAME spio_registry_v2_publish
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-publish.sh" "$<TARGET_FILE:spio>"
-)
-
-add_test(
-  NAME spio_registry_v2_http_read
-  COMMAND bash "${CMAKE_SOURCE_DIR}/tests/interop/registry-v2-http-read.sh" "$<TARGET_FILE:spio>"
+  COMMAND bash -c "\"$<TARGET_FILE:spio>\" publish --help | grep -Fqx 'usage: spio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--registry-profile <name>] [--registry-policy-file <path>] [--registry-header <name:value>] [--dry-run]'"
 )

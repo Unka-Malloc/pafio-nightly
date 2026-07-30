@@ -38,8 +38,8 @@ struct TufVerifyResult
 };
 
 // Pure verifier: metadata map + optional trusted root pin -> verdict.
-// Ports src/spio_registry_v2/validator.py verification order for the chain
-// root -> timestamp -> snapshot -> namespace targets (package-scoped).
+// Verification follows root -> timestamp -> snapshot -> namespace targets
+// (package-scoped).
 TufVerifyResult VerifyTufChainForPackage(
     const std::map<std::string, std::string> &objects_by_relative_path,
     const std::string &package_name,

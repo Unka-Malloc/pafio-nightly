@@ -40,7 +40,6 @@ TEAM_RULES: tuple[TeamRule, ...] = (
         Path("docs/teams/REGISTRY-PUBLISH-RUNBOOK.md"),
         (
             "docs/registry/",
-            "scripts/registry-promote.py",
         ),
     ),
     TeamRule(

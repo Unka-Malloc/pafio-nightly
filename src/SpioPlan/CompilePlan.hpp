@@ -19,7 +19,6 @@ struct BuildPlanRequest
   std::optional<std::string> test_name;
   bool select_lib = false;
   std::string profile = "dev";
-  std::string build_mode = "minimal";
   std::optional<std::string> compiler_version;
   std::optional<std::string> compiler_channel;
   bool offline = false;
@@ -41,7 +40,6 @@ struct BuildPlanResult
   std::string entry_target_kind;
   std::string entry_target_name;
   std::string profile_name;
-  std::string build_mode;
   size_t package_count = 0;
 };
 

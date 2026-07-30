@@ -10,8 +10,8 @@
 namespace spio
 {
 
-// Match src/spio_registry_v2/common.py::canonical_json_bytes:
-// sort_keys=True, separators=(',', ':'), ensure_ascii=False, UTF-8.
+// Canonical registry JSON uses recursively sorted object keys, compact
+// separators, unescaped UTF-8, and no insignificant whitespace.
 inline void AppendCanonicalJson(std::ostringstream &out, const nlohmann::json &value)
 {
   if (value.is_null())

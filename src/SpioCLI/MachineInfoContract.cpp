@@ -12,7 +12,6 @@ json BuildMachineInfoPayload()
   return {
       {"tool", "spio"},
       {"version", spio::kVersion},
-      {"bootstrap", true},
       {"implementation_language", "c++"},
       {"supported_manifests", json::array({1})},
       {"supported_lockfiles", json::array({1})},

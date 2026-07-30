@@ -29,11 +29,6 @@
 - `spio_cli_gate`
 - `spio_workflow_gate`
 - `spio_extractability_gate`
-- `spio_registry_promotion_gate`
-- `spio_registry_v2_unit_gate`
-- `spio_registry_v2_contract_gate`
-- `spio_registry_v2_publish_gate`
-- `spio_registry_v2_static_http_gate`
 - `styio_contract_compat_gate`
 - `styio_compile_plan_contract_gate`
 

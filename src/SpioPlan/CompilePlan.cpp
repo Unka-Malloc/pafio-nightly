@@ -639,7 +639,6 @@ BuildPlanResult WriteBuildCompilePlan(
       ";compile-plan=1" +
       ";intent=" + request.intent +
       ";edition=" + entry_package.package.edition +
-      ";build-mode=" + request.build_mode +
       ";profile=" + profile.name +
       ";target=" + entry_package.id + ":" + entry_target.kind + ":" + entry_target.name +
       ";source=" + source_hash;
@@ -679,7 +678,6 @@ BuildPlanResult WriteBuildCompilePlan(
                     }},
       {"profile", {
                        {"name", profile.name},
-                       {"build_mode", request.build_mode},
                        {"opt_level", profile.opt_level},
                        {"debug", profile.debug},
                        {"lto", profile.lto},
@@ -731,7 +729,6 @@ BuildPlanResult WriteBuildCompilePlan(
       .entry_target_kind = entry_target.kind,
       .entry_target_name = entry_target.name,
       .profile_name = profile.name,
-      .build_mode = request.build_mode,
       .package_count = graph.packages.size(),
   };
 }

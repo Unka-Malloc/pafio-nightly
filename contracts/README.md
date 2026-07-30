@@ -16,7 +16,9 @@
 - `compat/` — supported compiler matrix declarations used by `spio`
 - `metadata-v1/` — canonical project metadata consumed by editor and automation clients
 - `resolution-v1/` — resolved package roots bound to manifest and lock digests
-- `registry-v2/` — industrial static package-distribution contract with signed metadata and append-only package indexes
+
+The hosted registry and control-plane contracts are owned by Styio Platform.
+This tree owns only the Pafio client contracts.
 
 Generated third-party API-description artifacts are not contract sources in this
 tree. Compatibility is proven from the versioned JSON packages and examples.

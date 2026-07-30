@@ -2,11 +2,10 @@
 #include "SpioCore/Errors.hpp"
 #include "SpioPublish/Publish.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <string>
-#include <cstdlib>
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -16,38 +15,6 @@ using json = nlohmann::json;
 
 namespace
 {
-
-class ScopedEnvVar
-{
-public:
-  ScopedEnvVar(const std::string &name, const std::string &value)
-      : name_(name)
-  {
-    if (const char *existing = std::getenv(name.c_str()); existing != nullptr)
-    {
-      had_previous_ = true;
-      previous_value_ = existing;
-    }
-    setenv(name.c_str(), value.c_str(), 1);
-  }
-
-  ~ScopedEnvVar()
-  {
-    if (had_previous_)
-    {
-      setenv(name_.c_str(), previous_value_.c_str(), 1);
-    }
-    else
-    {
-      unsetenv(name_.c_str());
-    }
-  }
-
-private:
-  std::string name_;
-  bool had_previous_ = false;
-  std::string previous_value_;
-};
 
 fs::path MakeTempDir(const std::string &label)
 {
@@ -64,28 +31,6 @@ void WriteFile(const fs::path &path, const std::string &content)
   ASSERT_TRUE(out.good());
   out << content;
   ASSERT_TRUE(out.good());
-}
-
-std::string ReadFile(const fs::path &path)
-{
-  std::ifstream in(path);
-  std::ostringstream buffer;
-  buffer << in.rdbuf();
-  return buffer.str();
-}
-
-json ReadSingleJsonLineFile(const fs::path &path)
-{
-  std::istringstream in(ReadFile(path));
-  std::string line;
-  while (std::getline(in, line))
-  {
-    if (!line.empty())
-    {
-      return json::parse(line);
-    }
-  }
-  throw std::runtime_error("jsonl file did not contain a record: " + path.string());
 }
 
 }  // namespace
@@ -215,6 +160,119 @@ TEST(PublishTests, AllowsRegistryDependenciesForPublish)
   EXPECT_TRUE(fs::exists(result.archive_path));
 }
 
+TEST(PublishTests, RemoteRequestCarriesBoundedArchiveContentWithoutLocalPaths)
+{
+  const fs::path root = MakeTempDir("remote-request");
+  const fs::path archive_path = root / "acme-app-0.1.0.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  const json request = json::parse(spio::BuildRemotePublishRequestJson({
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+  }));
+
+  EXPECT_EQ(request.size(), 9U);
+  EXPECT_EQ(request.at("package").get<std::string>(), "acme/app");
+  EXPECT_EQ(request.at("version").get<std::string>(), "0.1.0");
+  EXPECT_EQ(request.at("archive_name").get<std::string>(), "acme-app-0.1.0.pafio.src.tar");
+  EXPECT_EQ(request.at("archive_base64").get<std::string>(), "YXJjaGl2ZQ==");
+  EXPECT_EQ(
+      request.at("archive_sha256").get<std::string>(),
+      "0eb3e36bfb24dcd9bb1d1bece1531216b59539a8fde17ee80224af0653c92aa3");
+  EXPECT_EQ(request.at("archive_size_bytes").get<std::uintmax_t>(), 7U);
+  EXPECT_EQ(request.at("publisher_id").get<std::string>(), "pafio-cli");
+  EXPECT_TRUE(request.at("dependencies").empty());
+  EXPECT_TRUE(request.at("dev_dependencies").empty());
+  EXPECT_FALSE(request.contains("archive_path"));
+  EXPECT_FALSE(request.contains("manifest_path"));
+  EXPECT_FALSE(request.contains("package_root"));
+}
+
+TEST(PublishTests, RemoteRequestRejectsArchiveAboveExplicitLimit)
+{
+  const fs::path root = MakeTempDir("remote-request-limit");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "1234");
+
+  EXPECT_THROW(
+      spio::BuildRemotePublishRequestJson(
+          {
+              .archive_path = archive_path,
+              .package_name = "acme/app",
+              .package_version = "0.1.0",
+          },
+          3U),
+      spio::PublishError);
+}
+
+TEST(PublishTests, RemoteRequestSerializesCanonicalDependencyMetadata)
+{
+  const fs::path root = MakeTempDir("remote-request-dependencies");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  const json request = json::parse(spio::BuildRemotePublishRequestJson({
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+      .dependencies = {
+          {
+              .alias = "zeta",
+              .package = "acme/zeta",
+              .source_kind = spio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "2.0.0",
+          },
+          {
+              .alias = "alpha",
+              .package = "acme/alpha",
+              .source_kind = spio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "1.0.0",
+          },
+      },
+      .dev_dependencies = {
+          {
+              .alias = "fixture",
+              .package = "acme/fixture",
+              .source_kind = spio::DependencySourceKind::kRegistry,
+              .source = "https://packages.example.test",
+              .version = "3.0.0",
+          },
+      },
+  }));
+
+  ASSERT_EQ(request.at("dependencies").size(), 2U);
+  EXPECT_EQ(
+      request.at("dependencies")[0],
+      json({
+          {"alias", "alpha"},
+          {"package", "acme/alpha"},
+          {"version_req", "1.0.0"},
+          {"registry", "https://packages.example.test"},
+      }));
+  EXPECT_EQ(request.at("dependencies")[1].at("alias").get<std::string>(), "zeta");
+  ASSERT_EQ(request.at("dev_dependencies").size(), 1U);
+  EXPECT_EQ(request.at("dev_dependencies")[0].at("alias").get<std::string>(), "fixture");
+}
+
+TEST(PublishTests, RemoteRequestRejectsUnboundedDependencyTables)
+{
+  const fs::path root = MakeTempDir("remote-request-dependency-limit");
+  const fs::path archive_path = root / "package.pafio.src.tar";
+  WriteFile(archive_path, "archive");
+
+  spio::PublishResult candidate{
+      .archive_path = archive_path,
+      .package_name = "acme/app",
+      .package_version = "0.1.0",
+  };
+  candidate.dependencies.resize(257U);
+
+  EXPECT_THROW(spio::BuildRemotePublishRequestJson(candidate), spio::PublishError);
+}
+
 TEST(PublishTests, WorkspacePublishRequiresExplicitPackageSelectionWhenAmbiguous)
 {
   const fs::path root = MakeTempDir("workspace-publish-ambiguity");
@@ -297,10 +355,23 @@ TEST(PublishCliTests, NonDryRunPublishRequiresExplicitRegistryRoot)
             spio::kExitUsage);
 }
 
-TEST(PublishCliTests, PublishesToFilesystemRegistry)
+TEST(PublishCliTests, RejectsFilesystemRegistryBeforePreparingArchive)
+{
+  const fs::path root = MakeTempDir("publish-filesystem-before-pack");
+  EXPECT_EQ(
+      spio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "missing.toml").string(),
+          "--registry",
+          (root / "registry").string(),
+      }),
+      spio::kExitUsage);
+}
+
+TEST(PublishCliTests, RejectsFilesystemRegistryPath)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   WriteFile(
       root / "spio.toml",
@@ -318,41 +389,20 @@ TEST(PublishCliTests, PublishesToFilesystemRegistry)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
 
-  testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "spio.toml").string(),
-      "--registry",
-      registry_root.string(),
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("command").get<std::string>(), "publish");
-  EXPECT_EQ(payload.at("mode").get<std::string>(), "publish");
-  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
-  EXPECT_EQ(payload.at("package").get<std::string>(), "acme/app");
-  EXPECT_TRUE(fs::exists(payload.at("registry_config_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_artifact_path").get<std::string>()));
-  EXPECT_TRUE(fs::exists(payload.at("registry_log_leaf_path").get<std::string>()));
-
-  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
-  EXPECT_EQ(entry.at("schema_version").get<int>(), 1);
-  EXPECT_EQ(entry.at("package").get<std::string>(), "acme/app");
-  EXPECT_EQ(entry.at("version").get<std::string>(), "0.1.0");
-  EXPECT_EQ(entry.at("source_artifact").at("sha256").get<std::string>(), payload.at("sha256").get<std::string>());
-  EXPECT_EQ(entry.at("dependencies").size(), 0U);
-  EXPECT_EQ(entry.at("dev_dependencies").size(), 0U);
+  EXPECT_EQ(
+      spio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+          "--registry",
+          registry_root.string(),
+      }),
+      spio::kExitUsage);
 }
 
-TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
+TEST(PublishCliTests, RejectsFilesystemRegistryFileUrl)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry-file-url");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = std::string("file://") + registry_root.string();
   WriteFile(
@@ -371,149 +421,15 @@ TEST(PublishCliTests, PublishesToFilesystemRegistryViaFileUrl)
       "path = \"src/main.styio\"\n");
   WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
 
-  testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "spio.toml").string(),
-      "--registry",
-      registry_url,
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  EXPECT_EQ(payload.at("transport").get<std::string>(), "filesystem");
-  EXPECT_EQ(payload.at("registry_protocol").get<std::string>(), "v2");
-  EXPECT_TRUE(fs::exists(payload.at("registry_index_path").get<std::string>()));
-}
-
-TEST(PublishCliTests, PublishesRegistryDependencyMetadataToFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-registry-dependency-metadata");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path registry_root = root / "registry";
-  const std::string registry_url = std::string("file://") + registry_root.string();
-  WriteFile(
-      root / "spio.toml",
-      std::string(
-          "[spio]\n"
-          "manifest-version = 1\n\n"
-          "[package]\n"
-          "name = \"acme/app\"\n"
-          "version = \"0.1.0\"\n"
-          "edition = \"2026\"\n"
-          "publish = true\n\n"
-          "[build]\n"
-          "implicit-std = true\n\n"
-          "[[bin]]\n"
-          "name = \"app\"\n"
-          "path = \"src/main.styio\"\n\n"
-          "[dependencies]\n"
-          "util = { package = \"acme/util\", version = \"0.2.0\", registry = \"") +
-          registry_url +
-          "\" }\n\n"
-          "[dev-dependencies]\n"
-          "fixture = { package = \"acme/fixture\", version = \"1.0.0\", registry = \"" +
-          registry_url +
-          "\" }\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  testing::internal::CaptureStdout();
-  const int exit_code = spio::RunCli({
-      "--json",
-      "publish",
-      "--manifest-path",
-      (root / "spio.toml").string(),
-      "--registry",
-      registry_root.string(),
-  });
-  const std::string stdout_text = testing::internal::GetCapturedStdout();
-
-  EXPECT_EQ(exit_code, spio::kExitSuccess);
-  const json payload = json::parse(stdout_text);
-  const json entry = ReadSingleJsonLineFile(payload.at("registry_index_path").get<std::string>());
-  ASSERT_EQ(entry.at("dependencies").size(), 1U);
-  EXPECT_EQ(entry.at("dependencies")[0].at("alias").get<std::string>(), "util");
-  EXPECT_EQ(entry.at("dependencies")[0].at("package").get<std::string>(), "acme/util");
-  EXPECT_EQ(entry.at("dependencies")[0].at("version_req").get<std::string>(), "0.2.0");
-  EXPECT_EQ(entry.at("dependencies")[0].at("registry").get<std::string>(), registry_url);
-  ASSERT_EQ(entry.at("dev_dependencies").size(), 1U);
-  EXPECT_EQ(entry.at("dev_dependencies")[0].at("alias").get<std::string>(), "fixture");
-  EXPECT_EQ(entry.at("dev_dependencies")[0].at("package").get<std::string>(), "acme/fixture");
-}
-
-TEST(PublishCliTests, RejectsRepublishingExistingFilesystemRegistryVersion)
-{
-  const fs::path root = MakeTempDir("publish-duplicate-version");
-  const ScopedEnvVar spio_home("SPIO_HOME", (root / ".spio-home").string());
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[build]\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(spio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "spio.toml").string(),
-                "--registry",
-                registry_root.string(),
-            }),
-            spio::kExitSuccess);
-
-  EXPECT_EQ(spio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "spio.toml").string(),
-                "--registry",
-                registry_root.string(),
-            }),
-            spio::kExitPublish);
-}
-
-TEST(PublishCliTests, RejectsRegistryHeaderForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-registry-header");
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[build]\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(spio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "spio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-header",
-                "X-Spio-Write-Token: dev-token",
-            }),
-            spio::kExitUsage);
+  EXPECT_EQ(
+      spio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "spio.toml").string(),
+          "--registry",
+          registry_url,
+      }),
+      spio::kExitUsage);
 }
 
 TEST(PublishCliTests, RejectsRegistryHeaderInDryRun)
@@ -610,45 +526,6 @@ TEST(PublishCliTests, RejectsRegistryHeaderForRemoteRegistryWithoutPrivateSecuri
             spio::kExitPublish);
 }
 
-TEST(PublishCliTests, RejectsRegistryPolicyFileForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-policy");
-  const fs::path registry_root = root / "registry";
-  const fs::path policy_path = root / "publish-policy.toml";
-  WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[build]\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-  WriteFile(
-      policy_path,
-      "schema-version = 1\n\n"
-      "[[registry]]\n"
-      "root = \"https://packages.example.test\"\n"
-      "headers = [\"X-Spio-Write-Token: dev-token\"]\n");
-
-  EXPECT_EQ(spio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "spio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-policy-file",
-                policy_path.string(),
-            }),
-            spio::kExitUsage);
-}
-
 TEST(PublishCliTests, RejectsRegistryPolicyFileInDryRun)
 {
   const fs::path root = MakeTempDir("publish-dry-run-policy");
@@ -723,38 +600,6 @@ TEST(PublishCliTests, RejectsRegistryPolicyFileForRemoteRegistryWithoutPrivateSe
                 policy_path.string(),
             }),
             spio::kExitPublish);
-}
-
-TEST(PublishCliTests, RejectsRegistryProfileForFilesystemRegistry)
-{
-  const fs::path root = MakeTempDir("publish-filesystem-profile");
-  const fs::path registry_root = root / "registry";
-  WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/app\"\n"
-      "version = \"0.1.0\"\n"
-      "edition = \"2026\"\n"
-      "publish = true\n\n"
-      "[build]\n"
-      "implicit-std = true\n\n"
-      "[[bin]]\n"
-      "name = \"app\"\n"
-      "path = \"src/main.styio\"\n");
-  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
-
-  EXPECT_EQ(spio::RunCli({
-                "publish",
-                "--manifest-path",
-                (root / "spio.toml").string(),
-                "--registry",
-                registry_root.string(),
-                "--registry-profile",
-                "dev",
-            }),
-            spio::kExitUsage);
 }
 
 TEST(PublishCliTests, RejectsRegistryProfileInDryRun)

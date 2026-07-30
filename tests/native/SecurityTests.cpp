@@ -197,7 +197,7 @@ TEST(SecurityTests, ImportsAndResolvesRegistryTrustDescriptor)
       "  \"registry_root\": \"https://packages.example.test/spio/\",\n"
       "  \"registry_name\": \"unit-registry\",\n"
       "  \"root_sha256\": \"" + root_digest + "\",\n"
-      "  \"control_plane_base_url\": \"https://packages.example.test/api/spio-registry-control/v1\",\n"
+      "  \"control_plane_base_url\": \"https://packages.example.test/api/pafio-registry-control/v1\",\n"
       "  \"issued_at\": \"2026-05-02T00:00:00Z\",\n"
       "  \"expires\": \"2099-06-02T00:00:00Z\"\n"
       "}\n");
