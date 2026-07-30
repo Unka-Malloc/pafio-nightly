@@ -26,6 +26,9 @@ installation or hosted execution.
 5. Keep the fixed-revision verifier acceptance isolated from live owner
    worktrees; validate executable new/build/frozen/metadata behavior only in the
    final full product matrix.
+6. Exercise registry graph resolution with a minimal verified cache fixture.
+   Do not revive filesystem publish or duplicate the Platform registry service
+   to prepare repository-local tests.
 
 ## Change Classes
 

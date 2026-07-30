@@ -17,8 +17,14 @@
 
 #include "PafioCLI/CLI.hpp"
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
+#include "PafioCore/Sha256.hpp"
+#include "PafioCore/ToolPaths.hpp"
 #include "PafioManifest/Lockfile.hpp"
+#include "PafioManifest/Manifest.hpp"
+#include "PafioPack/Pack.hpp"
 #include "PafioResolve/Resolver.hpp"
+#include "PafioSecurity/RegistrySecurity.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -179,18 +185,108 @@ RunGitOrAssert(const std::vector<std::string> &args) {
   ASSERT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
 }
 
-void
-PublishIntoFilesystemRegistryOrAssert(const fs::path &manifest_path, const fs::path &registry_root) {
-  ASSERT_EQ(
-    pafio::RunCli({
-      "publish",
-      "--manifest-path",
-      manifest_path.string(),
-      "--registry",
-      registry_root.string(),
-    }),
-    pafio::kExitSuccess
+struct CachedRegistryPackage
+{
+  std::string id;
+  std::string name;
+  std::string version;
+  std::string registry;
+  std::string sha256;
+};
+
+CachedRegistryPackage
+SeedVerifiedRegistryCache(
+  const fs::path &manifest_path,
+  const fs::path &pafio_home,
+  const std::string &registry_url
+) {
+  const pafio::ManifestDocument manifest = pafio::LoadManifest(manifest_path);
+  if (!manifest.package.has_value()) {
+    throw std::runtime_error("registry cache fixture requires a package manifest");
+  }
+  const pafio::PackageConfig &package = *manifest.package;
+  const pafio::RegistryPackageNameParts name =
+    pafio::SplitRegistryPackageName(package.name, "registry cache fixture");
+  const fs::path artifact_path =
+    pafio_home / "fixture-artifacts" /
+    (name.namespace_name + "-" + name.short_name + "-" + package.version + ".tar");
+  const pafio::PackResult packed = pafio::WriteSourcePackage({
+    .manifest_path = manifest_path,
+    .output_path = artifact_path,
+  });
+  const std::string digest = pafio::Sha256File(packed.archive_path);
+  const fs::path blob_path =
+    pafio::RegistryBlobCacheRoot(pafio_home) /
+    digest.substr(0U, 2U) /
+    digest.substr(2U, 2U) /
+    (digest + ".tar");
+  fs::create_directories(blob_path.parent_path());
+  fs::copy_file(
+    packed.archive_path,
+    blob_path,
+    fs::copy_options::overwrite_existing
   );
+
+  const fs::path checkout_root =
+    pafio::RegistryCheckoutRoot(pafio_home) /
+    name.namespace_name /
+    name.short_name /
+    package.version /
+    digest;
+  fs::create_directories(checkout_root);
+  const ChildProcessResult extracted = RunChildProcess(
+    pafio::ResolvedTarPath(),
+    {"-xf", packed.archive_path.string(), "-C", checkout_root.string()}
+  );
+  if (extracted.exit_code != 0) {
+    throw std::runtime_error(
+      "failed to extract registry cache fixture: " +
+      TrimTrailingNewline(
+        extracted.stderr_text.empty()
+          ? extracted.stdout_text
+          : extracted.stderr_text
+      )
+    );
+  }
+  WriteFile(
+    checkout_root / ".pafio-snapshot-ready",
+    json({
+      {"schema_version", 1},
+      {"sha256", digest},
+      {"size_bytes", fs::file_size(blob_path)},
+    }).dump(2) + "\n"
+  );
+
+  return {
+    .id = "registry:" + package.name + "@" + package.version + "#" + digest,
+    .name = package.name,
+    .version = package.version,
+    .registry = registry_url,
+    .sha256 = digest,
+  };
+}
+
+void
+WriteRegistryLockHints(
+  const fs::path &lockfile_path,
+  const std::vector<std::pair<CachedRegistryPackage, std::vector<std::string>>> &packages
+) {
+  pafio::LockfileDocument lockfile{
+    .generated_by = "pafio registry cache fixture",
+    .resolver = "single-version-v1",
+  };
+  for (const auto &[package, dependencies] : packages) {
+    lockfile.packages.push_back({
+      .id = package.id,
+      .name = package.name,
+      .version = package.version,
+      .source_kind = "registry",
+      .registry = package.registry,
+      .sha256 = package.sha256,
+      .dependencies = dependencies,
+    });
+  }
+  WriteFile(lockfile_path, pafio::SerializeLockfileCanonical(lockfile));
 }
 
 std::optional<std::string>
@@ -750,14 +846,15 @@ TEST(ResolverTests, RejectsSingleVersionConflictsAcrossPathAndGit) {
   EXPECT_THROW(pafio::ResolveSingleVersionLockfile(root / "pafio.toml"), pafio::ResolutionError);
 }
 
-TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
+TEST(ResolverTests, ResolvesRegistryGraphFromVerifiedCache) {
   const fs::path root = MakeTempDir("registry-workspace");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path pafio_home_path = root / ".pafio-home";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", pafio_home_path.string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = FileUrl(registry_root);
 
   WriteFile(
-    root / "publish/util/pafio.toml",
+    root / "fixtures/util/pafio.toml",
     "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
@@ -770,11 +867,15 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
   );
-  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/pafio.toml", registry_root);
+  WriteFile(root / "fixtures/util/src/lib.styio", "# util\n");
+  const CachedRegistryPackage cached_util = SeedVerifiedRegistryCache(
+    root / "fixtures/util/pafio.toml",
+    pafio_home_path,
+    registry_url
+  );
 
   WriteFile(
-    root / "publish/feed/pafio.toml",
+    root / "fixtures/feed/pafio.toml",
     std::string(
       "[pafio]\n"
       "manifest-version = 1\n\n"
@@ -792,8 +893,19 @@ TEST(ResolverTests, ResolvesRegistryPackagesFromFilesystemRegistry) {
     ) + registry_url
       + "\" }\n"
   );
-  WriteFile(root / "publish/feed/src/lib.styio", "# feed\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/feed/pafio.toml", registry_root);
+  WriteFile(root / "fixtures/feed/src/lib.styio", "# feed\n");
+  const CachedRegistryPackage cached_feed = SeedVerifiedRegistryCache(
+    root / "fixtures/feed/pafio.toml",
+    pafio_home_path,
+    registry_url
+  );
+  WriteRegistryLockHints(
+    root / "pafio.lock",
+    {
+      {cached_util, {}},
+      {cached_feed, {cached_util.id}},
+    }
+  );
 
   WriteFile(
     root / "pafio.toml",
@@ -1091,15 +1203,16 @@ TEST(AddCliTests, AddsGitDependencyToDevSectionAndRefreshesLockfile) {
   ASSERT_EQ(lockfile.packages.size(), 3U);
 }
 
-TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
+TEST(AddCliTests, AddsCachedRegistryDependencyAndRefreshesLockfile) {
   const fs::path root = MakeTempDir("add-registry");
-  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  const fs::path pafio_home_path = root / ".pafio-home";
+  const ScopedEnvVar pafio_home("PAFIO_HOME", pafio_home_path.string());
   const fs::path registry_root = root / "registry";
   const std::string registry_url = FileUrl(registry_root);
   const fs::path manifest_path = root / "pafio.toml";
 
   WriteFile(
-    root / "publish/util/pafio.toml",
+    root / "fixtures/util/pafio.toml",
     "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
@@ -1112,8 +1225,13 @@ TEST(AddCliTests, AddsRegistryDependencyAndRefreshesLockfile) {
     "[lib]\n"
     "path = \"src/lib.styio\"\n"
   );
-  WriteFile(root / "publish/util/src/lib.styio", "# util\n");
-  PublishIntoFilesystemRegistryOrAssert(root / "publish/util/pafio.toml", registry_root);
+  WriteFile(root / "fixtures/util/src/lib.styio", "# util\n");
+  const CachedRegistryPackage cached_util = SeedVerifiedRegistryCache(
+    root / "fixtures/util/pafio.toml",
+    pafio_home_path,
+    registry_url
+  );
+  WriteRegistryLockHints(root / "pafio.lock", {{cached_util, {}}});
 
   WriteFile(
     manifest_path,
