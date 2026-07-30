@@ -26,3 +26,67 @@ private paths, user information, and backend runtime data.
 - Content fingerprint: `905bbcbc261a17c24b5bef189ca1e4db4a18c8fd62afabef9b49b9bf514ecdb6`
 - Result: the retained command surface, shared sync workflow, metadata v1,
   external Styio discovery, read-only doctor, and package lifecycle passed.
+
+## Ecosystem owner cutover
+
+- Owner-matrix schema: `1`
+- Matrix digest: `e6d3fa94c1874db196fe948a3e1463c70a7849390d1827aca8d6f7f9c6913b30`
+- Result: 7 immutable repository revisions, 10 owner contracts, and 15
+  producer/consumer assertions passed.
+
+| Owner | Accepted revision |
+| --- | --- |
+| Pafio | `ec1a6ae9eb35a0ce54cdc6966944bfa4b0b98df3` |
+| Styio | `3a6a25def4b48d9bea07501170d7449af57d60d5` |
+| Styio Platform | `0aa1082a4a5d979ee738ae98e4c4b5973a4bb7ea` |
+| Vityo | `602fdc9e622444fd63bfd8c6a8a648a7a1a21ebe` |
+| Public site | `20c5411d46c7df74fde833a039f9d840aab12d99` |
+| Audit policy | `e23f0086d00d3bc5795abae638317ce39f8bf45e` |
+| Aggregate workspace | `842895ed910335bf3e2c493860eef64ed743d029` |
+
+Vityo consumes Pafio metadata/workflow, Styio machine-info, and Platform hosted
+contracts through separate owner adapters. The fixed consumer revision does not
+read Pafio's private home state.
+
+## Atomic identity cutover
+
+The one-time fixed-revision inventory scanned committed content and committed
+file names in all seven repositories. Every repository reported zero retired
+identity matches and zero compatibility artifacts. The inventory was not
+retained as a permanent gate.
+
+## Maintained full regressions
+
+| Repository | Result |
+| --- | --- |
+| Pafio | 116 tests, 0 failures; 2 optional external-fixture cases skipped |
+| Styio | 1138 tests, 0 failures; 9 conditional cases skipped |
+| Styio Platform | 54 tests, 0 failures |
+| Vityo | 198 Python tests and 2730 Flutter tests passed; 3 conditional Flutter cases skipped |
+| Public site | site build, release-root validation, and smoke checks passed |
+| Audit policy | 40 tests, module validation, and framework-only self-audit passed |
+| Aggregate workspace | root configure and declared Styio target build passed |
+
+## Fixed-revision product matrix
+
+- Matrix digest: `e6d3fa94c1874db196fe948a3e1463c70a7849390d1827aca8d6f7f9c6913b30`
+- Cold `pafio new` and `pafio build`: passed
+- Frozen rebuild: passed without changing lock or resolution bytes
+- Metadata v1: exactly package, workspace, dependencies, targets, lock,
+  resolution, and vendor
+- Styio compile-plan consumer: advertised and exercised
+- Vityo public product scenario: passed
+- Platform registry/control-plane and worker contracts: passed in the Platform
+  maintained suite
+
+The recorded evidence contains only revisions, digests, test counts, and
+contract outcomes. It excludes private paths, credentials, user information,
+and backend runtime data.
+
+## Documentation and plan closure
+
+- Better Plan manifest validation: passed with zero issues
+- Repository-local documentation and lifecycle gate: passed
+- Explicit fixed-workspace documentation gate: 8 contract groups passed across
+  Pafio, Styio, Styio Platform, and Vityo
+- Repository hygiene and Markdown diff checks: passed

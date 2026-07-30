@@ -14,5 +14,6 @@ Styio is a system prerequisite and owns compilation outputs. Styio Platform
 owns registry services and hosted execution. Vityo consumes their published
 machine contracts without reading `PAFIO_HOME`.
 
-The active release work is the fixed-revision ecosystem matrix in
-`docs/plan/pafio-product-convergence/`.
+The fixed-revision ecosystem matrix is accepted and recorded in
+`docs/plan/pafio-product-convergence/`. No product-boundary implementation gap
+remains in this delivery.

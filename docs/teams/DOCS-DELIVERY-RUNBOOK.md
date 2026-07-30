@@ -30,6 +30,9 @@ the Better Plan workspace, and release evidence.
 8. Keep post-commit instructions on public executable gates and repository-
    relative placeholders; never publish private machine paths or removed
    sibling-repository script entrypoints.
+9. When the fixed-revision product matrix passes, close the Better Plan and gap
+   ledger together. Keep branch promotion as an explicit maintainer handoff
+   unless repository promotion is separately authorized.
 
 ## Change Classes
 

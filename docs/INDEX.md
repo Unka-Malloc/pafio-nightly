@@ -16,7 +16,7 @@
 | `external/` | [External Docs Index](./external/INDEX.md) | Define the scope and naming rules for external handoff docs that pafio shares with sibling Styio repositories. |
 | `governance/` | [Governance Index](./governance/INDEX.md) | Hold the normative product and project-contract rules owned by Pafio. |
 | `operations/` | [Operations Index](./operations/INDEX.md) | Hold repository-local, client-side build, artifact, and delivery procedures. |
-| `plan/` | [Plan Index](./plan/INDEX.md) | Identify the single active Pafio delivery plan and completed internal dependency-kernel baseline. |
+| `plan/` | [Plan Index](./plan/INDEX.md) | Record the completed Pafio product convergence plan and internal dependency-kernel baseline. |
 | `registry/` | [Registry Index](./registry/INDEX.md) | Define the registry trust, read, cache, pack, and publish-client behavior owned by Pafio. |
 | `rollups/` | [Rollups Index](./rollups/INDEX.md) | Hold compressed active summaries for pafio; these files provide the default reading order for current state and active gaps without forcing readers through raw planning and history first. |
 | `security/` | [Security Index](./security/INDEX.md) | Define Pafio's local supply-chain and subprocess security boundary. |

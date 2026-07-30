@@ -35,14 +35,16 @@ Cross-repository contract or product changes must replay the immutable owner
 matrix and the matching executable product gate:
 
 ```bash
-cd <styio-workspace>
+cd <pafio-workspace>
 python3 scripts/ecosystem-cli-doc-gate.py --require-workspace --workspace-root <workspace-root>
 
-cd <pafio-workspace>
 python3 scripts/verify-ecosystem-contracts.py --focused --repositories-root <owner-repositories>
 python3 scripts/verify-ecosystem-contracts.py --full --repositories-root <owner-repositories> --pafio-bin <pafio> --styio-bin <styio> --vityo-root <vityo-workspace>
 ```
 
+The docs gate validates the Pafio-owned surface locally by default. Its explicit
+workspace form checks fixed Pafio, Styio, Styio Platform, and Vityo
+documentation; it never discovers or delegates to a mutable sibling checkout.
 The focused replay reads only the commits pinned by
 `contracts/ecosystem/owner-matrix.json`; dirty or newer sibling worktrees do not
 change its result. The full gate additionally proves public `pafio new`, cold
@@ -74,7 +76,10 @@ If `gh` is unavailable or unauthenticated, the agent must state that GitHub Acti
 
 ## Cross-Repository Work
 
-When one delivery touches `styio-nightly`, `pafio-nightly`, and `vityo-nightly`, post-push verification applies to every pushed repository. The agent should check each repository's GitHub Actions status, not only the repository that received the last commit.
+When one delivery touches `styio-nightly`, `pafio-nightly`,
+`styio-cloud-nightly`, and `vityo-nightly`, post-push verification applies to
+every pushed repository. The agent should check each repository's GitHub
+Actions status, not only the repository that received the last commit.
 
 Cross-repository gates must use the same workspace checkout set that will be visible to CI. If a gate consumes another repository's branch, push that repository first or report that remote CI may still be using an older sibling checkout.
 
