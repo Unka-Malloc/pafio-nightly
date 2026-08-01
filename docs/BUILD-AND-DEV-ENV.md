@@ -2,7 +2,7 @@
 
 **Purpose:** Define the supported local build, test, and Styio handoff workflow for Pafio contributors.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-01
 
 ## Prerequisites
 
@@ -10,6 +10,7 @@
 - a C++20 compiler
 - Python 3
 - Git
+- rsync for extractability and delivery-tree validation
 - a system-installed `styio` executable for compiler workflow tests
 
 Pafio does not install or build Styio. A workflow discovers the compiler through

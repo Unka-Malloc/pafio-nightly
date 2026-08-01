@@ -42,6 +42,8 @@ the Better Plan workspace, and release evidence.
     macOS, and Windows artifacts as independent publications; never infer one
     platform's readiness from another platform's gate or from shared `nightly`
     branch promotion.
+12. Keep the fresh-host bootstrap aligned with every delivery tool used by CI,
+    including `rsync` for extractability and exported-tree checks.
 
 ## Change Classes
 
