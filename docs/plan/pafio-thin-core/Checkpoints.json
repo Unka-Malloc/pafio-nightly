@@ -1,11 +1,39 @@
 [
   {
+    "id": "e07f8c8e-58e5-4313-96b0-da239e42d0c8",
+    "status": "completed",
+    "role": "group_design",
+    "verification_profile": "code",
+    "prerequisites": [],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Freeze the completed trusted dependency-kernel design as one coherent delivery group.",
+    "description": "Scope: the thin-core requirements, architecture, validation contract, evidence, and manifest-to-resolution implementation boundary. Context: the accepted delivery established deterministic resolution, verified content-addressed storage, ordered atomic state, and offline replay as Pafio's internal kernel. Target: preserve that source-grounded design spine in the current grouped-delivery model. Design Considerations: retain O(V + E) exact-version traversal, sorted deterministic output, digest-keyed single-flight work, and lock-then-resolution commit ordering. Design Value: one explicit design owner makes the historical kernel closure and its final proof independently readable. Constraints & Risks: this migration records completed work only; it must not add compiler, cloud, registry-service, compatibility, private-path, or backend-runtime scope.",
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "Requirements, architecture, validation, and evidence agree on the deterministic trusted dependency-kernel boundary."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(plan): migrate dependency-kernel design state",
+      "target": "a task-specific temporary branch in pafio-nightly"
+    },
+    "next": [
+      "0861f893-f534-42a9-99d1-05480d9fe05b"
+    ]
+  },
+  {
     "id": "0861f893-f534-42a9-99d1-05480d9fe05b",
     "status": "completed",
     "role": "implementation",
-    "prerequisites": [],
+    "verification_profile": "code",
+    "prerequisites": [
+      "e07f8c8e-58e5-4313-96b0-da239e42d0c8"
+    ],
     "platform": "any",
-    "difficulty": "high",
+    "difficulty": "critical",
     "goal": "Deliver one consumer-only Pafio sync loop that deterministically locks, verifies and materializes dependencies, then emits the minimal Styio resolution-v1 contract.",
     "description": "Scope: Closure: capability - one manifest-to-resolution sync transaction for path and registry dependency graphs; own the current manifest/lock/resolver/registry/security/store path, add the minimal resolution-v1 contract and focused tests, and do not extend compiler, toolchain, cloud, IDE, hosted-control-plane, Git-source, vendor, pack, or publish behavior. Context: the repository already contains a working exact-version resolver and completed supply-chain hardening, but its CLI and plan mix package consumption with compiler workflow, tool installation, cloud policy, registry service operation, and Vityo aggregation. Target: sync prepares an immutable graph, reuses a valid lock, materializes missing SHA-256 objects through bounded single-flight work, commits lock and then resolution-v1 as ordered atomic files, and reproduces the same state with --locked --offline. Design Considerations: retain O(V + E) exact-version traversal for this closure; use hash maps only for lookup, sorted vectors for graph/output determinism, per-digest locks plus temp/hash/prescan/rename for CAS commits, and a project-local resolution file modeled as a narrow package-id-to-root map. Mutable path/workspace packages expose a null content digest rather than a false manifest-derived digest. Design Value: creates the smallest independently useful and trustworthy package-manager kernel and a stable handoff that lets later ownership migrations delete broad Pafio surfaces. Constraints & Risks: preserve completed TUF/archive/atomic-write protections; no absolute paths in lockfiles; resolution commits last and digest mismatch rejects an interrupted cross-file commit; no full regression during implementation; naming migration and range solving are separate future capabilities with no compatibility shims.",
     "requirements": [
@@ -331,25 +359,58 @@
         "contracts/resolution-v1",
         "tests/native",
         "tests/interop/pafio-thin-core-contract.sh"
-      ],
-      "last_pass": {
-        "recorded_at": "2026-07-28T03:28:06Z",
-        "contract_digest": "b87d4ec759b3a15f3647083f7e5bf7c1dd3d1c26225da48b0cb4033a904bced5",
-        "content_fingerprint": "c821f7af5166b617272836fcbe9ca28349385c68a0e4e71b8efb19629d71302b"
-      }
+      ]
     },
-    "next": [],
-    "acceptance": {
-      "phase": "accepted",
-      "attempt": 2,
-      "outcome": "accepted",
-      "audit": {
-        "recorded_at": "2026-07-28T03:29:41Z",
-        "contract_digest": "b87d4ec759b3a15f3647083f7e5bf7c1dd3d1c26225da48b0cb4033a904bced5",
-        "content_fingerprint": "c821f7af5166b617272836fcbe9ca28349385c68a0e4e71b8efb19629d71302b"
-      },
-      "design_digest": "0764c1471aa90e515bfa962325eb6a536ddfa80488c96dedd7d7c5b3babb451c",
-      "acceptance_fingerprint": "16918e340a1efe6da5bcc20847e6d9d8361639fc5080b7f63245cc72fa2d6040"
-    }
+    "next": [
+      "2257c50d-1701-4248-8c3a-74f681eade00"
+    ]
+  },
+  {
+    "id": "2257c50d-1701-4248-8c3a-74f681eade00",
+    "status": "completed",
+    "role": "final_validation",
+    "verification_profile": "code",
+    "prerequisites": [
+      "0861f893-f534-42a9-99d1-05480d9fe05b"
+    ],
+    "platform": "any",
+    "difficulty": "critical",
+    "goal": "Preserve the accepted end-to-end proof for the trusted dependency-kernel group.",
+    "description": "Scope: the complete thin-core delivery, its native and interoperability tests, frozen validation contract, and recorded evidence. Context: focused implementation evidence already proves deterministic sync, fail-closed integrity, concurrency safety, offline replay, and the narrow Styio resolution contract. Target: represent that accepted group-level outcome in the current final-validation role. Design Considerations: reuse the maintained repository regression surface and keep proof separate from implementation ownership. Design Value: a trailing group proof makes requirement coverage and historical completion explicit. Constraints & Risks: do not rerun or reinterpret the historical product delivery during this state-format migration, and do not record private paths or backend runtime data.",
+    "requirements": [
+      "REQ-THIN-001",
+      "REQ-THIN-002",
+      "REQ-THIN-003",
+      "REQ-THIN-004",
+      "REQ-THIN-005"
+    ],
+    "acceptance_criteria": [
+      {
+        "checked": true,
+        "text": "The frozen thin-core validation contract and evidence cover deterministic sync, offline replay, integrity failures, concurrency, the resolution-v1 consumer, and excluded product surfaces."
+      }
+    ],
+    "commit": {
+      "repository": ".git",
+      "message": "docs(plan): migrate dependency-kernel validation state",
+      "target": "a task-specific temporary branch in pafio-nightly"
+    },
+    "regression": {
+      "scope": "full",
+      "commands": [
+        "cmake -S . -B build-codex -DPAFIO_BUILD_TESTS=ON",
+        "cmake --build build-codex -j4",
+        "ctest --test-dir build-codex --output-on-failure --no-tests=error"
+      ],
+      "criteria": [
+        0
+      ],
+      "paths": [
+        "src",
+        "contracts",
+        "tests"
+      ]
+    },
+    "next": []
   }
 ]

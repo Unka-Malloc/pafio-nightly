@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-01
 
 ## Mission
 
@@ -21,16 +21,21 @@ the Better Plan workspace, and release evidence.
 
 1. Change the normative governance contract before its summaries.
 2. Record durable ownership changes in an ADR.
-3. Keep `docs/plan/Manifest.json` limited to current delivery and completed evidence.
-4. Regenerate indexes after the docs tree changes.
-5. Keep the public Pafio command inventory aligned with executable help.
-6. Publish no site or release wording before the fixed-revision product matrix passes.
-7. Remove superseded owner documents during a clean break; do not retain legacy
+3. Keep `docs/plan/Capabilities.json` limited to observed or explicitly designed
+   repository facts, and keep delivery lifecycle history in `Manifest.json` plus
+   each group's `Checkpoints.json`.
+4. Require each delivery group to retain one design node, one or more
+   implementation nodes, and one trailing full-validation node; dependencies live
+   only in node prerequisites.
+5. Regenerate indexes after the docs tree changes.
+6. Keep the public Pafio command inventory aligned with executable help.
+7. Publish no site or release wording before the fixed-revision product matrix passes.
+8. Remove superseded owner documents during a clean break; do not retain legacy
    names, compatibility notes, or permanent migration gates as active policy.
-8. Keep post-commit instructions on public executable gates and repository-
+9. Keep post-commit instructions on public executable gates and repository-
    relative placeholders; never publish private machine paths or removed
    sibling-repository script entrypoints.
-9. When the fixed-revision product matrix passes, close the Better Plan and gap
+10. When the fixed-revision product matrix passes, close the Better Plan and gap
    ledger together. Keep branch promotion as an explicit maintainer handoff
    unless repository promotion is separately authorized.
 
