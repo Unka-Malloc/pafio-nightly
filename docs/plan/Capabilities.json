@@ -40,5 +40,19 @@
       "docs/plan/pafio-thin-core/Architecture.md"
     ],
     "description": "Accepted deterministic manifest, lock, resolution, verified storage, and offline synchronization core."
+  },
+  {
+    "key": "pafio/platform-releases",
+    "parent": "pafio",
+    "title": "Platform-independent releases",
+    "kind": "capability",
+    "basis": "designed",
+    "disclosure": "examined",
+    "touch": "modified",
+    "source_files": [
+      "docs/governance/Pafio-Version-Decoupling-Constraints.md",
+      ".github/workflows/local-ci-gate.yml"
+    ],
+    "description": "Shared-source nightly promotion and operating-system artifact releases use independent acceptance and publication decisions."
   }
 ]

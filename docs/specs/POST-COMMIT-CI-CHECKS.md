@@ -2,7 +2,7 @@
 
 **Purpose:** Define the required workflow for checking GitHub Actions after a local commit is pushed, including what must be verified before committing and what must be watched after pushing.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-01
 
 ## Scope
 
@@ -27,9 +27,17 @@ were previously split across `styio-ci`, `repo-hygiene`, and `Submit Gate`.
 `local-ci-gate` is the pafio repository's own CI surface; it is not the shared
 Styio ecosystem resource gate modeled by upstream `styio-ci-gate`.
 Inside that workflow, `Linux / Debian 13 trixie gate` is the blocking repository
-gate. `macOS / latest native smoke` and `Windows / latest native smoke` are
-platform adaptation lanes; the Windows lane is non-blocking until the native
-Windows port and installer checkpoints close.
+gate for shared-source `nightly` promotion. `macOS / latest native smoke` is an
+independent platform adaptation lane. `Windows / latest native smoke` runs only
+through explicit `workflow_dispatch`; Windows release owners execute it from
+the Windows release flow and must resolve any failure before publishing Windows
+artifacts. Neither a shared-source merge nor another platform's passing result
+constitutes Windows release evidence.
+
+For cross-repository checkouts, CI first tries the Pafio branch name and falls
+back independently to each sibling repository's `nightly` branch when that
+branch does not exist there. A Pafio-only change therefore does not require
+creating empty matching branches in Styio or Vityo.
 
 Cross-repository contract or product changes must replay the immutable owner
 matrix and the matching executable product gate:
@@ -85,7 +93,7 @@ Cross-repository gates must use the same workspace checkout set that will be vis
 
 ## Delivery Ruleset Governance
 
-Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and the blocking Linux `local-ci-gate` job as the stable repository-local status-check surface, with `styio-audit` kept as the policy workflow check where the upstream ruleset expects it. macOS and Windows jobs should be watched for platform regressions, but Windows must not become a required merge gate until its adaptation checkpoint is complete.
+Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and the blocking Linux `local-ci-gate` job as the stable repository-local status-check surface, with `styio-audit` kept as the policy workflow check where the upstream ruleset expects it. macOS results apply only to macOS adaptation. Windows is a separately dispatched release lane and must not become a shared-source merge requirement or inherit another platform's acceptance evidence.
 
 Gate audits must inspect effective branch rules, for example:
 

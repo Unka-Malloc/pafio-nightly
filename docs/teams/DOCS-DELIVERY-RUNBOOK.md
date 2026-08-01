@@ -38,6 +38,10 @@ the Better Plan workspace, and release evidence.
 10. When the fixed-revision product matrix passes, close the Better Plan and gap
    ledger together. Keep branch promotion as an explicit maintainer handoff
    unless repository promotion is separately authorized.
+11. Name the exact platform and source revision in release wording. Treat Linux,
+    macOS, and Windows artifacts as independent publications; never infer one
+    platform's readiness from another platform's gate or from shared `nightly`
+    branch promotion.
 
 ## Change Classes
 

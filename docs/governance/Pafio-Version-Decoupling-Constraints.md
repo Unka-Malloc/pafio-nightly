@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio, Styio, language editions, and machine contracts independently versioned.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-01
 
 ## Independent Axes
 
@@ -27,3 +27,23 @@ binary version is not a semantic dependency.
 The package-manager compatibility declaration is
 `contracts/compat/styio-support.toml`. Styio remains the authority for
 diagnostics, receipts, and runtime events.
+
+## Platform-Independent Releases
+
+Pafio's shared source branch and each operating-system release are separate
+promotion units. Advancing a revision to `nightly` establishes a shared source
+candidate; it does not claim that Linux, macOS, and Windows binaries are all
+ready or released.
+
+Each platform release independently owns:
+
+1. the exact Pafio source revision;
+2. its native build and runtime compatibility gate;
+3. its artifact format, checksum, signature, and provenance evidence; and
+4. its publication and rollback decision.
+
+Passing one platform's gate never waives another platform's gate and never
+authorizes another platform's artifacts. Windows publication is organized and
+accepted from a Windows release environment. The shared `nightly` promotion may
+continue without a Windows artifact, provided release wording names the actual
+platform scope and does not advertise Windows availability.

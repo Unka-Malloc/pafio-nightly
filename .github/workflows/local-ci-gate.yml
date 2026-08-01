@@ -49,18 +49,48 @@ jobs:
           fetch-depth: 0
           path: pafio-nightly
 
+      - name: Resolve sibling repository refs
+        id: sibling_refs
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          CANDIDATE_REF="nightly"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            CANDIDATE_REF="$PR_HEAD_REF"
+          elif [[ "$REF_TYPE" == "branch" ]]; then
+            CANDIDATE_REF="$REF_NAME"
+          fi
+
+          resolve_ref() {
+            local repository="$1"
+            if git ls-remote --exit-code --heads \
+              "https://github.com/Unka-Malloc/${repository}.git" \
+              "refs/heads/${CANDIDATE_REF}" >/dev/null 2>&1; then
+              printf '%s\n' "${CANDIDATE_REF}"
+            else
+              printf '%s\n' "nightly"
+            fi
+          }
+
+          echo "styio=$(resolve_ref styio-nightly)" >> "$GITHUB_OUTPUT"
+          echo "vityo=$(resolve_ref vityo-nightly)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout styio-nightly sibling repository
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/styio-nightly
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
+          ref: ${{ steps.sibling_refs.outputs.styio }}
           path: styio-nightly
 
       - name: Checkout Vityo sibling repository
         uses: actions/checkout@v5
         with:
           repository: Unka-Malloc/vityo-nightly
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_type == 'branch' && github.ref_name || 'nightly' }}
+          ref: ${{ steps.sibling_refs.outputs.vityo }}
           path: vityo-nightly
 
       - name: Bootstrap Debian trixie toolchain
@@ -152,8 +182,8 @@ jobs:
 
   windows-native-smoke:
     name: Windows / latest native smoke
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
-    continue-on-error: true
     timeout-minutes: 45
 
     steps:
