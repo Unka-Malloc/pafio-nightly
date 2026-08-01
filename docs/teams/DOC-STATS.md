@@ -2,7 +2,7 @@
 
 **Purpose:** Record the current size of each `docs/teams/` runbook using the repository-local docs audit counting rules; this is a maintenance snapshot, not a quality target.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-08-01
 
 ## Counting Method
 
@@ -15,15 +15,15 @@
 
 | Team | Document | Word count | Character count |
 |------|----------|------------|-----------------|
-| Coordination | [COORDINATION-RUNBOOK.md](./COORDINATION-RUNBOOK.md) | 1,030 | 4,322 |
-| Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 1,150 | 5,229 |
-| Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | 664 | 3,222 |
-| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 1,005 | 4,535 |
-| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 1,657 | 6,580 |
-| **Total** | Team runbooks only | **5,506** | **23,888** |
+| Coordination | [COORDINATION-RUNBOOK.md](./COORDINATION-RUNBOOK.md) | 289 | 1,991 |
+| Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 262 | 2,049 |
+| Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | 186 | 1,542 |
+| Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 199 | 1,812 |
+| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 446 | 3,351 |
+| **Total** | Team runbooks only | **1,382** | **10,745** |
 
 ## Support File Size
 
 | Document | Word count | Character count |
 |----------|------------|-----------------|
-| [README.md](./README.md) | 260 | 1,023 |
+| [README.md](./README.md) | 128 | 1,025 |

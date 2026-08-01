@@ -1,9 +1,14 @@
 # Better Plan Workspace
 
-This workspace is the only current planning root for `Unka-Malloc/pafio-nightly`.
+**Purpose:** Record completed Pafio delivery groups in the current Better Plan workspace model.
 
-- Manifest: `Manifest.json`
-- Active plan: `repository-delivery-convergence/Checkpoints.json`
-- Product branch represented: `nightly`
+**Last updated:** 2026-08-01
 
-Planning material outside `docs/plan` is intentionally consolidated here so future work has one state-machine validated source of truth.
+- `Capabilities.json` records the observed Pafio capability foundation independently from delivery history.
+- `Manifest.json` is the workspace state.
+- `pafio-product-convergence/` records the completed product and ecosystem cutover.
+- `pafio-thin-core/` records the completed trusted dependency kernel used
+  internally by Pafio workflows.
+
+Durable behavior belongs in governance and ADRs; this directory owns only
+sequencing, acceptance, and evidence.

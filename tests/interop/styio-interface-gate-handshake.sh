@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SPIO_BIN="${1:?expected spio binary path}"
+PAFIO_BIN="${1:?expected pafio binary path}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -21,9 +21,9 @@ exit 64
 EOF
 chmod +x "$FAKE_STYIO"
 
-export SPIO_HOME="$TMP/spio-home"
+export PAFIO_HOME="$TMP/pafio-home"
 python3 "$ROOT/scripts/styio-interface-gate.py" \
-  --spio-bin "$SPIO_BIN" \
+  --pafio-bin "$PAFIO_BIN" \
   --styio-bin "$FAKE_STYIO" \
   --json >"$TMP/out.json"
 python3 - "$TMP/out.json" <<'PY'
@@ -36,7 +36,7 @@ assert payload["ok"] is True, payload
 assert payload["machine_info"]["tool"] == "styio", payload
 assert payload["machine_info"]["supported_contracts"]["compile_plan"] == [1], payload
 assert payload["require_compile_plan"] is False, payload
-spio_check = next(step for step in payload["steps"] if step["name"] == "spio_check")
-spio_payload = json.loads(spio_check["stdout"])
-assert spio_payload["styio"]["integration_phase"] == "compile-plan-live", spio_payload
+pafio_check = next(step for step in payload["steps"] if step["name"] == "pafio_check")
+pafio_payload = json.loads(pafio_check["stdout"])
+assert pafio_payload["styio"]["integration_phase"] == "compile-plan-live", pafio_payload
 PY

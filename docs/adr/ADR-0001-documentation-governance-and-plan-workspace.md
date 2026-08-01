@@ -10,7 +10,7 @@ Accepted.
 
 ## Supersedes
 
-- `ADR-0001-spio-adopts-dedicated-adr-directory.md`
+- `ADR-0001-pafio-adopts-dedicated-adr-directory.md`
 - `ADR-0003-entry-argument-index-ssot.md`
 - `ADR-0032-docs-lifecycle-and-generated-indexes.md`
 - `ADR-0038-plan-directory-is-better-plan-workspace.md`

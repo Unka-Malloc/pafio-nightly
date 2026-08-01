@@ -1,38 +1,37 @@
 #include "BuildTestSupport.hpp"
 
-#include "SpioCore/Errors.hpp"
-#include "SpioPlan/CompilePlan.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioPlan/CompilePlan.hpp"
 
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
-using spio::testsupport::CanonicalAbsolutePath;
-using spio::testsupport::MakeTempDir;
-using spio::testsupport::ReadFile;
-using spio::testsupport::WriteFile;
+using pafio::testsupport::CanonicalAbsolutePath;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::WriteFile;
 
 TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
 {
   const fs::path root = MakeTempDir("single-lib-dry-run");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/demo\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");
   WriteFile(root / "src/lib.styio", "# value := 1\n");
 
-  const spio::BuildPlanResult result = spio::WriteBuildCompilePlan({
-      .manifest_path = root / "spio.toml",
+  const pafio::BuildPlanResult result = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
       .select_lib = true,
   });
 
@@ -46,8 +45,9 @@ TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
   EXPECT_EQ(plan["workspace_root"], CanonicalAbsolutePath(root).string());
   EXPECT_EQ(plan["entry"]["target_kind"], "lib");
   EXPECT_EQ(plan["entry"]["file"], CanonicalAbsolutePath(root / "src/lib.styio").string());
-  EXPECT_EQ(plan["toolchain"]["std_package_id"], "builtin:std@nightly/2026");
+  EXPECT_EQ(plan["toolchain"]["std_package_id"], "builtin:std@unbound/2026");
   EXPECT_EQ(plan["profile"]["name"], "dev");
+  EXPECT_FALSE(plan["profile"].contains("build_mode"));
   EXPECT_EQ(plan["emit"]["error_format"], "jsonl");
   ASSERT_EQ(plan["packages"].size(), 1U);
   EXPECT_EQ(plan["packages"][0]["targets"]["lib"], CanonicalAbsolutePath(root / "src/lib.styio").string());
@@ -57,16 +57,15 @@ TEST(BuildPlanTests, RejectsAmbiguousPackageTargetsWithoutExplicitSelection)
 {
   const fs::path root = MakeTempDir("ambiguous-target");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n\n"
@@ -77,49 +76,47 @@ TEST(BuildPlanTests, RejectsAmbiguousPackageTargetsWithoutExplicitSelection)
   WriteFile(root / "src/main.styio", ">_(\"hi\")\n");
 
   EXPECT_THROW(
-      spio::WriteBuildCompilePlan({
-          .manifest_path = root / "spio.toml",
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
       }),
-      spio::PlanError);
+      pafio::PlanError);
 }
 
 TEST(BuildPlanTests, WorkspaceBuildRequiresExplicitPackageSelectionWhenMultipleRootsExist)
 {
   const fs::path root = MakeTempDir("workspace-package-selection");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[workspace]\n"
       "members = [\"packages/app\", \"packages/tool\"]\n"
       "resolver = \"1\"\n");
   WriteFile(
-      root / "packages/app/spio.toml",
-      "[spio]\n"
+      root / "packages/app/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
       "path = \"src/main.styio\"\n");
   WriteFile(root / "packages/app/src/main.styio", ">_(\"app\")\n");
   WriteFile(
-      root / "packages/tool/spio.toml",
-      "[spio]\n"
+      root / "packages/tool/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/tool\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"tool\"\n"
@@ -127,13 +124,13 @@ TEST(BuildPlanTests, WorkspaceBuildRequiresExplicitPackageSelectionWhenMultipleR
   WriteFile(root / "packages/tool/src/main.styio", ">_(\"tool\")\n");
 
   EXPECT_THROW(
-      spio::WriteBuildCompilePlan({
-          .manifest_path = root / "spio.toml",
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
       }),
-      spio::PlanError);
+      pafio::PlanError);
 
-  const spio::BuildPlanResult result = spio::WriteBuildCompilePlan({
-      .manifest_path = root / "spio.toml",
+  const pafio::BuildPlanResult result = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
       .package_name = "acme/tool",
   });
   EXPECT_EQ(result.entry_package_name, "acme/tool");
@@ -145,16 +142,15 @@ TEST(BuildPlanTests, RejectsMixedEditionGraphForCompilePlanV1)
 {
   const fs::path root = MakeTempDir("mixed-edition");
   WriteFile(
-      root / "spio.toml",
-      "[spio]\n"
+      root / "pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -163,24 +159,23 @@ TEST(BuildPlanTests, RejectsMixedEditionGraphForCompilePlanV1)
       "util = { package = \"acme/util\", path = \"deps/util\" }\n");
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
   WriteFile(
-      root / "deps/util/spio.toml",
-      "[spio]\n"
+      root / "deps/util/pafio.toml",
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/util\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2027\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[lib]\n"
       "path = \"src/lib.styio\"\n");
   WriteFile(root / "deps/util/src/lib.styio", "# util := 1\n");
 
   EXPECT_THROW(
-      spio::WriteBuildCompilePlan({
-          .manifest_path = root / "spio.toml",
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
       }),
-      spio::PlanError);
+      pafio::PlanError);
 }

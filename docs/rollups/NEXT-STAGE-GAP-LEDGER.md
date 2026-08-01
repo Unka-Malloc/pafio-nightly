@@ -1,18 +1,21 @@
 # Next Stage Gap Ledger
 
-**Purpose:** Track the active gaps that still separate `spio` from the shared three-repo file-governance baseline; this ledger compresses governance debt into checkpoint-sized follow-up work.
+**Purpose:** Record the release handoff after product-boundary implementation.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-08-01
 
-## Active Gaps
+## Release Handoff
 
-1. `FG4`: keep the shared required-pattern / fixture-negate baseline synchronized as `nightly` and `view` continue evolving their mirror gates.
+The fixed-commit Styio, Pafio, Platform, Vityo, site, audit, and
+aggregate-workspace acceptance matrix is complete. Promotion of the recorded
+revisions into the coordinated nightly window is an external maintainer
+operation, not an implementation gap in this plan.
 
-## Exit Condition
+The coordinated `nightly` window promotes a shared source revision, not one
+aggregate cross-platform binary release. Linux, macOS, and Windows artifacts
+are accepted and published independently. Windows publication remains a
+separate Windows-environment operation and is not a prerequisite for promoting
+the current shared source revision to `nightly`.
 
-This ledger can move to maintenance mode once `spio` has:
-
-1. active rollups,
-2. script-backed indexes and lifecycle checks,
-3. repo-hygiene + submit/delivery gates that catch docs/file-governance regressions,
-4. ADR coverage for implemented documentation lifecycle decisions.
+No managed compiler channel or new operating-system package distribution
+channel is part of this delivery.

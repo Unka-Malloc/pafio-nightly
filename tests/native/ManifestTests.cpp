@@ -6,11 +6,11 @@
 #include <sstream>
 #include <string>
 
-#include "SpioCore/Errors.hpp"
-#include "SpioCore/Paths.hpp"
-#include "SpioManifest/Lockfile.hpp"
-#include "SpioManifest/Manifest.hpp"
-#include "SpioManifest/TomlString.hpp"
+#include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
+#include "PafioManifest/Lockfile.hpp"
+#include "PafioManifest/Manifest.hpp"
+#include "PafioManifest/TomlString.hpp"
 
 namespace fs = std::filesystem;
 
@@ -19,12 +19,12 @@ namespace
 
 fs::path
 FixturePath(const fs::path &relative) {
-  return spio::ProjectRoot() / relative;
+  return pafio::ProjectRoot() / relative;
 }
 
 fs::path
 WriteTempToml(const std::string &content, const std::string &file_name) {
-  const fs::path root = fs::temp_directory_path() / fs::path("spio-native-tests");
+  const fs::path root = fs::temp_directory_path() / fs::path("pafio-native-tests");
   fs::create_directories(root);
   const fs::path file_path = root / file_name;
   std::ofstream out(file_path);
@@ -45,11 +45,11 @@ ReadFile(const fs::path &path) {
 }  // namespace
 
 TEST(ManifestTests, LoadsSinglePackageFixture) {
-  const auto manifest = spio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-single-package/spio.toml"));
+  const auto manifest = pafio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-single-package/pafio.toml"));
 
   ASSERT_TRUE(manifest.package.has_value());
   EXPECT_EQ(manifest.package->name, "acme/demo");
-  EXPECT_EQ(manifest.package->toolchain.channel, "nightly");
+  EXPECT_TRUE(manifest.package->build.implicit_std);
   ASSERT_TRUE(manifest.package->lib.has_value());
   EXPECT_EQ(manifest.package->lib->path, "src/lib.styio");
   EXPECT_TRUE(manifest.package->bins.empty());
@@ -57,7 +57,7 @@ TEST(ManifestTests, LoadsSinglePackageFixture) {
 }
 
 TEST(ManifestTests, LoadsWorkspaceFixture) {
-  const auto manifest = spio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-workspace-root/spio.toml"));
+  const auto manifest = pafio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-workspace-root/pafio.toml"));
 
   ASSERT_TRUE(manifest.workspace.has_value());
   EXPECT_EQ(manifest.workspace->resolver, "1");
@@ -68,7 +68,7 @@ TEST(ManifestTests, LoadsWorkspaceFixture) {
 }
 
 TEST(ManifestTests, LoadsPathAndGitFixture) {
-  const auto manifest = spio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-path-and-git/spio.toml"));
+  const auto manifest = pafio::LoadManifest(FixturePath("tests/unit/fixtures/manifests/ok-path-and-git/pafio.toml"));
 
   ASSERT_TRUE(manifest.package.has_value());
   ASSERT_EQ(manifest.package->bins.size(), 1U);
@@ -80,14 +80,13 @@ TEST(ManifestTests, LoadsPathAndGitFixture) {
 
 TEST(ManifestTests, LoadsExplicitTestTargets) {
   const fs::path manifest_path = WriteTempToml(
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -98,7 +97,7 @@ TEST(ManifestTests, LoadsExplicitTestTargets) {
     "manifest-with-tests.toml"
   );
 
-  const auto manifest = spio::LoadManifest(manifest_path);
+  const auto manifest = pafio::LoadManifest(manifest_path);
   ASSERT_TRUE(manifest.package.has_value());
   ASSERT_EQ(manifest.package->tests.size(), 1U);
   EXPECT_EQ(manifest.package->tests[0].name, "smoke");
@@ -107,14 +106,13 @@ TEST(ManifestTests, LoadsExplicitTestTargets) {
 
 TEST(ManifestTests, LoadsRegistryDependencySource) {
   const fs::path manifest_path = WriteTempToml(
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -124,47 +122,46 @@ TEST(ManifestTests, LoadsRegistryDependencySource) {
     "registry-dependency.toml"
   );
 
-  const auto manifest = spio::LoadManifest(manifest_path);
+  const auto manifest = pafio::LoadManifest(manifest_path);
   ASSERT_TRUE(manifest.package.has_value());
   ASSERT_EQ(manifest.package->dependencies.size(), 1U);
   EXPECT_EQ(manifest.package->dependencies[0].alias, "core");
   EXPECT_EQ(manifest.package->dependencies[0].package.value_or(""), "acme/core");
   EXPECT_EQ(manifest.package->dependencies[0].version.value_or(""), "0.1.0");
   EXPECT_EQ(manifest.package->dependencies[0].source, "https://packages.example.test");
-  EXPECT_EQ(manifest.package->dependencies[0].source_kind, spio::DependencySourceKind::kRegistry);
+  EXPECT_EQ(manifest.package->dependencies[0].source_kind, pafio::DependencySourceKind::kRegistry);
 }
 
 TEST(ManifestTests, SerializesSinglePackageFixtureCanonically) {
-  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-single-package/spio.toml");
-  const auto manifest = spio::LoadManifest(fixture_path);
+  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-single-package/pafio.toml");
+  const auto manifest = pafio::LoadManifest(fixture_path);
 
-  EXPECT_EQ(spio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
+  EXPECT_EQ(pafio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
 }
 
 TEST(ManifestTests, SerializesWorkspaceFixtureCanonically) {
-  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-workspace-root/spio.toml");
-  const auto manifest = spio::LoadManifest(fixture_path);
+  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-workspace-root/pafio.toml");
+  const auto manifest = pafio::LoadManifest(fixture_path);
 
-  EXPECT_EQ(spio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
+  EXPECT_EQ(pafio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
 }
 
 TEST(ManifestTests, SerializesPathAndGitFixtureCanonically) {
-  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-path-and-git/spio.toml");
-  const auto manifest = spio::LoadManifest(fixture_path);
+  const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-path-and-git/pafio.toml");
+  const auto manifest = pafio::LoadManifest(fixture_path);
 
-  EXPECT_EQ(spio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
+  EXPECT_EQ(pafio::SerializeManifestCanonical(manifest), ReadFile(fixture_path));
 }
 
 TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
   const fs::path manifest_path = WriteTempToml(
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"zeta\"\n"
@@ -178,19 +175,18 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
     "unsorted-manifest.toml"
   );
 
-  const auto manifest = spio::LoadManifest(manifest_path);
+  const auto manifest = pafio::LoadManifest(manifest_path);
   EXPECT_EQ(
-    spio::SerializeManifestCanonical(manifest),
+    pafio::SerializeManifestCanonical(manifest),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"alpha\"\n"
@@ -207,14 +203,13 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
 
 TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies) {
   const fs::path manifest_path = WriteTempToml(
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[bin]]\n"
     "name = \"app\"\n"
@@ -224,19 +219,18 @@ TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies) {
     "registry-serialize.toml"
   );
 
-  const auto manifest = spio::LoadManifest(manifest_path);
+  const auto manifest = pafio::LoadManifest(manifest_path);
   EXPECT_EQ(
-    spio::SerializeManifestCanonical(manifest),
+    pafio::SerializeManifestCanonical(manifest),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[bin]]\n"
       "name = \"app\"\n"
@@ -249,14 +243,13 @@ TEST(ManifestTests, CanonicalSerializerEmitsRegistryDependencies) {
 
 TEST(ManifestTests, CanonicalSerializerSortsTestTargets) {
   const fs::path manifest_path = WriteTempToml(
-    "[spio]\n"
+    "[pafio]\n"
     "manifest-version = 1\n\n"
     "[package]\n"
     "name = \"acme/app\"\n"
     "version = \"0.1.0\"\n"
     "edition = \"2026\"\n\n"
-    "[toolchain]\n"
-    "channel = \"nightly\"\n"
+    "[build]\n"
     "implicit-std = true\n\n"
     "[[test]]\n"
     "name = \"zeta\"\n"
@@ -267,19 +260,18 @@ TEST(ManifestTests, CanonicalSerializerSortsTestTargets) {
     "unsorted-test-targets.toml"
   );
 
-  const auto manifest = spio::LoadManifest(manifest_path);
+  const auto manifest = pafio::LoadManifest(manifest_path);
   EXPECT_EQ(
-    spio::SerializeManifestCanonical(manifest),
+    pafio::SerializeManifestCanonical(manifest),
     std::string(
-      "[spio]\n"
+      "[pafio]\n"
       "manifest-version = 1\n\n"
       "[package]\n"
       "name = \"acme/app\"\n"
       "version = \"0.1.0\"\n"
       "edition = \"2026\"\n"
       "publish = false\n\n"
-      "[toolchain]\n"
-      "channel = \"nightly\"\n"
+      "[build]\n"
       "implicit-std = true\n\n"
       "[[test]]\n"
       "name = \"alpha\"\n"
@@ -292,24 +284,24 @@ TEST(ManifestTests, CanonicalSerializerSortsTestTargets) {
 }
 
 TEST(LockfileTests, LoadsBasicFixture) {
-  const auto lockfile = spio::LoadLockfile(FixturePath("tests/unit/fixtures/locks/ok-basic/spio.lock"));
+  const auto lockfile = pafio::LoadLockfile(FixturePath("tests/unit/fixtures/locks/ok-basic/pafio.lock"));
 
-  EXPECT_EQ(lockfile.generated_by, "spio 0.1.0-dev");
+  EXPECT_EQ(lockfile.generated_by, "pafio 0.1.0-dev");
   EXPECT_EQ(lockfile.resolver, "single-version-v1");
   ASSERT_EQ(lockfile.packages.size(), 1U);
   EXPECT_EQ(lockfile.packages[0].source_kind, "workspace");
 }
 
 TEST(LockfileTests, SerializesBasicFixtureCanonically) {
-  const fs::path fixture_path = FixturePath("tests/unit/fixtures/locks/ok-basic/spio.lock");
-  const auto lockfile = spio::LoadLockfile(fixture_path);
+  const fs::path fixture_path = FixturePath("tests/unit/fixtures/locks/ok-basic/pafio.lock");
+  const auto lockfile = pafio::LoadLockfile(fixture_path);
 
-  EXPECT_EQ(spio::SerializeLockfileCanonical(lockfile), ReadFile(fixture_path));
+  EXPECT_EQ(pafio::SerializeLockfileCanonical(lockfile), ReadFile(fixture_path));
 }
 
 TEST(LockfileTests, CanonicalSerializerSortsPackagesAndDependencies) {
-  const spio::LockfileDocument lockfile{
-    .generated_by = "spio 0.1.0-dev",
+  const pafio::LockfileDocument lockfile{
+    .generated_by = "pafio 0.1.0-dev",
     .resolver = "single-version-v1",
     .packages = {
       {
@@ -334,11 +326,11 @@ TEST(LockfileTests, CanonicalSerializerSortsPackagesAndDependencies) {
   };
 
   EXPECT_EQ(
-    spio::SerializeLockfileCanonical(lockfile),
+    pafio::SerializeLockfileCanonical(lockfile),
     std::string(
       "lock-version = 1\n\n"
       "[metadata]\n"
-      "generated-by = \"spio 0.1.0-dev\"\n"
+      "generated-by = \"pafio 0.1.0-dev\"\n"
       "resolver = \"single-version-v1\"\n\n"
       "[[package]]\n"
       "id = \"git:acme/a@0.1.0#abc123\"\n"
@@ -361,8 +353,8 @@ TEST(LockfileTests, CanonicalSerializerSortsPackagesAndDependencies) {
 }
 
 TEST(LockfileTests, CanonicalSerializerEscapesTomlControlCharacters) {
-  const spio::LockfileDocument lockfile{
-    .generated_by = "spio\tdev",
+  const pafio::LockfileDocument lockfile{
+    .generated_by = "pafio\tdev",
     .resolver = "single-version-v1",
     .packages = {
       {
@@ -377,12 +369,12 @@ TEST(LockfileTests, CanonicalSerializerEscapesTomlControlCharacters) {
     },
   };
 
-  const std::string serialized = spio::SerializeLockfileCanonical(lockfile);
-  EXPECT_NE(serialized.find("generated-by = \"spio\\tdev\""), std::string::npos);
+  const std::string serialized = pafio::SerializeLockfileCanonical(lockfile);
+  EXPECT_NE(serialized.find("generated-by = \"pafio\\tdev\""), std::string::npos);
   EXPECT_NE(serialized.find("rev = \"line1\\nline2\""), std::string::npos);
 
   const fs::path path = WriteTempToml(serialized, "escaped-lockfile.toml");
-  const spio::LockfileDocument reparsed = spio::LoadLockfile(path);
+  const pafio::LockfileDocument reparsed = pafio::LoadLockfile(path);
   EXPECT_EQ(reparsed.generated_by, lockfile.generated_by);
   ASSERT_EQ(reparsed.packages.size(), 1U);
   EXPECT_EQ(reparsed.packages[0].rev, lockfile.packages[0].rev);

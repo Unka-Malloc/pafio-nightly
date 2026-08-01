@@ -1,6 +1,6 @@
 {
   "forbidden_dirs": [
-    ".spio",
+    ".pafio",
     ".pytest_cache",
     "__pycache__",
     ".build",
@@ -18,11 +18,7 @@
     "venv",
     "node_modules",
     ".idea",
-    ".vscode",
-    "src-private",
-    "tests-private",
-    "docs-private",
-    "scripts-private"
+    ".vscode"
   ],
   "forbidden_file_names": [
     ".DS_Store"
@@ -44,7 +40,7 @@
     ".DS_Store",
     "__pycache__/",
     ".pytest_cache/",
-    ".spio/",
+    ".pafio/",
     ".build/",
     "build/",
     "build-codex/",
@@ -70,11 +66,7 @@
     "*.7z",
     "*.gz",
     "*.bz2",
-    "*.xz",
-    "src-private/",
-    "tests-private/",
-    "docs-private/",
-    "scripts-private/"
+    "*.xz"
   ],
   "required_delivery_paths": [
     "src",
@@ -89,7 +81,7 @@
     ".build/",
     "build/",
     "build-codex/",
-    ".spio/",
+    ".pafio/",
     "__pycache__/",
     ".pytest_cache/",
     ".cache/",
@@ -113,10 +105,6 @@
     "*.7z",
     "*.gz",
     "*.bz2",
-    "*.xz",
-    "src-private/",
-    "tests-private/",
-    "docs-private/",
-    "scripts-private/"
+    "*.xz"
   ]
 }

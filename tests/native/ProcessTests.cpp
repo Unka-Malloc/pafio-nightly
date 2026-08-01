@@ -7,14 +7,14 @@
 #include <fstream>
 #include <string>
 
-#include "SpioCore/AtomicFile.hpp"
-#include "SpioCore/FileLock.hpp"
-#include "SpioCore/Process.hpp"
+#include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/FileLock.hpp"
+#include "PafioCore/Process.hpp"
 
 using namespace std::chrono_literals;
 
 TEST(ProcessTests, CapturesStdoutAndStderrWithoutDeadlocking) {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "/bin/sh",
     .args = {
       "-c",
@@ -33,7 +33,7 @@ TEST(ProcessTests, CapturesStdoutAndStderrWithoutDeadlocking) {
 }
 
 TEST(ProcessTests, TimesOutAndTerminatesProcessGroup) {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "/bin/sh",
     .args = {"-c", "sleep 2"},
     .search_path = false,
@@ -48,7 +48,7 @@ TEST(ProcessTests, TimesOutAndTerminatesProcessGroup) {
 
 TEST(ProcessTests, TimesOutWhenChildKeepsProducingOutput) {
   const auto start = std::chrono::steady_clock::now();
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "python3",
     .args = {
       "-c",
@@ -74,7 +74,7 @@ TEST(ProcessTests, TimesOutWhenChildKeepsProducingOutput) {
 }
 
 TEST(ProcessTests, TracksSignalTermination) {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "/bin/sh",
     .args = {"-c", "kill -TERM $$"},
     .search_path = false,
@@ -88,7 +88,7 @@ TEST(ProcessTests, TracksSignalTermination) {
 }
 
 TEST(ProcessTests, MarksTruncatedOutput) {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "/bin/sh",
     .args = {
       "-c",
@@ -110,7 +110,7 @@ TEST(ProcessTests, MarksTruncatedOutput) {
 
 TEST(ProcessTests, StreamsLargeStdinWhileDrainingStdout) {
   const std::string stdin_text(1U << 18, 'i');
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "python3",
     .args = {
       "-c",
@@ -134,7 +134,7 @@ TEST(ProcessTests, StreamsLargeStdinWhileDrainingStdout) {
 }
 
 TEST(ProcessTests, ChildClosingStdinDoesNotTerminateParentWithSigpipe) {
-  const spio::ProcessResult result = spio::RunProcess({
+  const pafio::ProcessResult result = pafio::RunProcess({
     .program = "/bin/sh",
     .args = {"-c", "exit 0"},
     .search_path = false,
@@ -149,11 +149,11 @@ TEST(ProcessTests, ChildClosingStdinDoesNotTerminateParentWithSigpipe) {
 
 TEST(AtomicFileTests, SupportsAFileNameWithoutAParentDirectory) {
   const std::filesystem::path path =
-    "spio-atomic-relative-" + std::to_string(static_cast<long long>(getpid())) + ".tmp";
+    "pafio-atomic-relative-" + std::to_string(static_cast<long long>(getpid())) + ".tmp";
   std::error_code ignored;
   std::filesystem::remove(path, ignored);
 
-  ASSERT_NO_THROW(spio::AtomicWriteFile(path, "complete\n"));
+  ASSERT_NO_THROW(pafio::AtomicWriteFile(path, "complete\n"));
   std::ifstream input(path, std::ios::binary);
   ASSERT_TRUE(input);
   EXPECT_EQ(
@@ -166,20 +166,20 @@ TEST(AtomicFileTests, SupportsAFileNameWithoutAParentDirectory) {
 
 TEST(FileLockTests, MoveAssignmentReleasesThePreviouslyOwnedLock) {
   const std::filesystem::path root =
-    std::filesystem::temp_directory_path() / ("spio-file-lock-move-" + std::to_string(static_cast<long long>(getpid())));
+    std::filesystem::temp_directory_path() / ("pafio-file-lock-move-" + std::to_string(static_cast<long long>(getpid())));
   std::filesystem::create_directories(root);
 
-  spio::FileLockGuard first =
-    spio::AcquireFileLock(root / "first", spio::FileLockScope::kCache, 0ms);
-  spio::FileLockGuard second =
-    spio::AcquireFileLock(root / "second", spio::FileLockScope::kCache, 0ms);
+  pafio::FileLockGuard first =
+    pafio::AcquireFileLock(root / "first", pafio::FileLockScope::kCache, 0ms);
+  pafio::FileLockGuard second =
+    pafio::AcquireFileLock(root / "second", pafio::FileLockScope::kCache, 0ms);
   second = std::move(first);
 
   EXPECT_FALSE(static_cast<bool>(first));
   EXPECT_TRUE(static_cast<bool>(second));
   EXPECT_NO_THROW(
     static_cast<void>(
-      spio::AcquireFileLock(root / "second", spio::FileLockScope::kCache, 0ms)
+      pafio::AcquireFileLock(root / "second", pafio::FileLockScope::kCache, 0ms)
     )
   );
 

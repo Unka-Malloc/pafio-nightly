@@ -12,7 +12,7 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0")
 
-Install the Debian/Ubuntu packages required to build and test spio on a fresh
+Install the Debian/Ubuntu packages required to build and test pafio on a fresh
 Linux container or VM.
 
 Optional environment:
@@ -28,11 +28,11 @@ EOF
 }
 
 log() {
-  printf '[spio env] %s\n' "$*"
+  printf '[pafio env] %s\n' "$*"
 }
 
 fail() {
-  printf '[spio env] %s\n' "$*" >&2
+  printf '[pafio env] %s\n' "$*" >&2
   exit 1
 }
 
@@ -91,6 +91,7 @@ install_system_packages() {
     python3
     python3-pip
     python3-venv
+    rsync
   )
 
   log "installing system packages"
@@ -108,7 +109,7 @@ install_python_tooling() {
 print_summary() {
   cat <<EOF
 
-spio bootstrap complete.
+pafio bootstrap complete.
 
 Standardized baseline:
   Debian:        $DEBIAN_STANDARD_VERSION (trixie)

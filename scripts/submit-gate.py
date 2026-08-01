@@ -24,7 +24,6 @@ DEFAULT_FEATURE_CONFIG = ROOT / "scripts" / "submit-gate.features.json"
 DEFAULT_FEATURE_FLAGS = {
     "enable_release_profile": False,
     "enable_styio_compatibility": False,
-    "enable_cloud_registry_checks": False,
 }
 
 
@@ -56,7 +55,7 @@ def load_feature_flags(config_path: pathlib.Path) -> tuple[dict[str, bool], list
     flags = dict(DEFAULT_FEATURE_FLAGS)
     if not config_path.exists():
         warnings.append(
-            f"feature config not found ({config_path}); release/styio/cloud features are disabled by default"
+            f"feature config not found ({config_path}); release and Styio compatibility features are disabled by default"
         )
         return flags, warnings
 
@@ -64,12 +63,12 @@ def load_feature_flags(config_path: pathlib.Path) -> tuple[dict[str, bool], list
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         warnings.append(
-            f"feature config is invalid JSON ({config_path}); release/styio/cloud features remain disabled"
+            f"feature config is invalid JSON ({config_path}); release and Styio compatibility features remain disabled"
         )
         return flags, warnings
     if not isinstance(payload, dict):
         warnings.append(
-            f"feature config must be a JSON object ({config_path}); release/styio/cloud features remain disabled"
+            f"feature config must be a JSON object ({config_path}); release and Styio compatibility features remain disabled"
         )
         return flags, warnings
 
@@ -121,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--feature-config",
         type=pathlib.Path,
         default=DEFAULT_FEATURE_CONFIG,
-        help="feature-flag JSON for release/styio/cloud gates",
+        help="feature-flag JSON for release and Styio compatibility gates",
     )
     parser.add_argument("--json", action="store_true", help="emit machine-readable summary")
     return parser
@@ -151,8 +150,6 @@ def main(argv: list[str] | None = None) -> int:
         elif not args.styio_bin:
             warnings.append("release profile did not provide --styio-bin; skipping styio_compatibility")
 
-        if not feature_flags["enable_cloud_registry_checks"]:
-            warnings.append("cloud registry checks are disabled by feature flags")
     elif args.styio_bin:
         warnings.append("--styio-bin is ignored unless --profile release is used")
 

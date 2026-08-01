@@ -1,19 +1,17 @@
 # Operations Docs
 
-**Purpose:** Hold executable verification and migration procedures for `spio`.
+**Purpose:** Hold repository-local, client-side build, artifact, and delivery procedures.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-08-01
 
-## Scope
+This directory owns reproducible source-tree and release validation for Pafio.
+It does not contain registry-server, hosted execution, worker, compiler
+distribution, or cloud operations.
 
-- verification matrix
-- alpha release checklist
-- compile-cloud stress runbook
-- repository split runbook
-- registry server runbook
+Current operational entry:
 
-Private auth-bearing operational procedures must live under `docs-private/` and `scripts-private/`, not under this tracked directory.
+- [Pafio Artifact Lifecycle Runbook](./Pafio-Artifact-Lifecycle-Runbook.md)
+- [Pafio Platform-Independent Release Policy](../governance/Pafio-Version-Decoupling-Constraints.md#platform-independent-releases)
 
-## Maintenance Rule
-
-This module owns gate commands and operational procedure steps. It must reference governance for policy instead of redefining it.
+Product acceptance commands live with the active Better Plan so obsolete
+matrices do not outlive their implementation checkpoint.
