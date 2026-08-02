@@ -46,6 +46,11 @@ add_test(
 )
 
 add_test(
+  NAME pafio_cli_short_help
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" -h | grep -q '^pafio usage:'"
+)
+
+add_test(
   NAME pafio_cli_machine_info_rejects_unknown_flag
   COMMAND bash -c "out_file=\$(mktemp) && err_file=\$(mktemp) && trap 'rm -f \"\$out_file\" \"\$err_file\"' EXIT && ! \"$<TARGET_FILE:pafio>\" machine-info --bogus >\"\$out_file\" 2>\"\$err_file\" && grep -q 'machine-info accepts only --json' \"\$err_file\""
 )

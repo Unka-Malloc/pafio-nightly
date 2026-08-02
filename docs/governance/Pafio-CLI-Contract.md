@@ -7,7 +7,7 @@
 ## Commands
 
 ```text
-pafio [--help] [--version] [--json] <command> [arguments]
+pafio [-h|--help] [--version] [--json] <command> [arguments]
 
 new  init  doctor  metadata  add  remove  sync  tree
 check  build  run  test  vendor  pack  publish
