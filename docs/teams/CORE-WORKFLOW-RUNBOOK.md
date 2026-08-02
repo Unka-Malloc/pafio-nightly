@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-02
 
 ## Mission
 
@@ -29,6 +29,8 @@ installation or hosted execution.
 6. Exercise registry graph resolution with a minimal verified cache fixture.
    Do not revive filesystem publish or duplicate the Platform registry service
    to prepare repository-local tests.
+7. Keep the top-level `-h` and `--help` aliases equivalent and cover both forms
+   with executable CLI tests.
 
 ## Change Classes
 

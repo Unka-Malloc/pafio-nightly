@@ -163,7 +163,7 @@ int PrintGlobalHelp()
 {
   std::cout
       << "pafio usage:\n"
-      << "  pafio [--help] [--version] [--json] <command> [command-args...]\n\n"
+      << "  pafio [-h|--help] [--version] [--json] <command> [command-args...]\n\n"
       << "commands:\n"
       << "  machine-info [--json]\n"
       << "  doctor [--json] [--manifest-path <path>] [--styio-bin <path>]\n"

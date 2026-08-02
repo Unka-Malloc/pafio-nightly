@@ -122,7 +122,7 @@ int RunCli(const std::vector<std::string> &argv)
   size_t index = 0;
   while (index < argv.size())
   {
-    if (argv[index] == "--help")
+    if (argv[index] == "-h" || argv[index] == "--help")
     {
       if (index + 1 != argv.size())
       {

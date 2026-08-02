@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-02
 
 ## Mission
 
@@ -28,6 +28,8 @@ Styio.
 4. Treat diagnostics, receipts, and runtime events as Styio-owned payloads.
 5. Replay semantic checks from immutable owner commits before executing the
    Pafio, Styio, and Vityo product composition.
+6. Keep the global `-h` and `--help` spellings in the published CLI contract
+   aligned with Pafio's executable help surface.
 
 ## Change Classes
 

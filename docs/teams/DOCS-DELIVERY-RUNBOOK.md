@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-02
 
 ## Mission
 
@@ -44,6 +44,8 @@ the Better Plan workspace, and release evidence.
     branch promotion.
 12. Keep the fresh-host bootstrap aligned with every delivery tool used by CI,
     including `rsync` for extractability and exported-tree checks.
+13. Keep documented global help aliases aligned with executable CLI output and
+    its short-form regression test.
 
 ## Change Classes
 
