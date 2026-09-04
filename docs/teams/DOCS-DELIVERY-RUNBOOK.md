@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-08-02
+**Last updated:** 2026-09-04
 
 ## Mission
 
@@ -76,3 +76,8 @@ than duplicating their commands here.
 Record the affected owner contract, last passing focused gate, generated indexes
 still pending, and the exact revision that needs repair. Never include credentials,
 private machine paths, user information, or backend runtime payloads.
+
+2026-09-04: Added a single-purpose conditional handoff plan under
+`docs/external/for-styio/` and refreshed the generated indexes. The document
+records why no Pafio implementation is currently needed and defines the fixture
+evidence required before a separate delivery could be authorized.
