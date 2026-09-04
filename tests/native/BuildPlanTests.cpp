@@ -128,6 +128,86 @@ TEST(BuildPlanTests, EmitsObservableStaticSnapshotRequestOnlyWhenRequested)
       R"({"required_capabilities":[],"schema_version":1})");
 }
 
+TEST(BuildPlanTests, ObservableParentSnapshotPathIsEmittedOnlyWhenRequestedAndNeverChangesCacheKey)
+{
+  const fs::path root = MakeTempDir("observable-parent-snapshot");
+  WriteSingleBinProject(root);
+
+  const pafio::BuildPlanResult baseline = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+  });
+  EXPECT_EQ(
+      json::parse(baseline.plan_json)["emit"].dump(),
+      R"({"ast":false,"error_format":"jsonl","llvm_ir":false,"styio_ir":false})");
+
+  const pafio::BuildPlanResult without_parent = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+      .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+          .schema_version = 1,
+          .required_capabilities = {"alpha"},
+      },
+  });
+  EXPECT_FALSE(
+      json::parse(without_parent.plan_json)["emit"]["observable_static_snapshot"].contains("parent_snapshot_path"));
+
+  const fs::path absolute_parent =
+      CanonicalAbsolutePath(root / "previous" / "app.observable-static-snapshot.json");
+  const pafio::BuildPlanResult with_parent = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+      .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+          .schema_version = 1,
+          .required_capabilities = {"alpha"},
+          .parent_snapshot_path = root / "previous" / "." / "app.observable-static-snapshot.json",
+      },
+  });
+  EXPECT_EQ(with_parent.cache_key, without_parent.cache_key);
+  EXPECT_EQ(with_parent.build_root, without_parent.build_root);
+  EXPECT_NE(with_parent.cache_key, baseline.cache_key);
+
+  const json with_parent_request = json::parse(with_parent.plan_json)["emit"]["observable_static_snapshot"];
+  EXPECT_EQ(with_parent_request["schema_version"], 1);
+  EXPECT_EQ(with_parent_request["required_capabilities"].dump(), R"(["alpha"])");
+  EXPECT_EQ(with_parent_request["parent_snapshot_path"], absolute_parent.string());
+  EXPECT_EQ(
+      with_parent_request.dump(),
+      R"({"parent_snapshot_path":")" + absolute_parent.string() +
+          R"(","required_capabilities":["alpha"],"schema_version":1})");
+
+  const pafio::BuildPlanResult with_relative_parent = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+      .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+          .schema_version = 1,
+          .required_capabilities = {"alpha"},
+          .parent_snapshot_path = fs::path("previous/app.observable-static-snapshot.json"),
+      },
+  });
+  EXPECT_EQ(with_relative_parent.cache_key, without_parent.cache_key);
+  EXPECT_EQ(
+      json::parse(with_relative_parent.plan_json)["emit"]["observable_static_snapshot"]["parent_snapshot_path"],
+      absolute_parent.string());
+
+  const pafio::BuildPlanResult baseline_again = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+  });
+  EXPECT_EQ(baseline_again.plan_json, baseline.plan_json);
+
+  EXPECT_THROW(
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
+          .intent = "check",
+          .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+              .schema_version = 1,
+              .parent_snapshot_path = fs::path(),
+          },
+      }),
+      pafio::PlanError);
+}
+
 TEST(BuildPlanTests, RejectsMalformedObservableStaticSnapshotRequest)
 {
   const fs::path root = MakeTempDir("observable-static-snapshot-invalid");

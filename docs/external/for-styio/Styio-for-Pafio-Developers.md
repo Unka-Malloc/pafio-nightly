@@ -40,6 +40,11 @@ Optional compiler emissions are requested through the plan's `emit` object.
 `--emit-observable-static-snapshot[=<schema-version>]` with repeatable
 `--observable-capability <name>` adds `emit.observable_static_snapshot`; Styio
 owns its validation, the snapshot artifact, and the receipt entry that names it.
+`--observable-parent-snapshot <path>` (requires the emission flag) adds
+`emit.observable_static_snapshot.parent_snapshot_path`, a transport path to the
+previous snapshot that never affects the cache key; Styio decides whether it can
+write `<output-stem>.observable-delta.json` beside the snapshot or must record a
+`full_snapshot_required` reason in `<plan.build_root>/receipt.json`.
 Ordinary workflows never send the field.
 
 Contract changes must be implemented and tested by Styio first, then consumed

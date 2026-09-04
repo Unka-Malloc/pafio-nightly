@@ -63,3 +63,9 @@ handoff. Do not record local paths, credentials, or backend runtime data.
 `emit.observable_static_snapshot` to the compile plan. Plans without the flag
 stay byte-identical; focused coverage lives in `BuildPlanTests` and
 `BuildCliTests` plus the `pafio_cli_*_help` CTest entries.
+
+2026-09-05: The same commands accept `--observable-parent-snapshot <path>`
+(requires the emission flag), which only adds
+`emit.observable_static_snapshot.parent_snapshot_path`. The path stays out of
+the cache key so the build root does not change per run; the same test suites
+cover the flag, its usage errors, and the unchanged cache key.

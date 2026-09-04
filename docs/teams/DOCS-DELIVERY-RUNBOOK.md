@@ -86,3 +86,8 @@ evidence required before a separate delivery could be authorized.
 passthrough in the CLI contract, the compile-plan v1 contract README, and the
 Styio handoff docs, and refreshed the generated indexes. The consumer locates the
 Styio receipt and snapshot artifact through the existing `plan` envelope fields.
+
+2026-09-05: Documented the `--observable-parent-snapshot <path>` passthrough and
+the optional `parent_snapshot_path` field in the same contract and handoff docs,
+including that Styio emits `<output-stem>.observable-delta.json` or records a
+`full_snapshot_required` receipt reason, both found through `receipt.json`.

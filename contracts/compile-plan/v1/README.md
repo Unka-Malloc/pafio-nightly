@@ -19,6 +19,18 @@
   possibly empty). Pafio only forwards the request; Styio validates the schema
   version and capability names, publishes the snapshot artifact, and lists it in
   its receipt. Plans without the field are byte-identical to earlier `v1` output.
+- `emit.observable_static_snapshot.parent_snapshot_path` is an additive optional
+  string (minimum length 1) inside that object, present only when the caller also
+  passes `--observable-parent-snapshot <path>`. It is a transport input like
+  `workspace_root`, never identity: it names the previous snapshot artifact and
+  is written as an absolute, lexically normalized path (a relative value is
+  resolved against `workspace_root`). It does not enter the cache key, so a plan
+  with a parent shares its `outputs.build_root` with the same request without
+  one. Pafio does not check that the file exists. Styio owns the consequence:
+  with a readable, matching parent it also writes `<stem>.observable-delta.json`
+  next to `<stem>.observable-static-snapshot.json` and lists it in the receipt;
+  with an unreadable or mismatched parent it still publishes the snapshot and
+  records a `full_snapshot_required` reason in the receipt.
 
 ## Stability Rules
 

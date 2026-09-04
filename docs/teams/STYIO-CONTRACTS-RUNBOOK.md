@@ -67,3 +67,9 @@ object (`schema_version`, `required_capabilities`) to `compile-plan v1` as a
 pure emission passthrough for Styio PLAN-004. Pafio forwards the request only
 when a caller opts in; Styio validates it and lists the snapshot artifact in
 its receipt. The identity handoff above remains dormant.
+
+2026-09-05: Added the additive optional `parent_snapshot_path` string to that
+object for Styio stage S2 delta emission. It is a transport path, not identity,
+and is excluded from the cache key; Styio decides between writing
+`<output-stem>.observable-delta.json` and recording `full_snapshot_required` in
+its receipt. Pafio never reads the parent or the delta.

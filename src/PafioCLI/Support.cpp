@@ -53,7 +53,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "check",
-        "usage: pafio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n",
+        "usage: pafio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
     },
     UsageCommandEntry{
         "add",
@@ -77,15 +77,15 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "build",
-        "usage: pafio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n",
+        "usage: pafio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
     },
     UsageCommandEntry{
         "run",
-        "usage: pafio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n",
+        "usage: pafio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
     },
     UsageCommandEntry{
         "test",
-        "usage: pafio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n",
+        "usage: pafio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
     },
     UsageCommandEntry{
         "pack",
@@ -106,6 +106,7 @@ constexpr std::array kUsageCommands = {
 constexpr std::string_view kEmitObservableStaticSnapshotFlag = "--emit-observable-static-snapshot";
 constexpr std::string_view kEmitObservableStaticSnapshotFlagWithValue = "--emit-observable-static-snapshot=";
 constexpr std::string_view kObservableCapabilityFlag = "--observable-capability";
+constexpr std::string_view kObservableParentSnapshotFlag = "--observable-parent-snapshot";
 
 std::optional<int> ParseSchemaVersion(const std::string &value)
 {
@@ -198,15 +199,15 @@ int PrintGlobalHelp()
       << "  metadata --json [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
-      << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n"
+      << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
       << "  sync [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  tree [--manifest-path <path>]\n"
       << "  vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n"
-      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n"
-      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n"
-      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]\n"
+      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
+      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
+      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
       << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]\n"
       << "  registry trust import <descriptor-url|descriptor-file>\n"
@@ -348,6 +349,7 @@ std::optional<CommandError> ParsePlanInvocation(
   parsed = {};
   parsed.request.intent = std::string(intent);
   std::vector<std::string> observable_capabilities;
+  std::optional<std::string> observable_parent_snapshot;
 
   try
   {
@@ -455,6 +457,18 @@ std::optional<CommandError> ParsePlanInvocation(
         }
         observable_capabilities.push_back(args[index]);
       }
+      else if (args[index] == kObservableParentSnapshotFlag)
+      {
+        if (++index >= args.size())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kObservableParentSnapshotFlag) + " requires a value", std::string(command_name)};
+        }
+        if (args[index].empty())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kObservableParentSnapshotFlag) + " requires a non-empty path", std::string(command_name)};
+        }
+        observable_parent_snapshot = args[index];
+      }
       else if (ConsumeWorkflowFlag(args[index], parsed.workflow_flags))
       {
         continue;
@@ -484,6 +498,18 @@ std::optional<CommandError> ParsePlanInvocation(
         std::unique(observable_capabilities.begin(), observable_capabilities.end()),
         observable_capabilities.end());
     parsed.request.observable_static_snapshot->required_capabilities = std::move(observable_capabilities);
+  }
+
+  if (observable_parent_snapshot.has_value())
+  {
+    if (!parsed.request.observable_static_snapshot.has_value())
+    {
+      return CommandError{
+          "UsageError", kExitUsage,
+          std::string(kObservableParentSnapshotFlag) + " requires " + std::string(kEmitObservableStaticSnapshotFlag),
+          std::string(command_name)};
+    }
+    parsed.request.observable_static_snapshot->parent_snapshot_path = fs::path(*observable_parent_snapshot);
   }
 
   return std::nullopt;

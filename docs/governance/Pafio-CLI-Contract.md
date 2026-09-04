@@ -65,3 +65,24 @@ from the success envelope and follows the receipt's artifact list to the
 `<output-stem>.observable-static-snapshot.json` file under `plan.artifact_dir`.
 Pafio never mints snapshot identifiers, inspects snapshots, or adds identity
 fields for them.
+
+### Parent snapshot passthrough
+
+The same four commands accept `--observable-parent-snapshot <path>`, which
+requires `--emit-observable-static-snapshot` and adds
+`emit.observable_static_snapshot.parent_snapshot_path` to the compile plan. The
+value is a filesystem path to the previous snapshot artifact; Pafio passes it
+through as an absolute, lexically normalized path (a relative value is resolved
+against the plan's `workspace_root`), does not check that it exists, and keeps
+it out of the cache key, so the request lands in the same `plan.build_root` as
+the same request without a parent. The flag without the emission flag, a
+missing value, or an empty value is a `UsageError`.
+
+Styio owns the delta: with a readable, matching parent it writes
+`<output-stem>.observable-delta.json` next to
+`<output-stem>.observable-static-snapshot.json` and lists both in
+`<plan.build_root>/receipt.json`; with an unreadable or mismatched parent it
+still publishes the snapshot and records a `full_snapshot_required` reason in the
+receipt. An IDE consumer finds both artifacts, or the reason, through that
+receipt path from the success envelope. Pafio does not read the parent, the
+delta, or the reason.
