@@ -45,7 +45,15 @@ owns its validation, the snapshot artifact, and the receipt entry that names it.
 previous snapshot that never affects the cache key; Styio decides whether it can
 write `<output-stem>.observable-delta.json` beside the snapshot or must record a
 `full_snapshot_required` reason in `<plan.build_root>/receipt.json`.
-Ordinary workflows never send the field.
+`--emit-runtime-observation[=<version>]` (default `2`) with the optional
+`--runtime-observation-mode <disabled|aggregate|sampled|detailed>`, repeatable
+`--runtime-observation-capability <name>`,
+`--runtime-observation-lane-capacity <n>`, and
+`--runtime-observation-sampling <numerator>/<denominator>[@<seed>]` adds
+`emit.runtime_observation` for stage S3 runtime-events v2; Pafio emits only the
+fields the caller set, and Styio owns every default, the validation, the JSONL
+artifact under the receipt-named output stem, and the receipt entry that names it.
+Ordinary workflows never send either field.
 
 Contract changes must be implemented and tested by Styio first, then consumed
 by Pafio through a cross-repository interoperability fixture.

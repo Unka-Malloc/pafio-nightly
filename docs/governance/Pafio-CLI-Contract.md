@@ -86,3 +86,34 @@ still publishes the snapshot and records a `full_snapshot_required` reason in th
 receipt. An IDE consumer finds both artifacts, or the reason, through that
 receipt path from the success envelope. Pafio does not read the parent, the
 delta, or the reason.
+
+## Runtime observation passthrough
+
+`check`, `build`, `run`, and `test` accept the opt-in flag
+`--emit-runtime-observation[=<version>]` (default version `2`), which adds
+`emit.runtime_observation` with `version` to the compile plan for Styio stage S3
+runtime and scheduler correlation (runtime-events v2). Four secondary flags each
+add one field and are only accepted together with the emission flag:
+`--runtime-observation-mode <disabled|aggregate|sampled|detailed>` sets `mode`;
+the repeatable `--runtime-observation-capability <name>` fills the sorted, unique
+`required_capabilities`; `--runtime-observation-lane-capacity <n>` sets
+`lane_capacity`; and
+`--runtime-observation-sampling <numerator>/<denominator>[@<seed>]` sets
+`sampling` (`seed` is present only when given). Pafio emits only the fields the
+caller set and applies no defaults. A secondary flag without the emission flag,
+a non-positive or non-numeric version, an unknown mode, an empty capability
+name, a non-positive or non-numeric lane capacity, or a sampling value that is
+not two positive decimal integers separated by `/` with an optional
+`@<non-negative seed>` is a `UsageError`. The request enters the cache key, so
+an observed run gets its own `plan.build_root`; without the flag the compile
+plan is byte-identical to the ordinary plan.
+
+Styio owns the semantics: the supported version, the capability names, the
+default mode (`aggregate`), the power-of-two lane-capacity bounds and default
+(256 with 32 priority-reserved slots), the default sampling (1/16, seed 0), and
+the rejection of anything it does not support, which surfaces as the ordinary
+`CompilerError` workflow failure. Styio writes the runtime-events v2 JSONL
+artifact under the receipt-named output stem and lists it in
+`<plan.build_root>/receipt.json`; a consumer that requested observation reads
+that receipt from the success envelope to find it. Pafio never reads, filters,
+or republishes runtime events.

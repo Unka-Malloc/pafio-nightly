@@ -69,3 +69,12 @@ stay byte-identical; focused coverage lives in `BuildPlanTests` and
 `emit.observable_static_snapshot.parent_snapshot_path`. The path stays out of
 the cache key so the build root does not change per run; the same test suites
 cover the flag, its usage errors, and the unchanged cache key.
+
+2026-09-05: The same commands accept `--emit-runtime-observation[=<version>]`
+with the dependent `--runtime-observation-mode`,
+`--runtime-observation-capability`, `--runtime-observation-lane-capacity`, and
+`--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`, which only
+add `emit.runtime_observation` with the fields the caller set. The request enters
+the cache key so an observed run gets its own build root; plans without the flag
+stay byte-identical. The same test suites cover each flag, its dependency on the
+emission flag, and the strict value parsing.

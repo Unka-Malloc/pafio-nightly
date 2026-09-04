@@ -53,7 +53,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "check",
-        "usage: pafio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
+        "usage: pafio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n",
     },
     UsageCommandEntry{
         "add",
@@ -77,15 +77,15 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "build",
-        "usage: pafio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
+        "usage: pafio build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n",
     },
     UsageCommandEntry{
         "run",
-        "usage: pafio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
+        "usage: pafio run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n",
     },
     UsageCommandEntry{
         "test",
-        "usage: pafio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n",
+        "usage: pafio test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n",
     },
     UsageCommandEntry{
         "pack",
@@ -107,8 +107,16 @@ constexpr std::string_view kEmitObservableStaticSnapshotFlag = "--emit-observabl
 constexpr std::string_view kEmitObservableStaticSnapshotFlagWithValue = "--emit-observable-static-snapshot=";
 constexpr std::string_view kObservableCapabilityFlag = "--observable-capability";
 constexpr std::string_view kObservableParentSnapshotFlag = "--observable-parent-snapshot";
+constexpr std::string_view kEmitRuntimeObservationFlag = "--emit-runtime-observation";
+constexpr std::string_view kEmitRuntimeObservationFlagWithValue = "--emit-runtime-observation=";
+constexpr std::string_view kRuntimeObservationModeFlag = "--runtime-observation-mode";
+constexpr std::string_view kRuntimeObservationCapabilityFlag = "--runtime-observation-capability";
+constexpr std::string_view kRuntimeObservationLaneCapacityFlag = "--runtime-observation-lane-capacity";
+constexpr std::string_view kRuntimeObservationSamplingFlag = "--runtime-observation-sampling";
+constexpr std::array<std::string_view, 4> kRuntimeObservationModes = {"disabled", "aggregate", "sampled", "detailed"};
 
-std::optional<int> ParseSchemaVersion(const std::string &value)
+// Strict decimal parse: digits only, at most nine of them, no sign, no blanks.
+std::optional<int> ParseNonNegativeInt(std::string_view value)
 {
   if (value.empty() || value.size() > 9)
   {
@@ -123,11 +131,59 @@ std::optional<int> ParseSchemaVersion(const std::string &value)
     }
     parsed = parsed * 10 + (ch - '0');
   }
-  if (parsed < 1)
+  return parsed;
+}
+
+std::optional<int> ParsePositiveInt(std::string_view value)
+{
+  const std::optional<int> parsed = ParseNonNegativeInt(value);
+  if (!parsed.has_value() || *parsed < 1)
   {
     return std::nullopt;
   }
   return parsed;
+}
+
+std::optional<int> ParseSchemaVersion(const std::string &value)
+{
+  return ParsePositiveInt(value);
+}
+
+// <numerator>/<denominator>[@<seed>]; every part is a strict decimal integer.
+std::optional<RuntimeObservationSampling> ParseRuntimeObservationSampling(std::string_view value)
+{
+  const size_t slash = value.find('/');
+  if (slash == std::string_view::npos)
+  {
+    return std::nullopt;
+  }
+  const std::optional<int> numerator = ParsePositiveInt(value.substr(0, slash));
+  if (!numerator.has_value())
+  {
+    return std::nullopt;
+  }
+  std::string_view rest = value.substr(slash + 1);
+  std::optional<long long> seed;
+  if (const size_t at = rest.find('@'); at != std::string_view::npos)
+  {
+    const std::optional<int> parsed_seed = ParseNonNegativeInt(rest.substr(at + 1));
+    if (!parsed_seed.has_value())
+    {
+      return std::nullopt;
+    }
+    seed = *parsed_seed;
+    rest = rest.substr(0, at);
+  }
+  const std::optional<int> denominator = ParsePositiveInt(rest);
+  if (!denominator.has_value())
+  {
+    return std::nullopt;
+  }
+  RuntimeObservationSampling sampling;
+  sampling.numerator = *numerator;
+  sampling.denominator = *denominator;
+  sampling.seed = seed;
+  return sampling;
 }
 
 const UsageCommandEntry *FindUsageCommandEntry(std::string_view command)
@@ -199,15 +255,15 @@ int PrintGlobalHelp()
       << "  metadata --json [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  new <package-name> [directory] [--lib|--bin]\n"
       << "  init [--name <package-name>] [--lib|--bin]\n"
-      << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
+      << "  check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
       << "  add <package-name> (--path <path> | --git <source> --rev <rev> | --registry <url> --version <x.y.z>) [--alias <name>] [--dev] [--manifest-path <path>]\n"
       << "  remove <alias-or-package> [--dev] [--manifest-path <path>]\n"
       << "  sync [--manifest-path <path>] [--locked|--offline|--frozen]\n"
       << "  tree [--manifest-path <path>]\n"
       << "  vendor [--manifest-path <path>] [--output <path>] [--locked|--offline|--frozen]\n"
-      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
-      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
-      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>]\n"
+      << "  build [--manifest-path <path>] [--package <package-name>] [--bin <name>|--lib] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
+      << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
+      << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
       << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]\n"
       << "  registry trust import <descriptor-url|descriptor-file>\n"
@@ -350,6 +406,10 @@ std::optional<CommandError> ParsePlanInvocation(
   parsed.request.intent = std::string(intent);
   std::vector<std::string> observable_capabilities;
   std::optional<std::string> observable_parent_snapshot;
+  std::optional<std::string> runtime_observation_mode;
+  std::vector<std::string> runtime_observation_capabilities;
+  std::optional<int> runtime_observation_lane_capacity;
+  std::optional<RuntimeObservationSampling> runtime_observation_sampling;
 
   try
   {
@@ -469,6 +529,87 @@ std::optional<CommandError> ParsePlanInvocation(
         }
         observable_parent_snapshot = args[index];
       }
+      else if (args[index] == kEmitRuntimeObservationFlag || args[index].starts_with(kEmitRuntimeObservationFlagWithValue))
+      {
+        RuntimeObservationRequest observation;
+        if (parsed.request.runtime_observation.has_value())
+        {
+          observation = *parsed.request.runtime_observation;
+        }
+        if (args[index] != kEmitRuntimeObservationFlag)
+        {
+          const std::string value = args[index].substr(kEmitRuntimeObservationFlagWithValue.size());
+          const std::optional<int> version = ParsePositiveInt(value);
+          if (!version.has_value())
+          {
+            return CommandError{
+                "UsageError", kExitUsage,
+                std::string(kEmitRuntimeObservationFlag) + " requires a positive integer version, got: " + value,
+                std::string(command_name)};
+          }
+          observation.version = *version;
+        }
+        parsed.request.runtime_observation = std::move(observation);
+      }
+      else if (args[index] == kRuntimeObservationModeFlag)
+      {
+        if (++index >= args.size())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kRuntimeObservationModeFlag) + " requires a value", std::string(command_name)};
+        }
+        if (std::find(kRuntimeObservationModes.begin(), kRuntimeObservationModes.end(), args[index]) == kRuntimeObservationModes.end())
+        {
+          return CommandError{
+              "UsageError", kExitUsage,
+              std::string(kRuntimeObservationModeFlag) + " requires one of disabled|aggregate|sampled|detailed, got: " + args[index],
+              std::string(command_name)};
+        }
+        runtime_observation_mode = args[index];
+      }
+      else if (args[index] == kRuntimeObservationCapabilityFlag)
+      {
+        if (++index >= args.size())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kRuntimeObservationCapabilityFlag) + " requires a value", std::string(command_name)};
+        }
+        if (args[index].empty())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kRuntimeObservationCapabilityFlag) + " requires a non-empty capability name", std::string(command_name)};
+        }
+        runtime_observation_capabilities.push_back(args[index]);
+      }
+      else if (args[index] == kRuntimeObservationLaneCapacityFlag)
+      {
+        if (++index >= args.size())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kRuntimeObservationLaneCapacityFlag) + " requires a value", std::string(command_name)};
+        }
+        const std::optional<int> lane_capacity = ParsePositiveInt(args[index]);
+        if (!lane_capacity.has_value())
+        {
+          return CommandError{
+              "UsageError", kExitUsage,
+              std::string(kRuntimeObservationLaneCapacityFlag) + " requires a positive integer, got: " + args[index],
+              std::string(command_name)};
+        }
+        runtime_observation_lane_capacity = *lane_capacity;
+      }
+      else if (args[index] == kRuntimeObservationSamplingFlag)
+      {
+        if (++index >= args.size())
+        {
+          return CommandError{"UsageError", kExitUsage, std::string(kRuntimeObservationSamplingFlag) + " requires a value", std::string(command_name)};
+        }
+        const std::optional<RuntimeObservationSampling> sampling = ParseRuntimeObservationSampling(args[index]);
+        if (!sampling.has_value())
+        {
+          return CommandError{
+              "UsageError", kExitUsage,
+              std::string(kRuntimeObservationSamplingFlag) + " requires <numerator>/<denominator>[@<seed>] with positive integers, got: " + args[index],
+              std::string(command_name)};
+        }
+        runtime_observation_sampling = sampling;
+      }
       else if (ConsumeWorkflowFlag(args[index], parsed.workflow_flags))
       {
         continue;
@@ -510,6 +651,57 @@ std::optional<CommandError> ParsePlanInvocation(
           std::string(command_name)};
     }
     parsed.request.observable_static_snapshot->parent_snapshot_path = fs::path(*observable_parent_snapshot);
+  }
+
+  const auto require_runtime_observation = [&](std::string_view flag) -> std::optional<CommandError> {
+    if (parsed.request.runtime_observation.has_value())
+    {
+      return std::nullopt;
+    }
+    return CommandError{
+        "UsageError", kExitUsage,
+        std::string(flag) + " requires " + std::string(kEmitRuntimeObservationFlag),
+        std::string(command_name)};
+  };
+
+  if (runtime_observation_mode.has_value())
+  {
+    if (auto error = require_runtime_observation(kRuntimeObservationModeFlag))
+    {
+      return error;
+    }
+    parsed.request.runtime_observation->mode = std::move(runtime_observation_mode);
+  }
+
+  if (!runtime_observation_capabilities.empty())
+  {
+    if (auto error = require_runtime_observation(kRuntimeObservationCapabilityFlag))
+    {
+      return error;
+    }
+    std::sort(runtime_observation_capabilities.begin(), runtime_observation_capabilities.end());
+    runtime_observation_capabilities.erase(
+        std::unique(runtime_observation_capabilities.begin(), runtime_observation_capabilities.end()),
+        runtime_observation_capabilities.end());
+    parsed.request.runtime_observation->required_capabilities = std::move(runtime_observation_capabilities);
+  }
+
+  if (runtime_observation_lane_capacity.has_value())
+  {
+    if (auto error = require_runtime_observation(kRuntimeObservationLaneCapacityFlag))
+    {
+      return error;
+    }
+    parsed.request.runtime_observation->lane_capacity = runtime_observation_lane_capacity;
+  }
+
+  if (runtime_observation_sampling.has_value())
+  {
+    if (auto error = require_runtime_observation(kRuntimeObservationSamplingFlag))
+    {
+      return error;
+    }
+    parsed.request.runtime_observation->sampling = runtime_observation_sampling;
   }
 
   return std::nullopt;

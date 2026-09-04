@@ -73,3 +73,11 @@ object for Styio stage S2 delta emission. It is a transport path, not identity,
 and is excluded from the cache key; Styio decides between writing
 `<output-stem>.observable-delta.json` and recording `full_snapshot_required` in
 its receipt. Pafio never reads the parent or the delta.
+
+2026-09-05: Added the additive optional `emit.runtime_observation` object
+(`version` plus caller-set `mode`, `required_capabilities`, `lane_capacity`,
+`priority_reserved`, `producer_lanes`, `sampling`) to `compile-plan v1` as a
+pure passthrough for Styio stage S3 runtime-events v2. Pafio applies no defaults;
+Styio owns the version, capability, bound, and sampling validation, writes the
+receipt-named runtime-events JSONL artifact, and lists it in its receipt. Pafio
+never reads runtime events.

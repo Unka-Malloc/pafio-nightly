@@ -20,6 +20,26 @@ struct ObservableStaticSnapshotRequest
   std::optional<std::filesystem::path> parent_snapshot_path;
 };
 
+struct RuntimeObservationSampling
+{
+  int numerator = 1;
+  int denominator = 16;
+  std::optional<long long> seed;
+};
+
+// Styio stage S3 runtime-events request. Pafio only forwards the fields the
+// caller set; Styio applies its own defaults and validates every value.
+struct RuntimeObservationRequest
+{
+  int version = 2;
+  std::optional<std::string> mode;
+  std::vector<std::string> required_capabilities;
+  std::optional<int> lane_capacity;
+  std::optional<int> priority_reserved;
+  std::optional<int> producer_lanes;
+  std::optional<RuntimeObservationSampling> sampling;
+};
+
 struct BuildPlanRequest
 {
   std::filesystem::path manifest_path = "pafio.toml";
@@ -34,6 +54,7 @@ struct BuildPlanRequest
   bool offline = false;
   std::optional<std::filesystem::path> vendor_root;
   std::optional<ObservableStaticSnapshotRequest> observable_static_snapshot;
+  std::optional<RuntimeObservationRequest> runtime_observation;
 };
 
 struct BuildPlanResult

@@ -31,6 +31,26 @@
   next to `<stem>.observable-static-snapshot.json` and lists it in the receipt;
   with an unreadable or mismatched parent it still publishes the snapshot and
   records a `full_snapshot_required` reason in the receipt.
+- `emit.runtime_observation` is an additive optional object in `v1` for Styio
+  stage S3 runtime and scheduler correlation (runtime-events v2). It is absent
+  unless a caller opts in through the `check`, `build`, `run`, or `test` flag
+  `--emit-runtime-observation[=<version>]`; then it carries `version` (integer,
+  minimum 1, default 2) plus only the fields the caller set: `mode` (one of
+  `disabled`, `aggregate`, `sampled`, `detailed`, from
+  `--runtime-observation-mode`), `required_capabilities` (sorted, unique strings
+  from repeated `--runtime-observation-capability <name>`), `lane_capacity`
+  (positive integer from `--runtime-observation-lane-capacity <n>`),
+  `priority_reserved` and `producer_lanes` (positive integers, library-only),
+  and `sampling` (`{numerator, denominator[, seed]}` from
+  `--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`). Pafio
+  only forwards the request and applies no defaults; Styio owns every default
+  (mode `aggregate`, capacity 256 with 32 reserved, sampling 1/16 seed 0), the
+  supported version, the capability names, the power-of-two capacity bounds, and
+  the sampling ratio, and rejects anything else before execution. The request is
+  part of the cache key, so an observed run gets its own `outputs.build_root`;
+  plans without the field are byte-identical to earlier `v1` output. Styio writes
+  the runtime-events v2 JSONL artifact under the receipt-named output stem and
+  lists it in `<plan.build_root>/receipt.json`; Pafio does not read it.
 
 ## Stability Rules
 

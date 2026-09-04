@@ -5,6 +5,7 @@
 #include "PafioResolve/Resolver.hpp"
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -622,6 +623,114 @@ fs::path NormalizeParentSnapshotPath(const fs::path &parent_snapshot_path, const
   return (workspace_root / parent_snapshot_path).lexically_normal();
 }
 
+constexpr std::array<std::string_view, 4> kRuntimeObservationModes = {"disabled", "aggregate", "sampled", "detailed"};
+
+std::vector<std::string> NormalizeRuntimeObservationCapabilities(const std::vector<std::string> &capabilities)
+{
+  std::vector<std::string> normalized = capabilities;
+  for (const std::string &capability : normalized)
+  {
+    if (capability.empty())
+    {
+      throw pafio::PlanError("runtime observation required capability names must not be empty");
+    }
+  }
+  std::sort(normalized.begin(), normalized.end());
+  normalized.erase(std::unique(normalized.begin(), normalized.end()), normalized.end());
+  return normalized;
+}
+
+void ValidateRuntimeObservationRequest(const pafio::RuntimeObservationRequest &observation)
+{
+  if (observation.version < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation version must be a positive integer: " + std::to_string(observation.version));
+  }
+  if (observation.mode.has_value() &&
+      std::find(kRuntimeObservationModes.begin(), kRuntimeObservationModes.end(), *observation.mode) ==
+          kRuntimeObservationModes.end())
+  {
+    throw pafio::PlanError("runtime observation mode must be one of disabled|aggregate|sampled|detailed: " + *observation.mode);
+  }
+  if (observation.lane_capacity.has_value() && *observation.lane_capacity < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation lane_capacity must be a positive integer: " + std::to_string(*observation.lane_capacity));
+  }
+  if (observation.priority_reserved.has_value() && *observation.priority_reserved < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation priority_reserved must be a positive integer: " +
+        std::to_string(*observation.priority_reserved));
+  }
+  if (observation.producer_lanes.has_value() && *observation.producer_lanes < 1)
+  {
+    throw pafio::PlanError(
+        "runtime observation producer_lanes must be a positive integer: " + std::to_string(*observation.producer_lanes));
+  }
+  if (observation.sampling.has_value())
+  {
+    const pafio::RuntimeObservationSampling &sampling = *observation.sampling;
+    if (sampling.numerator < 1)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling numerator must be a positive integer: " + std::to_string(sampling.numerator));
+    }
+    if (sampling.denominator < 1)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling denominator must be a positive integer: " +
+          std::to_string(sampling.denominator));
+    }
+    if (sampling.seed.has_value() && *sampling.seed < 0)
+    {
+      throw pafio::PlanError(
+          "runtime observation sampling seed must not be negative: " + std::to_string(*sampling.seed));
+    }
+  }
+}
+
+// Only the fields the caller set are written; Styio owns every default.
+json BuildRuntimeObservationJson(const pafio::RuntimeObservationRequest &observation)
+{
+  ValidateRuntimeObservationRequest(observation);
+  json request{{"version", observation.version}};
+  if (observation.mode.has_value())
+  {
+    request["mode"] = *observation.mode;
+  }
+  if (!observation.required_capabilities.empty())
+  {
+    request["required_capabilities"] = NormalizeRuntimeObservationCapabilities(observation.required_capabilities);
+  }
+  if (observation.lane_capacity.has_value())
+  {
+    request["lane_capacity"] = *observation.lane_capacity;
+  }
+  if (observation.priority_reserved.has_value())
+  {
+    request["priority_reserved"] = *observation.priority_reserved;
+  }
+  if (observation.producer_lanes.has_value())
+  {
+    request["producer_lanes"] = *observation.producer_lanes;
+  }
+  if (observation.sampling.has_value())
+  {
+    json sampling{
+        {"numerator", observation.sampling->numerator},
+        {"denominator", observation.sampling->denominator},
+    };
+    if (observation.sampling->seed.has_value())
+    {
+      sampling["seed"] = *observation.sampling->seed;
+    }
+    request["sampling"] = std::move(sampling);
+  }
+  return request;
+}
+
 json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &workspace_root)
 {
   json emit{
@@ -650,7 +759,22 @@ json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &works
     }
     emit["observable_static_snapshot"] = std::move(snapshot_request);
   }
+  if (request.runtime_observation.has_value())
+  {
+    emit["runtime_observation"] = BuildRuntimeObservationJson(*request.runtime_observation);
+  }
   return emit;
+}
+
+// An observed run gets its own build root; the compact dump of the emitted
+// request is stable because nlohmann::json orders object keys.
+std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &request)
+{
+  if (!request.runtime_observation.has_value())
+  {
+    return "";
+  }
+  return ";runtime-observation=" + BuildRuntimeObservationJson(*request.runtime_observation).dump();
 }
 
 // The parent snapshot path is deliberately excluded: it changes on every run and
@@ -714,7 +838,8 @@ BuildPlanResult WriteBuildCompilePlan(
       ";profile=" + profile.name +
       ";target=" + entry_package.id + ":" + entry_target.kind + ":" + entry_target.name +
       ";source=" + source_hash +
-      ObservableStaticSnapshotCacheMaterial(request);
+      ObservableStaticSnapshotCacheMaterial(request) +
+      RuntimeObservationCacheMaterial(request);
   const std::string cache_key = Hex64(Fnv1a64(cache_material));
 
   const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
