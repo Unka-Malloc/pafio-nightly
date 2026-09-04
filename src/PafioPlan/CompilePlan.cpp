@@ -594,6 +594,57 @@ json BuildPackageJson(const pafio::ResolvedPackage &package)
   return record;
 }
 
+std::vector<std::string> NormalizeRequiredCapabilities(const std::vector<std::string> &capabilities)
+{
+  std::vector<std::string> normalized = capabilities;
+  for (const std::string &capability : normalized)
+  {
+    if (capability.empty())
+    {
+      throw pafio::PlanError("observable static snapshot required capability names must not be empty");
+    }
+  }
+  std::sort(normalized.begin(), normalized.end());
+  normalized.erase(std::unique(normalized.begin(), normalized.end()), normalized.end());
+  return normalized;
+}
+
+json BuildEmitJson(const pafio::BuildPlanRequest &request)
+{
+  json emit{
+      {"error_format", "jsonl"},
+      {"ast", false},
+      {"styio_ir", false},
+      {"llvm_ir", false},
+  };
+  if (request.observable_static_snapshot.has_value())
+  {
+    const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
+    if (snapshot.schema_version < 1)
+    {
+      throw pafio::PlanError(
+          "observable static snapshot schema_version must be a positive integer: " +
+          std::to_string(snapshot.schema_version));
+    }
+    emit["observable_static_snapshot"] = {
+        {"schema_version", snapshot.schema_version},
+        {"required_capabilities", NormalizeRequiredCapabilities(snapshot.required_capabilities)},
+    };
+  }
+  return emit;
+}
+
+std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest &request)
+{
+  if (!request.observable_static_snapshot.has_value())
+  {
+    return "";
+  }
+  const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
+  return ";observable-static-snapshot=" + std::to_string(snapshot.schema_version) + ":" +
+         Join(NormalizeRequiredCapabilities(snapshot.required_capabilities), ",");
+}
+
 }  // namespace
 
 namespace pafio
@@ -641,7 +692,8 @@ BuildPlanResult WriteBuildCompilePlan(
       ";edition=" + entry_package.package.edition +
       ";profile=" + profile.name +
       ";target=" + entry_package.id + ":" + entry_target.kind + ":" + entry_target.name +
-      ";source=" + source_hash;
+      ";source=" + source_hash +
+      ObservableStaticSnapshotCacheMaterial(request);
   const std::string cache_key = Hex64(Fnv1a64(cache_material));
 
   const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
@@ -692,12 +744,7 @@ BuildPlanResult WriteBuildCompilePlan(
                       {"artifact_dir", artifact_dir.string()},
                       {"diag_dir", diag_dir.string()},
                   }},
-      {"emit", {
-                   {"error_format", "jsonl"},
-                   {"ast", false},
-                   {"styio_ir", false},
-                   {"llvm_ir", false},
-               }},
+      {"emit", BuildEmitJson(request)},
   };
 
   fs::create_directories(artifact_dir);

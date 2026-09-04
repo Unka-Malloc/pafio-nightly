@@ -213,6 +213,9 @@
         },
         "llvm_ir": {
           "type": "boolean"
+        },
+        "observable_static_snapshot": {
+          "$ref": "#/$defs/observableStaticSnapshotRequest"
         }
       }
     }
@@ -221,6 +224,28 @@
     "absolutePath": {
       "type": "string",
       "pattern": "^/"
+    },
+    "observableStaticSnapshotRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "required_capabilities"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     },
     "binTarget": {
       "type": "object",

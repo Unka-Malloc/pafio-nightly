@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-08-02
+**Last updated:** 2026-09-05
 
 ## Mission
 
@@ -56,3 +56,10 @@ Docs / Delivery reviews public surface changes.
 
 Record the affected transaction, last passing focused test, and remaining owner
 handoff. Do not record local paths, credentials, or backend runtime data.
+
+2026-09-05: `check`, `build`, `run`, and `test` accept the opt-in
+`--emit-observable-static-snapshot[=<schema-version>]` and repeatable
+`--observable-capability <name>` flags, which only add
+`emit.observable_static_snapshot` to the compile plan. Plans without the flag
+stay byte-identical; focused coverage lives in `BuildPlanTests` and
+`BuildCliTests` plus the `pafio_cli_*_help` CTest entries.
