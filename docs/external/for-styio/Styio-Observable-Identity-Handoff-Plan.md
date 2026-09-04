@@ -1,0 +1,77 @@
+# Styio Observable Identity Handoff Plan
+
+**Purpose:** Record the conditional Pafio handoff for Styio observable-language identity without scheduling premature package-manager work.
+
+**Last updated:** 2026-09-04
+
+**Status:** Conditional, not authorized, not started, and dormant unless the activation gate in this document is met.
+
+## 1. Current Decision
+
+No Pafio implementation stage is required for Styio's first public observable topology snapshot.
+
+The published `compile-plan v1` already provides the candidate identity inputs needed by the compiler:
+
+1. `packages[].id` and `packages[].name`,
+2. each package's `root_dir` and declared targets,
+3. `entry.package_id`, `entry.target_kind`, `entry.target_name`, and `entry.file`.
+
+Styio should first derive its public logical identity from the published package name together with the selected target or entry path relative to the matching package root. Absolute `workspace_root`, `root_dir`, `manifest_path`, and entry-file paths are transport inputs only; they must never be serialized as persistent project or semantic identity. Content hashes, local cache keys, and compiler object IDs are also not substitutes for public logical identity.
+
+A direct single-file compilation that has no package contract remains anonymous. Pafio must not fabricate a package identity for it.
+
+## 2. Ownership Boundary
+
+Pafio owns package, workspace, dependency, target-selection, and compile-plan production semantics. Styio owns semantic snapshot, node, site, runtime-correlation, evidence, and completeness semantics.
+
+Pafio must not:
+
+1. mint semantic node, edge, site, instance, snapshot, or runtime-event identifiers,
+2. inspect compiler AST, IR, Sema, source content, or observable snapshots,
+3. turn machine-local absolute paths into durable public identifiers,
+4. add fields solely because an unapproved Styio plan mentions them,
+5. make observable-language support a requirement for ordinary build, check, run, or test workflows.
+
+The upstream delivery reference is `styio-nightly:docs/plan/observable-static-snapshot/Plan.md` (PLAN-004). That plan and the long-term evolution attachment are planning inputs, not authority to change Pafio.
+
+## 3. Activation Gate
+
+This handoff may be activated only if accepted PLAN-004 producer fixtures prove that `packages[].name` plus the package-relative selected target or entry path cannot distinguish two valid compile-plan inputs that require different persistent logical identities.
+
+The evidence must include:
+
+1. a minimal pair of valid `compile-plan v1` fixtures,
+2. the exact identity collision or ambiguity,
+3. why target kind/name and package-relative path do not resolve it,
+4. a privacy review showing why the missing discriminator is safe to publish,
+5. a consumer test demonstrating that the ambiguity cannot be solved inside Styio without guessing Pafio semantics.
+
+Absent all five items, this plan remains dormant and no Pafio code or schema changes are justified.
+
+## 4. Conditional Delivery If Activated
+
+If the activation gate is met, create a separate authorized Pafio delivery plan with the smallest additive contract change that resolves the proven ambiguity:
+
+1. define one package-manager-owned logical discriminator with explicit stability and privacy semantics,
+2. publish it in a new compile-plan contract version or an additive field allowed by the current compatibility policy,
+3. provide producer fixtures for workspace, path, git, registry, builtin, and renamed/moved package cases that are actually affected,
+4. update the Styio black-box consumer gate against those fixtures,
+5. advertise support through existing capability/version negotiation,
+6. preserve `compile-plan v1` behavior for consumers that do not negotiate the extension.
+
+The change must not introduce semantic identifiers, source-content hashes, machine paths, hidden resolver state, or a second project graph protocol.
+
+## 5. Acceptance Conditions
+
+The conditional delivery is complete only when:
+
+1. the originally ambiguous fixtures produce distinct, stable logical package identities,
+2. equivalent projects in different absolute locations produce the same logical identity,
+3. ordinary compile-plan consumers remain compatible,
+4. unsupported versions fail explicitly rather than being guessed,
+5. Styio consumes the published field through the process boundary only,
+6. no compiler-private or package-manager-private state crosses the contract.
+
+## 6. Review Point
+
+Review this dormant plan when PLAN-004 freezes its first candidate identity fixtures. Do not review it merely because PLAN-004 is drafted, ready, or authorized; only concrete fixture evidence can activate Pafio work.

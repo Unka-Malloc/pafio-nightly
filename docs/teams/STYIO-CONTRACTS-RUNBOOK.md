@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-08-02
+**Last updated:** 2026-09-04
 
 ## Mission
 
@@ -54,3 +54,10 @@ and interoperability fixture. Docs / Delivery reviews public wording.
 
 Record contract versions, required capabilities, stable failure code, and the
 owner repository that must act next.
+
+2026-09-04: Recorded a dormant observable-identity handoff for Styio. Existing
+`compile-plan v1` package names, target selection, and package-relative entry
+paths are the first identity inputs; absolute paths and semantic identifiers
+remain outside Pafio ownership. No schema, capability, fixture, or executable
+change is scheduled unless accepted Styio snapshot fixtures prove a concrete
+ambiguity.
