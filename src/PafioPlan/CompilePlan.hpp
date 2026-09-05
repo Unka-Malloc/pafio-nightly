@@ -15,6 +15,9 @@ struct ObservableStaticSnapshotRequest
 {
   int schema_version = 1;
   std::vector<std::string> required_capabilities;
+  // Transport input only: names the previous snapshot artifact so Styio can emit
+  // a delta next to the new snapshot. Never part of the cache key.
+  std::optional<std::filesystem::path> parent_snapshot_path;
 };
 
 struct BuildPlanRequest

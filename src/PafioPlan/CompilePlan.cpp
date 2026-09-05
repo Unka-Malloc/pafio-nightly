@@ -609,7 +609,20 @@ std::vector<std::string> NormalizeRequiredCapabilities(const std::vector<std::st
   return normalized;
 }
 
-json BuildEmitJson(const pafio::BuildPlanRequest &request)
+fs::path NormalizeParentSnapshotPath(const fs::path &parent_snapshot_path, const fs::path &workspace_root)
+{
+  if (parent_snapshot_path.empty())
+  {
+    throw pafio::PlanError("observable static snapshot parent_snapshot_path must not be empty");
+  }
+  if (parent_snapshot_path.is_absolute())
+  {
+    return parent_snapshot_path.lexically_normal();
+  }
+  return (workspace_root / parent_snapshot_path).lexically_normal();
+}
+
+json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &workspace_root)
 {
   json emit{
       {"error_format", "jsonl"},
@@ -626,14 +639,22 @@ json BuildEmitJson(const pafio::BuildPlanRequest &request)
           "observable static snapshot schema_version must be a positive integer: " +
           std::to_string(snapshot.schema_version));
     }
-    emit["observable_static_snapshot"] = {
+    json snapshot_request{
         {"schema_version", snapshot.schema_version},
         {"required_capabilities", NormalizeRequiredCapabilities(snapshot.required_capabilities)},
     };
+    if (snapshot.parent_snapshot_path.has_value())
+    {
+      snapshot_request["parent_snapshot_path"] =
+          NormalizeParentSnapshotPath(*snapshot.parent_snapshot_path, workspace_root).string();
+    }
+    emit["observable_static_snapshot"] = std::move(snapshot_request);
   }
   return emit;
 }
 
+// The parent snapshot path is deliberately excluded: it changes on every run and
+// must not create a new build root.
 std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest &request)
 {
   if (!request.observable_static_snapshot.has_value())
@@ -744,7 +765,7 @@ BuildPlanResult WriteBuildCompilePlan(
                       {"artifact_dir", artifact_dir.string()},
                       {"diag_dir", diag_dir.string()},
                   }},
-      {"emit", BuildEmitJson(request)},
+      {"emit", BuildEmitJson(request, workspace_root)},
   };
 
   fs::create_directories(artifact_dir);

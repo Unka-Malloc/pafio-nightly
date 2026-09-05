@@ -7,6 +7,7 @@
 
 using json = nlohmann::json;
 
+using pafio::testsupport::CanonicalAbsolutePath;
 using pafio::testsupport::MakeTempDir;
 using pafio::testsupport::ReadFile;
 using pafio::testsupport::ScopedEnvVar;
@@ -259,7 +260,83 @@ TEST(BuildCliTests, CheckHelpAdvertisesObservableStaticSnapshotFlags)
       "usage: pafio check [--manifest-path <path>] [--styio-bin <path>] "
       "[--locked|--offline|--frozen] "
       "[--emit-observable-static-snapshot[=<schema-version>]] "
-      "[--observable-capability <name>]\n");
+      "[--observable-capability <name>] "
+      "[--observable-parent-snapshot <path>]\n");
+}
+
+TEST(BuildCliTests, DryRunPassesObservableParentSnapshotPathIntoCompilePlan)
+{
+  const fs::path root = MakeTempDir("build-observable-parent-snapshot-dry-run");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  WriteSingleBinProject(root);
+  const std::string manifest = (root / "pafio.toml").string();
+  const fs::path parent = root / "previous" / "app.observable-static-snapshot.json";
+  ASSERT_FALSE(fs::exists(parent));
+
+  testing::internal::CaptureStdout();
+  const int exit_code = pafio::RunCli({
+      "--json",
+      "build",
+      "--manifest-path",
+      manifest,
+      "--dry-run",
+      "--emit-observable-static-snapshot",
+      "--observable-capability",
+      "alpha",
+      "--observable-parent-snapshot",
+      parent.string(),
+  });
+  const std::string stdout_text = testing::internal::GetCapturedStdout();
+
+  EXPECT_EQ(exit_code, pafio::kExitSuccess);
+  const json payload = json::parse(stdout_text);
+  EXPECT_EQ(payload.at("mode").get<std::string>(), "dry-run");
+  const json plan = json::parse(ReadFile(payload.at("plan").at("path").get<std::string>()));
+  EXPECT_EQ(
+      plan.at("emit").at("observable_static_snapshot").dump(),
+      R"({"parent_snapshot_path":")" + CanonicalAbsolutePath(parent).string() +
+          R"(","required_capabilities":["alpha"],"schema_version":1})");
+
+  testing::internal::CaptureStdout();
+  const int without_parent_exit_code = pafio::RunCli({
+      "--json",
+      "build",
+      "--manifest-path",
+      manifest,
+      "--dry-run",
+      "--emit-observable-static-snapshot",
+      "--observable-capability",
+      "alpha",
+  });
+  const json without_parent = json::parse(testing::internal::GetCapturedStdout());
+  EXPECT_EQ(without_parent_exit_code, pafio::kExitSuccess);
+  EXPECT_EQ(
+      without_parent.at("plan").at("cache_key").get<std::string>(),
+      payload.at("plan").at("cache_key").get<std::string>());
+  EXPECT_EQ(
+      without_parent.at("plan").at("build_root").get<std::string>(),
+      payload.at("plan").at("build_root").get<std::string>());
+}
+
+TEST(BuildCliTests, ObservableParentSnapshotFlagRejectsMalformedUsage)
+{
+  const fs::path root = MakeTempDir("check-observable-parent-snapshot-usage-errors");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  WriteSingleBinProject(root);
+  const std::string manifest = (root / "pafio.toml").string();
+
+  EXPECT_EQ(
+      pafio::RunCli({"--json", "check", "--manifest-path", manifest, "--dry-run",
+                     "--observable-parent-snapshot", "previous.observable-static-snapshot.json"}),
+      pafio::kExitUsage);
+  EXPECT_EQ(
+      pafio::RunCli({"--json", "check", "--manifest-path", manifest, "--dry-run",
+                     "--emit-observable-static-snapshot", "--observable-parent-snapshot"}),
+      pafio::kExitUsage);
+  EXPECT_EQ(
+      pafio::RunCli({"--json", "check", "--manifest-path", manifest, "--dry-run",
+                     "--emit-observable-static-snapshot", "--observable-parent-snapshot", ""}),
+      pafio::kExitUsage);
 }
 
 TEST(BuildCliTests, NonDryRunCheckWithObservableStaticSnapshotExposesReceiptThroughPlanPayload)
