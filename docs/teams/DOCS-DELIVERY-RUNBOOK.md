@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-06
 
 ## Mission
 
@@ -91,3 +91,9 @@ Styio receipt and snapshot artifact through the existing `plan` envelope fields.
 the optional `parent_snapshot_path` field in the same contract and handoff docs,
 including that Styio emits `<output-stem>.observable-delta.json` or records a
 `full_snapshot_required` receipt reason, both found through `receipt.json`.
+
+2026-09-06: Stopped empty generated indexes from stamping today's date, which
+made `docs/plan/INDEX.md` and `docs/security/INDEX.md` fail CI across timezones.
+Empty collections now inherit `README.md`'s last-updated date, and Better Plan
+group directories are indexed through `Architecture.md` when they have no
+`README.md` or `INDEX.md`.
