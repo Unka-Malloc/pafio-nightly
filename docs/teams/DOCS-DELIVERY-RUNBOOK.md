@@ -92,6 +92,12 @@ the optional `parent_snapshot_path` field in the same contract and handoff docs,
 including that Styio emits `<output-stem>.observable-delta.json` or records a
 `full_snapshot_required` receipt reason, both found through `receipt.json`.
 
+2026-09-05: Documented the `--emit-runtime-observation[=<version>]` passthrough,
+its four dependent flags, and the optional `emit.runtime_observation` field in
+the same contract and handoff docs, including that Styio owns every default and
+validation and lists the receipt-named runtime-events v2 JSONL artifact in
+`receipt.json`.
+
 2026-09-06: Stopped empty generated indexes from stamping today's date, which
 made `docs/plan/INDEX.md` and `docs/security/INDEX.md` fail CI across timezones.
 Empty collections now inherit `README.md`'s last-updated date, and Better Plan

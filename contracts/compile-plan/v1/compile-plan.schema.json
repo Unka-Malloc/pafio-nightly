@@ -216,6 +216,9 @@
         },
         "observable_static_snapshot": {
           "$ref": "#/$defs/observableStaticSnapshotRequest"
+        },
+        "runtime_observation": {
+          "$ref": "#/$defs/runtimeObservationRequest"
         }
       }
     }
@@ -248,6 +251,70 @@
         "parent_snapshot_path": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "runtimeObservationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "aggregate",
+            "sampled",
+            "detailed"
+          ]
+        },
+        "required_capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "lane_capacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "priority_reserved": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "producer_lanes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "seed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },
