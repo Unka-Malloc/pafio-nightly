@@ -86,8 +86,13 @@ add_test(
 )
 
 add_test(
+  NAME pafio_cli_check_help
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" check --help | grep -Fqx 'usage: pafio check [--manifest-path <path>] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>]'"
+)
+
+add_test(
   NAME pafio_cli_build_help
-  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" build --help | grep -q '^usage: pafio build \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" build --help | grep -q '^usage: pafio build \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\|--lib\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\] \\[--emit-observable-static-snapshot\\[=<schema-version>\\]\\] \\[--observable-capability <name>\\]$'"
 )
 
 add_test(
@@ -97,12 +102,12 @@ add_test(
 
 add_test(
   NAME pafio_cli_run_help
-  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" run --help | grep -q '^usage: pafio run \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" run --help | grep -q '^usage: pafio run \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--bin <name>\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\] \\[--emit-observable-static-snapshot\\[=<schema-version>\\]\\] \\[--observable-capability <name>\\]$'"
 )
 
 add_test(
   NAME pafio_cli_test_help
-  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" test --help | grep -q '^usage: pafio test \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--test <name>\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\]$'"
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" test --help | grep -q '^usage: pafio test \\[--manifest-path <path>\\] \\[--package <package-name>\\] \\[--test <name>\\] \\[--profile <dev\\|release>\\] \\[--dry-run\\] \\[--styio-bin <path>\\] \\[--locked\\|--offline\\|--frozen\\] \\[--emit-observable-static-snapshot\\[=<schema-version>\\]\\] \\[--observable-capability <name>\\]$'"
 )
 
 add_test(

@@ -2,9 +2,9 @@
 
 **Purpose:** Record the conditional Pafio handoff for Styio observable-language identity without scheduling premature package-manager work.
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-05
 
-**Status:** Conditional, not authorized, not started, and dormant unless the activation gate in this document is met.
+**Status:** Conditional, not authorized, not started, and dormant unless the activation gate in this document is met. The identity handoff is distinct from the delivered emission passthrough described in section 1.1.
 
 ## 1. Current Decision
 
@@ -19,6 +19,15 @@ The published `compile-plan v1` already provides the candidate identity inputs n
 Styio should first derive its public logical identity from the published package name together with the selected target or entry path relative to the matching package root. Absolute `workspace_root`, `root_dir`, `manifest_path`, and entry-file paths are transport inputs only; they must never be serialized as persistent project or semantic identity. Content hashes, local cache keys, and compiler object IDs are also not substitutes for public logical identity.
 
 A direct single-file compilation that has no package contract remains anonymous. Pafio must not fabricate a package identity for it.
+
+### 1.1 Delivered Emission Passthrough
+
+PLAN-004 models snapshot publication as an absent-by-default compile-plan emission request, so a caller needs a way to ask Pafio to include it. That passthrough is delivered and is not identity work:
+
+1. `compile-plan v1` gains the optional `emit.observable_static_snapshot` object with `schema_version` (integer, minimum 1) and `required_capabilities` (sorted, unique strings, possibly empty); `emit.required` and every other field are unchanged.
+2. `pafio check|build|run|test` accept `--emit-observable-static-snapshot[=<schema-version>]` (default `1`) and the repeatable `--observable-capability <name>`. Without the flag the plan is byte-identical to the ordinary plan, so ordinary workflows are unaffected.
+3. Pafio forwards the request verbatim. Styio validates the schema version and capability names against its own `--machine-info=json` advertisement, publishes `<output-stem>.observable-static-snapshot.json` through its artifact-output/receipt path, and lists it in `<plan.build_root>/receipt.json`. Consumers locate both through the existing `plan` object of the Pafio success envelope.
+4. Pafio still does not mint identifiers, inspect snapshots, or add identity fields; the activation gate below is untouched.
 
 ## 2. Ownership Boundary
 

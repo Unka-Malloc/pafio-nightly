@@ -49,8 +49,107 @@ TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
   EXPECT_EQ(plan["profile"]["name"], "dev");
   EXPECT_FALSE(plan["profile"].contains("build_mode"));
   EXPECT_EQ(plan["emit"]["error_format"], "jsonl");
+  EXPECT_FALSE(plan["emit"].contains("observable_static_snapshot"));
+  EXPECT_EQ(
+      plan["emit"].dump(),
+      R"({"ast":false,"error_format":"jsonl","llvm_ir":false,"styio_ir":false})");
   ASSERT_EQ(plan["packages"].size(), 1U);
   EXPECT_EQ(plan["packages"][0]["targets"]["lib"], CanonicalAbsolutePath(root / "src/lib.styio").string());
+}
+
+namespace
+{
+
+void WriteSingleBinProject(const fs::path &root)
+{
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = false\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"app\")\n");
+}
+
+}  // namespace
+
+TEST(BuildPlanTests, EmitsObservableStaticSnapshotRequestOnlyWhenRequested)
+{
+  const fs::path root = MakeTempDir("observable-static-snapshot-request");
+  WriteSingleBinProject(root);
+
+  const pafio::BuildPlanResult baseline = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+  });
+  const pafio::BuildPlanResult baseline_again = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+  });
+  EXPECT_EQ(baseline.plan_json, baseline_again.plan_json);
+  EXPECT_FALSE(json::parse(baseline.plan_json)["emit"].contains("observable_static_snapshot"));
+
+  const pafio::BuildPlanResult requested = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+      .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+          .schema_version = 1,
+          .required_capabilities = {"zeta", "alpha", "zeta", "beta"},
+      },
+  });
+  EXPECT_NE(requested.cache_key, baseline.cache_key);
+
+  const json plan = json::parse(ReadFile(requested.plan_path));
+  EXPECT_EQ(plan["intent"], "check");
+  EXPECT_EQ(plan["emit"]["error_format"], "jsonl");
+  EXPECT_EQ(plan["emit"]["ast"], false);
+  EXPECT_EQ(plan["emit"]["styio_ir"], false);
+  EXPECT_EQ(plan["emit"]["llvm_ir"], false);
+  ASSERT_TRUE(plan["emit"].contains("observable_static_snapshot"));
+  EXPECT_EQ(
+      plan["emit"]["observable_static_snapshot"].dump(),
+      R"({"required_capabilities":["alpha","beta","zeta"],"schema_version":1})");
+
+  const pafio::BuildPlanResult defaults = pafio::WriteBuildCompilePlan({
+      .manifest_path = root / "pafio.toml",
+      .intent = "check",
+      .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{},
+  });
+  EXPECT_EQ(
+      json::parse(defaults.plan_json)["emit"]["observable_static_snapshot"].dump(),
+      R"({"required_capabilities":[],"schema_version":1})");
+}
+
+TEST(BuildPlanTests, RejectsMalformedObservableStaticSnapshotRequest)
+{
+  const fs::path root = MakeTempDir("observable-static-snapshot-invalid");
+  WriteSingleBinProject(root);
+
+  EXPECT_THROW(
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
+          .intent = "check",
+          .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{.schema_version = 0},
+      }),
+      pafio::PlanError);
+  EXPECT_THROW(
+      pafio::WriteBuildCompilePlan({
+          .manifest_path = root / "pafio.toml",
+          .intent = "check",
+          .observable_static_snapshot = pafio::ObservableStaticSnapshotRequest{
+              .schema_version = 1,
+              .required_capabilities = {"alpha", ""},
+          },
+      }),
+      pafio::PlanError);
 }
 
 TEST(BuildPlanTests, RejectsAmbiguousPackageTargetsWithoutExplicitSelection)

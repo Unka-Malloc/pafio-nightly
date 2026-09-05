@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-05
 
 ## Mission
 
@@ -61,3 +61,9 @@ paths are the first identity inputs; absolute paths and semantic identifiers
 remain outside Pafio ownership. No schema, capability, fixture, or executable
 change is scheduled unless accepted Styio snapshot fixtures prove a concrete
 ambiguity.
+
+2026-09-05: Added the additive optional `emit.observable_static_snapshot`
+object (`schema_version`, `required_capabilities`) to `compile-plan v1` as a
+pure emission passthrough for Styio PLAN-004. Pafio forwards the request only
+when a caller opts in; Styio validates it and lists the snapshot artifact in
+its receipt. The identity handoff above remains dormant.

@@ -6,9 +6,16 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace pafio
 {
+
+struct ObservableStaticSnapshotRequest
+{
+  int schema_version = 1;
+  std::vector<std::string> required_capabilities;
+};
 
 struct BuildPlanRequest
 {
@@ -23,6 +30,7 @@ struct BuildPlanRequest
   std::optional<std::string> compiler_channel;
   bool offline = false;
   std::optional<std::filesystem::path> vendor_root;
+  std::optional<ObservableStaticSnapshotRequest> observable_static_snapshot;
 };
 
 struct BuildPlanResult

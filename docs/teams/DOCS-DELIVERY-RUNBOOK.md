@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-06
 
 ## Mission
 
@@ -81,3 +81,14 @@ private machine paths, user information, or backend runtime payloads.
 `docs/external/for-styio/` and refreshed the generated indexes. The document
 records why no Pafio implementation is currently needed and defines the fixture
 evidence required before a separate delivery could be authorized.
+
+2026-09-05: Documented the opt-in observable static snapshot emission
+passthrough in the CLI contract, the compile-plan v1 contract README, and the
+Styio handoff docs, and refreshed the generated indexes. The consumer locates the
+Styio receipt and snapshot artifact through the existing `plan` envelope fields.
+
+2026-09-06: Stopped empty generated indexes from stamping today's date, which
+made `docs/plan/INDEX.md` and `docs/security/INDEX.md` fail CI across timezones.
+Empty collections now inherit `README.md`'s last-updated date, and Better Plan
+group directories are indexed through `Architecture.md` when they have no
+`README.md` or `INDEX.md`.
