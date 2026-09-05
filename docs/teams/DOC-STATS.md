@@ -2,7 +2,7 @@
 
 **Purpose:** Record the current size of each `docs/teams/` runbook using the repository-local docs audit counting rules; this is a maintenance snapshot, not a quality target.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-06
 
 ## Counting Method
 
@@ -19,8 +19,8 @@
 | Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 320 | 2,556 |
 | Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | 186 | 1,542 |
 | Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 316 | 2,703 |
-| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 542 | 4,068 |
-| **Total** | Team runbooks only | **1,653** | **12,860** |
+| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 583 | 4,408 |
+| **Total** | Team runbooks only | **1,694** | **13,200** |
 
 ## Support File Size
 

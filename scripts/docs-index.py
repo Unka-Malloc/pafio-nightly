@@ -94,7 +94,7 @@ def rel_link(from_dir: Path, target: Path) -> str:
 
 
 def choose_dir_entry(path: Path) -> Path | None:
-    for name in ("INDEX.md", "README.md"):
+    for name in ("INDEX.md", "README.md", "Architecture.md"):
         candidate = path / name
         if candidate.exists():
             return candidate
@@ -147,7 +147,11 @@ def render_index(base: Path) -> str:
     rel = base.relative_to(ROOT).as_posix()
     title, purpose = INDEX_META[rel]
     entries = build_entries(base)
-    updated = max((entry.last_updated for entry in entries), default=TODAY)
+    if entries:
+        updated = max(entry.last_updated for entry in entries)
+    else:
+        readme = base / "README.md"
+        updated = extract_last_updated(readme) if readme.exists() else TODAY
     dir_entries = [entry for entry in entries if entry.is_dir]
     file_entries = [entry for entry in entries if not entry.is_dir]
 
