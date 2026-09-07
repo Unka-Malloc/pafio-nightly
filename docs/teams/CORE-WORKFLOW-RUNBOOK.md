@@ -39,7 +39,9 @@ installation or hosted execution.
    output while every stream continues draining. Only `ProcessRequest.timeout`
    supplies a deadline; native Windows exit codes do not claim POSIX signals.
    Exercise `pafio_process_tests` on the actual target platform before updating
-   a downstream fixed product matrix.
+   a downstream fixed product matrix. CLI headers declare their own standard
+   library dependencies; MSVC does not supply the incidental `<string>` import
+   previously inherited by `WorkflowApp.hpp` on other toolchains.
 
 ## Change Classes
 

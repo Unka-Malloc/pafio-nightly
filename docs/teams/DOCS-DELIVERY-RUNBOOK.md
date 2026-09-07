@@ -109,5 +109,6 @@ group directories are indexed through `Architecture.md` when they have no
 2026-09-08: Documented the native Windows process implementation and its
 portable process-contract test target. The manual `native_process_only` CI
 input validates the Windows CLI and process contracts before the final complete
-regression; it does not establish Linux, macOS, or release readiness. Preserve
+regression within existing adaptation authorization; it does not establish
+Linux, macOS, or release readiness. Preserve
 the request's existing timeout and process-group semantics across platforms.
