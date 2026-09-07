@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-08
 
 ## Mission
 
@@ -31,6 +31,15 @@ installation or hosted execution.
    to prepare repository-local tests.
 7. Keep the top-level `-h` and `--help` aliases equivalent and cover both forms
    with executable CLI tests.
+8. Keep process requests and results shared across `ProcessPosix.cpp` and
+   `ProcessWindows.cpp`; CMake selects the host implementation, while
+   `Process.cpp` owns common result formatting. Windows uses literal Unicode
+   arguments, an explicit inherited-handle list, overlapped pipes, and a Job
+   Object for requested process-group termination. Capture limits bound retained
+   output while every stream continues draining. Only `ProcessRequest.timeout`
+   supplies a deadline; native Windows exit codes do not claim POSIX signals.
+   Exercise `pafio_process_tests` on the actual target platform before updating
+   a downstream fixed product matrix.
 
 ## Change Classes
 
@@ -45,6 +54,18 @@ cmake --build build-codex --target pafio pafio_native_tests
 ctest --test-dir build-codex -R '<focused-pattern>' --output-on-failure
 git diff --check
 ```
+
+For process-only adaptation, build `pafio_process_tests` and run
+`ctest --test-dir <build> -R '^PortableProcess\.' --output-on-failure`.
+The Windows manual CI lane accepts `native_process_only=true` to run the CLI
+build, process contracts, and CLI probes independently. Full platform release
+acceptance remains governed by the post-commit and release specifications.
+
+The Windows implementation follows the [Win32 process creation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw)
+and [overlapped pipe](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-server-using-overlapped-i-o)
+contracts; argument handling was compared with established LLVM/libuv process
+implementations. Tests execute a native fixture to exercise arguments,
+environment, working directory, streams, capture limits, and termination.
 
 ## Cross-Team Dependencies
 

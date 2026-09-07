@@ -11,12 +11,18 @@ on:
       - master
   merge_group:
   workflow_dispatch:
+    inputs:
+      native_process_only:
+        description: Run only the Windows CLI and process-contract checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   linux-debian-trixie:
+    if: github.event_name != 'workflow_dispatch' || !inputs.native_process_only
     name: Linux / Debian 13 trixie gate
     # GitHub-hosted Linux runner is only the container host; toolchain commands run in Debian 13.
     runs-on: ubuntu-latest
@@ -154,6 +160,7 @@ jobs:
         run: python3 scripts/submit-gate.py --profile ci --json
 
   macos-native-smoke:
+    if: github.event_name != 'workflow_dispatch' || !inputs.native_process_only
     name: macOS / latest native smoke
     runs-on: macos-latest
     timeout-minutes: 45
@@ -205,11 +212,15 @@ jobs:
 
       - name: Configure native build
         shell: pwsh
-        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DPAFIO_BUILD_TESTS=OFF
+        run: cmake -S pafio-nightly -B pafio-nightly/build-ci-windows -A x64 -DPAFIO_BUILD_TESTS=ON
 
       - name: Build native CLI
         shell: pwsh
-        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target pafio --parallel 4
+        run: cmake --build pafio-nightly/build-ci-windows --config Debug --target pafio pafio_process_tests --parallel 4
+
+      - name: Verify native process contracts
+        shell: pwsh
+        run: ctest --test-dir pafio-nightly/build-ci-windows --build-config Debug --tests-regex '^PortableProcess\.' --output-on-failure
 
       - name: Probe native CLI
         shell: pwsh

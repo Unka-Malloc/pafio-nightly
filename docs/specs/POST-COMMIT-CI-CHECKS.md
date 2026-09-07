@@ -36,6 +36,12 @@ the Windows release flow and must resolve any failure before publishing Windows
 artifacts. Neither a shared-source merge nor another platform's passing result
 constitutes Windows release evidence.
 
+An explicitly requested Windows process-adaptation check may dispatch the same
+workflow with `native_process_only=true`. It builds the CLI and runs the
+independent `PortableProcess.*` contracts plus CLI probes. The default dispatch
+still runs the full workflow; focused process evidence does not replace the
+platform's complete release acceptance.
+
 For cross-repository checkouts, CI first tries the Pafio branch name and falls
 back independently to each sibling repository's `nightly` branch when that
 branch does not exist there. A Pafio-only change therefore does not require
