@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-08
 
 ## Mission
 
@@ -21,12 +21,11 @@ the Better Plan workspace, and release evidence.
 
 1. Change the normative governance contract before its summaries.
 2. Record durable ownership changes in an ADR.
-3. Keep `docs/plan/Capabilities.json` limited to observed or explicitly designed
-   repository facts, and keep delivery lifecycle history in `Manifest.json` plus
-   each group's `Checkpoints.json`.
-4. Require each delivery group to retain one design node, one or more
-   implementation nodes, and one trailing full-validation node; dependencies live
-   only in node prerequisites.
+3. When the authorized work uses Better Plan, follow the active installed skill's
+   current schema and tools. Keep observed repository facts separate from delivery
+   authority, and preserve completed state and evidence as history.
+4. Do not duplicate planning lifecycle commands, role counts, or state topology in
+   this runbook. Routine authorized maintenance does not require creating a Plan.
 5. Regenerate indexes after the docs tree changes.
 6. Keep the public Pafio command inventory aligned with executable help.
 7. Publish no site or release wording before the fixed-revision product matrix passes.
@@ -61,8 +60,11 @@ python3 scripts/repo-hygiene-check.py --mode tracked
 git diff --check
 ```
 
-Run product-focused and final release gates through the active Better Plan rather
-than duplicating their commands here.
+Select product-focused and final release gates for the authorized scope through
+the owning workflow. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
+for one final complete regression after source review, repairs, and focused
+verification; a failure requires the developer's repair and verification decision.
+Do not repeat a gate simply because another workflow cites the same evidence.
 
 ## Cross-Team Dependencies
 

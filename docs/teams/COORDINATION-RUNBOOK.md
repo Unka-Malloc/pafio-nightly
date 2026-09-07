@@ -2,7 +2,7 @@
 
 **Purpose:** Route Pafio changes across core, registry, compiler-contract, and delivery owners.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-09-08
 
 ## Mission
 
@@ -40,10 +40,18 @@ Implementation conflicts escalate to the CLI contract or accepted ADR. Service
 behavior escalates to Platform. Compiler behavior escalates to Styio. No owner
 conflict is resolved by copying the foreign implementation into Pafio.
 
+These review routes do not require a new user confirmation for ordinary work
+already authorized by the current request. First inspect the owning contracts
+and existing decisions; prepare a concrete proposal for any unresolved owner
+decision. Preserve the required owner review and approval, pause only its
+dependent change or cutover, and continue independent authorized work.
+
 ## Checkpoint Policy
 
 Close one independently testable capability or scenario at a time. Run focused
-tests during implementation and one full regression after all closures.
+tests during implementation. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
+for the final regression after source review and all in-scope repairs, and for
+the developer decision required if that regression fails.
 
 ## Release / Cutover Gates
 
