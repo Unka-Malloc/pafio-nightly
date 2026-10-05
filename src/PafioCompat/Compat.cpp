@@ -122,7 +122,7 @@ toml::table LoadCompatMatrix()
 json ProbeMachineInfo(const fs::path &binary)
 {
   const pafio::ProcessResult result = pafio::RunProcess<pafio::CompilerProbeError>({
-      .program = binary.string(),
+      .program = pafio::ProcessPathString(binary),
       .args = {"--machine-info=json"},
       .search_path = false,
       .timeout = pafio::kExternalProcessProbeTimeout,
@@ -256,7 +256,7 @@ std::vector<int> LoadIntArray(const toml::table &table, const std::string &key)
 bool IsExecutable(const fs::path &path)
 {
 #if defined(_WIN32)
-  return _access(path.string().c_str(), 0) == 0;
+  return _waccess(path.c_str(), 0) == 0;
 #else
   return access(path.string().c_str(), X_OK) == 0;
 #endif

@@ -103,12 +103,13 @@ std::string NormalizeGitSource(const std::string &source, const fs::path &packag
     return source;
   }
 
-  const fs::path source_path(source);
-  if (source_path.is_absolute())
-  {
-    return CanonicalAbsolutePath(source_path).generic_string();
-  }
-  return CanonicalAbsolutePath(package_dir / source_path).generic_string();
+  const fs::path source_path(std::u8string(source.begin(), source.end()));
+  fs::path normalized = CanonicalAbsolutePath(source_path.is_absolute() ? source_path : package_dir / source_path);
+  std::string value = pafio::ProcessPathString(normalized);
+#if defined(_WIN32)
+  std::replace(value.begin(), value.end(), '\\', '/');
+#endif
+  return value;
 }
 
 std::string SourceKindString(SourceKind kind)
@@ -290,7 +291,7 @@ private:
     fs::create_directories(repo_dir.parent_path());
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
-        .args = {"clone", "--mirror", normalized_source, repo_dir.string()},
+        .args = {"clone", "--mirror", normalized_source, pafio::ProcessPathString(repo_dir)},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
@@ -307,7 +308,7 @@ private:
   {
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
-        .args = {"--git-dir", repo_dir.string(), "cat-file", "-e", rev + "^{commit}"},
+        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "cat-file", "-e", rev + "^{commit}"},
         .search_path = false,
         .timeout = pafio::kExternalProcessProbeTimeout,
         .error_context = "resolver process",
@@ -323,7 +324,7 @@ private:
   {
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
-        .args = {"--git-dir", repo_dir.string(), "fetch", "--prune", "origin"},
+        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "fetch", "--prune", "origin"},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
@@ -349,7 +350,14 @@ private:
     const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
     const pafio::ProcessResult archive = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
-        .args = {"--git-dir", repo_dir.string(), "archive", "--format=tar", "--output", archive_path.string(), rev},
+        .args = {
+            "--git-dir",
+            pafio::ProcessPathString(repo_dir),
+            "archive",
+            "--format=tar",
+            "--output",
+            pafio::ProcessPathString(archive_path),
+            rev},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",
@@ -365,7 +373,7 @@ private:
 
     const pafio::ProcessResult path_listing = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedTarPath(),
-        .args = {"-tf", archive_path.string()},
+        .args = {"-tf", pafio::ProcessPathString(archive_path)},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
@@ -381,7 +389,7 @@ private:
     }
     const pafio::ProcessResult verbose_listing = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedTarPath(),
-        .args = {"-tvf", archive_path.string()},
+        .args = {"-tvf", pafio::ProcessPathString(archive_path)},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
@@ -411,7 +419,7 @@ private:
 
     const pafio::ProcessResult extract = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedTarPath(),
-        .args = {"-xf", archive_path.string(), "-C", snapshot_root.string()},
+        .args = {"-xf", pafio::ProcessPathString(archive_path), "-C", pafio::ProcessPathString(snapshot_root)},
         .search_path = false,
         .timeout = pafio::kExternalProcessStepTimeout,
         .error_context = "resolver process",

@@ -1,6 +1,10 @@
 include(FetchContent)
 include(GoogleTest)
 
+if(MSVC)
+  set(gtest_force_shared_crt ON CACHE BOOL "Match the product's MSVC runtime" FORCE)
+endif()
+
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
@@ -8,6 +12,20 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(googletest)
+
+add_executable(pafio_process_tests native/ProcessPortableTests.cpp)
+target_link_libraries(pafio_process_tests PRIVATE pafio_foundation GTest::gtest)
+if(MINGW)
+  target_link_options(pafio_process_tests PRIVATE -municode)
+endif()
+gtest_discover_tests(pafio_process_tests DISCOVERY_MODE PRE_TEST)
+
+if(WIN32)
+  add_executable(pafio_windows_process_producer_tests native/WindowsProcessProducerTests.cpp)
+  target_link_libraries(pafio_windows_process_producer_tests PRIVATE pafio_cli_shell GTest::gtest_main)
+  add_dependencies(pafio_windows_process_producer_tests pafio_process_tests)
+  gtest_discover_tests(pafio_windows_process_producer_tests DISCOVERY_TIMEOUT 30)
+endif()
 
 add_executable(pafio_native_tests
   native/BuildPlanTests.cpp
@@ -17,6 +35,7 @@ add_executable(pafio_native_tests
   native/ManifestTests.cpp
   native/MetadataTests.cpp
   native/PackTests.cpp
+  native/PathsTests.cpp
   native/ProcessTests.cpp
   native/PublishTests.cpp
   native/ResolutionContractTests.cpp
@@ -27,6 +46,7 @@ add_executable(pafio_native_tests
   native/VendorTests.cpp
 )
 target_link_libraries(pafio_native_tests PRIVATE pafio_cli_shell GTest::gtest_main)
+add_dependencies(pafio_native_tests pafio_process_tests)
 
 gtest_discover_tests(pafio_native_tests DISCOVERY_TIMEOUT 30)
 

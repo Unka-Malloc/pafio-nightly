@@ -24,18 +24,30 @@ public:
       had_previous_ = true;
       previous_value_ = existing;
     }
+#if defined(_WIN32)
+    _putenv_s(name.c_str(), value.c_str());
+#else
     setenv(name.c_str(), value.c_str(), 1);
+#endif
   }
 
   ~ScopedEnvVar()
   {
     if (had_previous_)
     {
+#if defined(_WIN32)
+      _putenv_s(name_.c_str(), previous_value_.c_str());
+#else
       setenv(name_.c_str(), previous_value_.c_str(), 1);
+#endif
     }
     else
     {
+#if defined(_WIN32)
+      _putenv_s(name_.c_str(), "");
+#else
       unsetenv(name_.c_str());
+#endif
     }
   }
 

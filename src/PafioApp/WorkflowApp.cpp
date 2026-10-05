@@ -429,8 +429,8 @@ int HandlePlanCommand(
   try
   {
     process = RunProcess({
-        .program = compiler->string(),
-        .args = {"--compile-plan", plan.plan_path.string()},
+        .program = ProcessPathString(*compiler),
+        .args = {"--compile-plan", ProcessPathString(plan.plan_path)},
         .search_path = false,
         .timeout = kExternalProcessBuildTimeout,
         .error_context = "Styio compile-plan execution",

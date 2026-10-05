@@ -335,7 +335,7 @@ FetchUrlToFile(
     fs::remove(headers_path, ignored);
   };
   try {
-    std::vector<std::string> args{"-fsSL", "-D", headers_path.string()};
+    std::vector<std::string> args{"-fsSL", "-D", pafio::ProcessPathString(headers_path)};
     const std::vector<std::string> policy_args = CurlReadPolicyArgs(static_cast<size_t>(max_bytes));
     args.insert(args.end(), policy_args.begin(), policy_args.end());
     for (const std::string &header : request_headers) {
@@ -343,7 +343,7 @@ FetchUrlToFile(
       args.push_back(header);
     }
     args.push_back("-o");
-    args.push_back(temp_path.string());
+    args.push_back(pafio::ProcessPathString(temp_path));
     args.push_back(url);
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
       .program = pafio::ResolvedCurlPath(),
@@ -543,7 +543,7 @@ void
 ValidateTarListingPaths(const fs::path &blob_cache_path) {
   const pafio::ProcessResult path_listing = pafio::RunProcess<pafio::CacheError>({
     .program = pafio::ResolvedTarPath(),
-    .args = {"-tf", blob_cache_path.string()},
+    .args = {"-tf", pafio::ProcessPathString(blob_cache_path)},
     .search_path = false,
     .timeout = pafio::kExternalProcessStepTimeout,
     .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
@@ -556,7 +556,7 @@ ValidateTarListingPaths(const fs::path &blob_cache_path) {
   }
   const pafio::ProcessResult verbose_listing = pafio::RunProcess<pafio::CacheError>({
     .program = pafio::ResolvedTarPath(),
-    .args = {"-tvf", blob_cache_path.string()},
+    .args = {"-tvf", pafio::ProcessPathString(blob_cache_path)},
     .search_path = false,
     .timeout = pafio::kExternalProcessStepTimeout,
     .max_stdout_bytes = pafio::kArchiveListingMaxBytes,
@@ -772,9 +772,9 @@ CommitRegistryEntry(
         "--no-same-owner",
         "--no-same-permissions",
         "-xf",
-        blob_staging.string(),
+        pafio::ProcessPathString(blob_staging),
         "-C",
-        checkout_staging.string(),
+        pafio::ProcessPathString(checkout_staging),
       },
       .search_path = false,
       .timeout = pafio::kExternalProcessStepTimeout,

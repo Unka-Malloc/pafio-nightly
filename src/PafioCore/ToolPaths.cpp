@@ -1,6 +1,7 @@
 #include "PafioCore/ToolPaths.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Process.hpp"
 
 #include <cstdlib>
 #include <mutex>
@@ -54,13 +55,13 @@ std::string ResolveOnPath(const std::string &name)
     const std::filesystem::path candidate = std::filesystem::path(entry) / name;
     if (IsExecutableFile(candidate))
     {
-      return std::filesystem::weakly_canonical(candidate).string();
+      return pafio::ProcessPathString(std::filesystem::weakly_canonical(candidate));
     }
 #if defined(_WIN32)
     const std::filesystem::path candidate_exe = std::filesystem::path(entry) / (name + ".exe");
     if (IsExecutableFile(candidate_exe))
     {
-      return std::filesystem::weakly_canonical(candidate_exe).string();
+      return pafio::ProcessPathString(std::filesystem::weakly_canonical(candidate_exe));
     }
 #endif
   }
@@ -85,7 +86,7 @@ const std::string &ResolveTool(const char *env_name, const char *default_name, s
     {
       throw pafio::FetchError(std::string(env_name) + " does not point to an executable: " + override_path);
     }
-    slot = std::filesystem::weakly_canonical(path).string();
+    slot = pafio::ProcessPathString(std::filesystem::weakly_canonical(path));
     return slot;
   }
   slot = ResolveOnPath(default_name);

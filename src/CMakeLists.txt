@@ -22,6 +22,12 @@ set(PAFIO_FOUNDATION_SOURCES
     PafioCore/ToolPaths.cpp
 )
 
+if(WIN32)
+  list(APPEND PAFIO_FOUNDATION_SOURCES PafioCore/ProcessWindows.cpp)
+else()
+  list(APPEND PAFIO_FOUNDATION_SOURCES PafioCore/ProcessPosix.cpp)
+endif()
+
 set(PAFIO_MANIFEST_SOURCES
     PafioManifest/Lockfile.cpp
     PafioManifest/Manifest.cpp
@@ -67,6 +73,9 @@ set(PAFIO_CLI_SHELL_SOURCES
 )
 
 pafio_add_internal_static_library(pafio_foundation ${PAFIO_FOUNDATION_SOURCES})
+if(WIN32)
+  target_link_libraries(pafio_foundation PRIVATE Rpcrt4)
+endif()
 
 pafio_add_internal_static_library(pafio_manifest ${PAFIO_MANIFEST_SOURCES})
 target_link_libraries(pafio_manifest PUBLIC pafio_foundation)
