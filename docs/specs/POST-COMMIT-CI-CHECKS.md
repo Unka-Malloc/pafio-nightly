@@ -72,7 +72,7 @@ Use the focused owner replay during implementation. Schedule the full product ma
 
 ## Final Regression
 
-Run the required complete regression once, after all changes, source review, in-scope repairs, and focused verification are finished. Coordinate local and CI evidence for the same candidate; required CI checks still run after an authorized push. A final complete-regression failure requires a diagnosis and concrete repair and verification proposal for the developer. Do not automatically repair, rerun, or push a repair that would restart this regression before that decision. Continue independent authorized work, and do not mark unresolved acceptance as complete.
+Run the required complete regression after all changes, source review, in-scope repairs, and focused verification are finished. Coordinate local and CI evidence for the same candidate; required CI checks still run after an authorized push. If the regression fails, diagnose the failing stage and repair ordinary defects within the authorized scope. Run the focused checks needed to verify those repairs, then repeat only the affected checks and any broader regression needed to establish acceptance, reusing still-valid evidence. Request a developer decision only when the necessary repair would change the objective, a published contract, or the risk boundary. Keep acceptance unresolved until the required checks pass.
 
 ## Post-Push Verification
 

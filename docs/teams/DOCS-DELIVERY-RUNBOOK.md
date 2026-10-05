@@ -63,8 +63,11 @@ git diff --check
 Select product-focused and final release gates for the authorized scope through
 the owning workflow. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
 for one final complete regression after source review, repairs, and focused
-verification; a failure requires the developer's repair and verification decision.
-Do not repeat a gate simply because another workflow cites the same evidence.
+verification. When a gate fails, diagnose its stage, repair ordinary in-scope
+defects, and run the necessary follow-up checks. Request a developer decision
+only when the repair would change the objective, a published contract, or the
+risk boundary. Do not repeat a gate simply because another workflow cites the
+same evidence.
 
 ## Cross-Team Dependencies
 

@@ -31,11 +31,8 @@ namespace
 {
 
 std::string executable;
-
-std::string Utf8Path(const fs::path &path) {
-  const auto value = path.u8string();
-  return {value.begin(), value.end()};
-}
+constexpr std::string_view kCompilerProbeMachineInfo =
+    R"json({"tool":"styio","compiler_version":"0.0.5","channel":"stable","supported_contracts":{"compile_plan":[1]},"capabilities":["machine_info_json","single_file_entry","jsonl_diagnostics"],"edition_max":"2026"})json";
 
 fs::path PathFromUtf8(const std::string &value) {
   return fs::path(std::u8string(value.begin(), value.end()));
@@ -104,7 +101,7 @@ int Fixture(const std::vector<std::string> &args) {
   } else if (mode == "environment") {
     for (size_t i = 3; i < args.size(); ++i) std::cout << EnvironmentValue(args[i]) << '\n';
   } else if (mode == "directory") {
-    std::cout << Utf8Path(fs::current_path());
+    std::cout << pafio::ProcessPathString(fs::current_path());
   } else if (mode == "streams") {
     for (int i = 0; i < 64; ++i) {
       std::cout << std::string(4096, 'o') << std::flush;
@@ -188,7 +185,7 @@ TEST(PortableProcess, UsesRequestedWorkingDirectory) {
   request.working_directory = fs::canonical(temporary.path);
   const auto result = pafio::RunProcessChecked(request);
   EXPECT_EQ(result.exit_code, 0);
-  EXPECT_EQ(result.stdout_text, Utf8Path(*request.working_directory));
+  EXPECT_TRUE(result.stdout_text == pafio::ProcessPathString(*request.working_directory));
 }
 
 TEST(PortableProcess, SearchesTheChildPathIncludingOverrides) {
@@ -204,7 +201,7 @@ TEST(PortableProcess, SearchesTheChildPathIncludingOverrides) {
   request.program = "process-fixture";
   request.search_path = true;
   request.args.push_back("37");
-  request.environment_overrides["PATH"] = Utf8Path(fs::canonical(temporary.path));
+  request.environment_overrides["PATH"] = pafio::ProcessPathString(fs::canonical(temporary.path));
   EXPECT_EQ(pafio::RunProcessChecked(request).exit_code, 37);
 }
 
@@ -295,7 +292,11 @@ TEST(PortableProcess, TerminatesTheDescendantJobOnTimeout) {
 #endif
 
 int Run(const std::vector<std::string> &arguments) {
-  executable = Utf8Path(fs::absolute(PathFromUtf8(arguments.at(0))));
+  executable = pafio::ProcessPathString(fs::absolute(PathFromUtf8(arguments.at(0))));
+  if (arguments.size() == 2 && arguments[1] == "--machine-info=json") {
+    std::cout << kCompilerProbeMachineInfo << '\n';
+    return 0;
+  }
   if (arguments.size() >= 3 && arguments[1] == "--process-fixture") return Fixture(arguments);
   std::vector<std::string> mutable_arguments = arguments;
   std::vector<char *> pointers;

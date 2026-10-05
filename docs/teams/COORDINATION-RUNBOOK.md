@@ -50,8 +50,10 @@ dependent change or cutover, and continue independent authorized work.
 
 Close one independently testable capability or scenario at a time. Run focused
 tests during implementation. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
-for the final regression after source review and all in-scope repairs, and for
-the developer decision required if that regression fails.
+for the final regression after source review and all in-scope repairs. Diagnose
+failures by stage, repair ordinary in-scope defects, and run the necessary
+follow-up checks. Request a developer decision only when a repair would change
+the objective, a published contract, or the risk boundary.
 
 ## Release / Cutover Gates
 

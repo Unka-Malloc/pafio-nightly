@@ -4,6 +4,12 @@
 
 #include <cstdlib>
 
+#if !defined(_WIN32)
+#include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
 namespace fs = std::filesystem;
 
 namespace pafio
@@ -39,6 +45,13 @@ std::optional<fs::path> ResolveOptionalPafioHome()
   {
     return CanonicalAbsolutePath(fs::path(home) / ".pafio");
   }
+#if !defined(_WIN32)
+  const struct passwd *entry = ::getpwuid(::getuid());
+  if (entry != nullptr && entry->pw_dir != nullptr && entry->pw_dir[0] != '\0')
+  {
+    return CanonicalAbsolutePath(fs::path(entry->pw_dir) / ".pafio");
+  }
+#endif
   return std::nullopt;
 }
 

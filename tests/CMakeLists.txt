@@ -20,6 +20,13 @@ if(MINGW)
 endif()
 gtest_discover_tests(pafio_process_tests DISCOVERY_MODE PRE_TEST)
 
+if(WIN32)
+  add_executable(pafio_windows_process_producer_tests native/WindowsProcessProducerTests.cpp)
+  target_link_libraries(pafio_windows_process_producer_tests PRIVATE pafio_cli_shell GTest::gtest_main)
+  add_dependencies(pafio_windows_process_producer_tests pafio_process_tests)
+  gtest_discover_tests(pafio_windows_process_producer_tests DISCOVERY_TIMEOUT 30)
+endif()
+
 add_executable(pafio_native_tests
   native/BuildPlanTests.cpp
   native/BuildWorkflowCliTests.cpp
@@ -28,6 +35,7 @@ add_executable(pafio_native_tests
   native/ManifestTests.cpp
   native/MetadataTests.cpp
   native/PackTests.cpp
+  native/PathsTests.cpp
   native/ProcessTests.cpp
   native/PublishTests.cpp
   native/ResolutionContractTests.cpp
@@ -38,6 +46,7 @@ add_executable(pafio_native_tests
   native/VendorTests.cpp
 )
 target_link_libraries(pafio_native_tests PRIVATE pafio_cli_shell GTest::gtest_main)
+add_dependencies(pafio_native_tests pafio_process_tests)
 
 gtest_discover_tests(pafio_native_tests DISCOVERY_TIMEOUT 30)
 

@@ -42,6 +42,10 @@ installation or hosted execution.
    a downstream fixed product matrix. CLI headers declare their own standard
    library dependencies; MSVC does not supply the incidental `<string>` import
    previously inherited by `WorkflowApp.hpp` on other toolchains.
+9. Keep filesystem paths native inside Pafio, and convert them to UTF-8 only
+   when placing them in Windows process fields. Resolve the shared home from a
+   nonempty `PAFIO_HOME`, then `HOME`, then the Unix account database; fail
+   explicitly when no home can be resolved.
 
 ## Change Classes
 
@@ -60,8 +64,9 @@ git diff --check
 For process-only adaptation, build `pafio_process_tests` and run
 `ctest --test-dir <build> -R '^PortableProcess\.' --output-on-failure`.
 The Windows manual CI lane accepts `native_process_only=true` to run the CLI
-build, process contracts, and CLI probes independently. Full platform release
-acceptance remains governed by the post-commit and release specifications.
+build, process contracts, the Unicode compiler-probe producer test, and CLI
+probes independently. Full platform release acceptance remains governed by the
+post-commit and release specifications.
 
 The Windows implementation follows the [Win32 process creation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw)
 and [overlapped pipe](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-server-using-overlapped-i-o)
