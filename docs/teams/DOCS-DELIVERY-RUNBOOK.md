@@ -60,6 +60,13 @@ python3 scripts/repo-hygiene-check.py --mode tracked
 git diff --check
 ```
 
+Run the external audit gate through `./scripts/audit-gate.sh`, or through the
+repository delivery gate. Both resolve a trusted General-Auditor root from
+`GENERAL_AUDITOR_ROOT` or `git config --local generalAuditor.root`; the local
+scopes and the private report location are documented in
+[GENERAL-AUDITOR.md](../../GENERAL-AUDITOR.md). CI runs the summary-only `check`
+path through `Unka-Malloc/General-Auditor@only`.
+
 Select product-focused and final release gates for the authorized scope through
 the owning workflow. Follow [Post-Commit CI Checks](../specs/POST-COMMIT-CI-CHECKS.md)
 for one final complete regression after source review, repairs, and focused
