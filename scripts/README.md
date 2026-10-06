@@ -13,7 +13,7 @@ For fresh-machine bootstrap and the common build/test flow, start with [../docs/
 - docs/process gate
 - repository hygiene gate
 - team runbook maintenance gate
-- external `styio-audit` gate
+- external `General-Auditor` gate
 - checkpoint health gate
 - delivery gate
 - native configure/build/test entrypoint
