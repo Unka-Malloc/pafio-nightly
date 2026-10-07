@@ -323,7 +323,7 @@ int HandleDoctor(const std::vector<std::string> &args, const bool as_json)
 
   try
   {
-    const std::optional<fs::path> compiler = ResolveStyioBinary(styio_bin);
+    const std::optional<ResolvedStyio> compiler = ResolveStyioBinary(styio_bin);
     if (!compiler.has_value())
     {
       checks.push_back({
@@ -337,15 +337,22 @@ int HandleDoctor(const std::vector<std::string> &args, const bool as_json)
     else
     {
       const CompatibilityReport report =
-          CheckCompilerCompatibility(*compiler);
+          CheckCompilerCompatibility(compiler->binary, compiler->source);
       checks.push_back({
           .name = "styio",
-          .status = "ok",
-          .message = "external Styio machine contract is compatible",
+          .status = report.published_support ? "ok" : "warning",
+          .message = report.published_support ? "external Styio machine contract is compatible" :
+              "explicitly selected Styio satisfies runtime contracts but its version/channel is outside published Pafio support; release provenance is not verified",
           .detail = {
               {"binary", report.binary.string()},
               {"compiler_channel", report.compiler_channel},
               {"compiler_version", report.compiler_version},
+              {"compiler_edition_max", report.compiler_edition_max},
+              {"capabilities", report.capabilities},
+              {"integration_phase", report.integration_phase},
+              {"product_support", report.published_support ? "published" : "unlisted"},
+              {"selection_source", report.selection_source},
+              {"release_provenance", "unverified"},
               {"supported_compile_plan_versions",
                report.supported_compile_plan_versions},
           },

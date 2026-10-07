@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-07
 
 ## Mission
 
@@ -106,3 +106,12 @@ add `emit.runtime_observation` with the fields the caller set. The request enter
 the cache key so an observed run gets its own build root; plans without the flag
 stay byte-identical. The same test suites cover each flag, its dependency on the
 emission flag, and the strict value parsing.
+
+2026-10-07: Explicit local Styio selection admits unlisted valid product labels
+only after runtime contracts pass. Keep discovery source in the report; never
+fall back after an explicit selection fails. Every non-dry-run workflow invokes
+Styio and invalidates only its prior receipt before launch. `CompatTests`
+covers mandatory rejection, doctor read-only warnings, and all four executable
+workflows. `BuildCliTests` covers current-invocation receipts, fail-closed receipt
+invalidation, and dry-run preservation.
+Use a writable isolated `PAFIO_HOME` when running the native suite.

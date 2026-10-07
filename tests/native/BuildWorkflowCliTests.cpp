@@ -132,7 +132,132 @@ void WriteSingleBinProject(const fs::path &root)
   WriteFile(root / "src/main.styio", ">_(\"app\")\n");
 }
 
+void WriteOnceCompilePlanStyio(const fs::path &path, const fs::path &marker)
+{
+  WriteExecutable(
+      path,
+      "#!/bin/sh\n"
+      "if [ \"$1\" = \"--machine-info=json\" ]; then\n"
+      "  printf '%s\\n' '{\"tool\":\"styio\",\"compiler_version\":\"0.0.5\",\"channel\":\"nightly\",\"supported_contracts\":{\"compile_plan\":[1]},\"capabilities\":[\"machine_info_json\",\"single_file_entry\",\"jsonl_diagnostics\"],\"edition_max\":\"2026\"}'\n"
+      "  exit 0\n"
+      "fi\n"
+      "if [ \"$1\" = \"--compile-plan\" ]; then\n"
+      "  if [ -f \"" + marker.string() + "\" ]; then\n"
+      "    printf 'second\\n' > \"" + marker.string() + "\"\n"
+      "    exit 0\n"
+      "  fi\n"
+      "  printf 'first\\n' > \"" + marker.string() + "\"\n"
+      "fi\n" +
+          pafio::testsupport::FakeCompilePlanConsumerBody() +
+          "exit 64\n");
+}
+
 }  // namespace
+
+TEST(BuildCliTests, NonDryRunBuildRequiresReceiptFromCurrentInvocation)
+{
+  const fs::path root = MakeTempDir("build-fresh-receipt");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  WriteSingleBinProject(root);
+  const fs::path binary = root / "styio";
+  const fs::path marker = root / "compiler-invocations";
+  WriteOnceCompilePlanStyio(binary, marker);
+  const std::string compiler_contents = ReadFile(binary);
+  const std::vector<std::string> args = {
+      "--json", "build", "--manifest-path", (root / "pafio.toml").string(),
+      "--styio-bin", binary.string(),
+  };
+
+  testing::internal::CaptureStdout();
+  const int first_code = pafio::RunCli(args);
+  const std::string first_output = testing::internal::GetCapturedStdout();
+  ASSERT_EQ(first_code, pafio::kExitSuccess) << first_output;
+  const json first = json::parse(first_output);
+  const fs::path receipt = fs::path(first.at("plan").at("build_root").get<std::string>()) / "receipt.json";
+  const fs::path artifact = fs::path(first.at("plan").at("artifact_dir").get<std::string>()) / "fake-artifact.txt";
+  ASSERT_TRUE(fs::is_regular_file(receipt));
+  ASSERT_TRUE(fs::is_regular_file(artifact));
+  const std::string artifact_contents = ReadFile(artifact);
+  EXPECT_EQ(ReadFile(marker), "first\n");
+
+  // The exact same compiler returns zero on its second invocation without
+  // writing outputs. Its earlier receipt must not make that invocation succeed.
+  testing::internal::CaptureStdout();
+  testing::internal::CaptureStderr();
+  const int second_code = pafio::RunCli(args);
+  const std::string second_output = testing::internal::GetCapturedStdout();
+  const std::string second_error = testing::internal::GetCapturedStderr();
+  EXPECT_EQ(second_code, pafio::kExitCompiler) << second_output << second_error;
+  EXPECT_EQ(json::parse(second_error).at("message"),
+      "Styio completed but did not materialize compile-plan outputs: receipt=" + receipt.string());
+  EXPECT_EQ(ReadFile(marker), "second\n");
+  EXPECT_EQ(ReadFile(binary), compiler_contents);
+  EXPECT_FALSE(fs::exists(receipt));
+  EXPECT_EQ(ReadFile(artifact), artifact_contents);
+}
+
+TEST(BuildCliTests, ReceiptInvalidationFailurePreventsCompilerLaunch)
+{
+  const fs::path root = MakeTempDir("build-receipt-invalidation-failure");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  WriteSingleBinProject(root);
+  const fs::path binary = root / "styio";
+  const fs::path marker = root / "compiler-invocations";
+  WriteOnceCompilePlanStyio(binary, marker);
+  const std::vector<std::string> args = {
+      "--json", "build", "--manifest-path", (root / "pafio.toml").string(),
+      "--styio-bin", binary.string(),
+  };
+
+  testing::internal::CaptureStdout();
+  const int first_code = pafio::RunCli(args);
+  const std::string first_output = testing::internal::GetCapturedStdout();
+  ASSERT_EQ(first_code, pafio::kExitSuccess) << first_output;
+  const json first = json::parse(first_output);
+  const fs::path receipt = fs::path(first.at("plan").at("build_root").get<std::string>()) / "receipt.json";
+  ASSERT_TRUE(fs::remove(receipt));
+  // A nonempty directory fails removal even when tests run with elevated file
+  // permissions. Pafio must not recursively delete it or launch the compiler.
+  WriteFile(receipt / "keep.txt", "preserve me\n");
+
+  testing::internal::CaptureStdout();
+  testing::internal::CaptureStderr();
+  const int second_code = pafio::RunCli(args);
+  const std::string second_output = testing::internal::GetCapturedStdout();
+  const std::string second_error = testing::internal::GetCapturedStderr();
+  EXPECT_EQ(second_code, pafio::kExitCompiler) << second_output << second_error;
+  EXPECT_NE(json::parse(second_error).at("message").get<std::string>().find(
+      "cannot invalidate previous Styio receipt " + receipt.string()), std::string::npos);
+  EXPECT_EQ(ReadFile(marker), "first\n");
+  EXPECT_EQ(ReadFile(receipt / "keep.txt"), "preserve me\n");
+}
+
+TEST(BuildCliTests, DryRunPreservesPriorReceipt)
+{
+  const fs::path root = MakeTempDir("build-dry-run-preserves-receipt");
+  const ScopedEnvVar pafio_home("PAFIO_HOME", (root / ".pafio-home").string());
+  WriteSingleBinProject(root);
+  const std::vector<std::string> args = {
+      "--json", "build", "--manifest-path", (root / "pafio.toml").string(),
+      "--dry-run",
+  };
+
+  testing::internal::CaptureStdout();
+  const int first_code = pafio::RunCli(args);
+  const std::string first_output = testing::internal::GetCapturedStdout();
+  ASSERT_EQ(first_code, pafio::kExitSuccess) << first_output;
+  const json first = json::parse(first_output);
+  const fs::path receipt = fs::path(first.at("plan").at("build_root").get<std::string>()) / "receipt.json";
+  WriteFile(receipt, "prior receipt\n");
+
+  testing::internal::CaptureStdout();
+  const int second_code = pafio::RunCli(args);
+  const std::string second_output = testing::internal::GetCapturedStdout();
+  ASSERT_EQ(second_code, pafio::kExitSuccess) << second_output;
+  const json second = json::parse(second_output);
+  EXPECT_EQ(second.at("plan").at("build_root"), first.at("plan").at("build_root"));
+  EXPECT_EQ(ReadFile(receipt), "prior receipt\n");
+}
 
 TEST(BuildCliTests, DryRunPassesObservableStaticSnapshotRequestIntoCompilePlan)
 {

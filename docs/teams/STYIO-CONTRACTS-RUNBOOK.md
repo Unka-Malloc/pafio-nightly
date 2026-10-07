@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-07
 
 ## Mission
 
@@ -81,3 +81,11 @@ pure passthrough for Styio stage S3 runtime-events v2. Pafio applies no defaults
 Styio owns the version, capability, bound, and sampling validation, writes the
 receipt-named runtime-events JSONL artifact, and lists it in its receipt. Pafio
 never reads runtime events.
+
+2026-10-07: `runtime_requirements` now separates mandatory compile-plan,
+capability, and edition admission from published product-range advisories.
+Keep the embedded matrix and compatibility TOML synchronized. Explicit flag or
+environment selection can admit an unlisted valid version/channel; PATH-only
+admission stays strict. Malformed handshakes and nano's absent compile-plan
+support still fail. Doctor reports the selected pair without mutating projects;
+release provenance remains unverified.

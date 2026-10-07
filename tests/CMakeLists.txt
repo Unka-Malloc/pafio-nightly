@@ -31,6 +31,7 @@ add_executable(pafio_native_tests
   native/BuildPlanTests.cpp
   native/BuildWorkflowCliTests.cpp
   native/DoctorTests.cpp
+  native/CompatTests.cpp
   native/LockTests.cpp
   native/ManifestTests.cpp
   native/MetadataTests.cpp

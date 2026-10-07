@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <charconv>
 #include <cstdlib>
 #include <optional>
 #include <sstream>
@@ -33,6 +34,14 @@ namespace
 constexpr std::string_view kEmbeddedStyioSupportToml = R"toml(
 schema = 1
 pafio_version = "0.1.0-dev"
+
+# Runtime admission requirements are independent of published product ranges.
+# The row-local copies remain for older Pafio consumers of this matrix.
+[runtime_requirements]
+edition_max = "2026"
+required_capabilities = ["machine_info_json", "single_file_entry", "jsonl_diagnostics"]
+supported_compile_plan_versions = [1]
+integration_phase = "compile-plan-live"
 
 [[supported_styio]]
 min = "0.0.1"
@@ -63,34 +72,41 @@ integration_phase = "compile-plan-live"
 notes = "The coordinated nightly lane consumes the same compile-plan v1 contract as the stable lane."
 )toml";
 
+int ParseNumber(const std::string &value, const std::string &field)
+{
+  int result = 0;
+  const auto parsed = std::from_chars(value.data(), value.data() + value.size(), result);
+  if (value.empty() || value.front() < '0' || value.front() > '9' ||
+      parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() || result < 0)
+  {
+    throw pafio::CompatibilityError("invalid " + field + ": " + value);
+  }
+  return result;
+}
+
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
   std::stringstream in(version);
-  std::string major;
-  std::string minor;
-  std::string patch;
-  if (!std::getline(in, major, '.') || !std::getline(in, minor, '.') || !std::getline(in, patch, '.'))
+  std::array<int, 3> parts{};
+  for (int &part : parts)
+  {
+    std::string text;
+    if (!std::getline(in, text, '.') || (text.size() > 1 && text.front() == '0'))
+    {
+      throw pafio::CompatibilityError("invalid compiler version in handshake: " + version);
+    }
+    part = ParseNumber(text, "compiler version in handshake");
+  }
+  if (!in.eof())
   {
     throw pafio::CompatibilityError("invalid compiler version in handshake: " + version);
   }
-
-  return {
-      std::stoi(major),
-      std::stoi(minor),
-      std::stoi(patch),
-  };
+  return {parts[0], parts[1], parts[2]};
 }
 
 int ParseEdition(const std::string &edition)
 {
-  try
-  {
-    return std::stoi(edition);
-  }
-  catch (const std::exception &)
-  {
-    throw pafio::CompatibilityError("invalid compiler edition_max in handshake: " + edition);
-  }
+  return ParseNumber(edition, "compiler edition_max in handshake");
 }
 
 toml::table LoadCompatMatrix()
@@ -144,38 +160,45 @@ json ProbeMachineInfo(const fs::path &binary)
     throw pafio::CompatibilityError("compiler '" + binary.string() + "' returned invalid machine-info JSON");
   }
 
-  static const std::array required_fields = {
-      "tool",
-      "compiler_version",
-      "channel",
-      "supported_contracts",
-      "capabilities",
-      "edition_max",
-  };
-  for (const char *field : required_fields)
+  if (!payload.is_object())
   {
-    if (!payload.contains(field))
+    throw pafio::CompatibilityError("compiler handshake must be an object");
+  }
+  for (const char *field : {"tool", "compiler_version", "channel", "edition_max"})
+  {
+    if (!payload.contains(field) || !payload[field].is_string() || payload[field].get<std::string>().empty())
     {
-      throw pafio::CompatibilityError("compiler handshake missing required field: " + std::string(field));
+      throw pafio::CompatibilityError("compiler handshake field '" + std::string(field) + "' must be a non-empty string");
     }
-  }
-  if (!payload["supported_contracts"].is_object())
-  {
-    throw pafio::CompatibilityError("compiler handshake field 'supported_contracts' must be an object");
-  }
-  if (!payload["capabilities"].is_array())
-  {
-    throw pafio::CompatibilityError("compiler handshake field 'capabilities' must be an array");
   }
   if (payload["tool"] != "styio")
   {
     throw pafio::CompatibilityError("compiler handshake field 'tool' must equal 'styio'");
   }
+  ParseSemver(payload["compiler_version"].get<std::string>());
+  ParseEdition(payload["edition_max"].get<std::string>());
+  if (!payload.contains("supported_contracts") || !payload["supported_contracts"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_contracts' must be an object");
+  }
+  const json &contracts = payload["supported_contracts"];
+  if (!contracts.contains("compile_plan") || !contracts["compile_plan"].is_array() ||
+      !std::all_of(contracts["compile_plan"].begin(), contracts["compile_plan"].end(), [](const json &value) {
+        return value.is_number_integer() && value >= 0 && value <= INT32_MAX;
+      }))
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_contracts.compile_plan' must be an array of non-negative integers");
+  }
+  if (!payload.contains("capabilities") || !payload["capabilities"].is_array() ||
+      !std::all_of(payload["capabilities"].begin(), payload["capabilities"].end(), [](const json &value) { return value.is_string(); }))
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'capabilities' must be an array of strings");
+  }
 
   return payload;
 }
 
-const toml::table &FindMatchingEntry(const json &machine_info, const toml::table &compat_doc)
+const toml::table *FindMatchingEntry(const json &machine_info, const toml::table &compat_doc)
 {
   const auto compiler_version = ParseSemver(machine_info["compiler_version"].get<std::string>());
   const std::string compiler_channel = machine_info["channel"].get<std::string>();
@@ -205,10 +228,10 @@ const toml::table &FindMatchingEntry(const json &machine_info, const toml::table
     {
       continue;
     }
-    return *entry;
+    return entry;
   }
 
-  throw pafio::CompatibilityError("compiler version/channel is outside the published pafio compatibility matrix");
+  return nullptr;
 }
 
 std::vector<std::string> LoadStringArray(const toml::table &table, const std::string &key)
@@ -217,17 +240,22 @@ std::vector<std::string> LoadStringArray(const toml::table &table, const std::st
   const toml::array *array = table[key].as_array();
   if (array == nullptr)
   {
-    return values;
+    throw pafio::CompatibilityError("compatibility matrix field '" + key + "' must be an array");
   }
 
   values.reserve(array->size());
   for (const toml::node &node : *array)
   {
     const auto value = node.value<std::string>();
-    if (value.has_value())
+    if (!value.has_value())
     {
-      values.push_back(*value);
+      throw pafio::CompatibilityError("invalid compatibility matrix array: " + key);
     }
+    values.push_back(*value);
+  }
+  if (values.empty())
+  {
+    throw pafio::CompatibilityError("compatibility matrix array must not be empty: " + key);
   }
   return values;
 }
@@ -238,17 +266,22 @@ std::vector<int> LoadIntArray(const toml::table &table, const std::string &key)
   const toml::array *array = table[key].as_array();
   if (array == nullptr)
   {
-    return values;
+    throw pafio::CompatibilityError("compatibility matrix field '" + key + "' must be an array");
   }
 
   values.reserve(array->size());
   for (const toml::node &node : *array)
   {
     const auto value = node.value<int64_t>();
-    if (value.has_value())
+    if (!value.has_value() || *value < 0 || *value > INT32_MAX)
     {
-      values.push_back(static_cast<int>(*value));
+      throw pafio::CompatibilityError("invalid compatibility matrix array: " + key);
     }
+    values.push_back(static_cast<int>(*value));
+  }
+  if (values.empty())
+  {
+    throw pafio::CompatibilityError("compatibility matrix array must not be empty: " + key);
   }
   return values;
 }
@@ -303,30 +336,43 @@ std::optional<fs::path> FindStyioOnPath()
 namespace pafio
 {
 
-std::optional<fs::path> ResolveStyioBinary(
+std::optional<ResolvedStyio> ResolveStyioBinary(
     const std::optional<std::string> &explicit_path)
 {
-  if (explicit_path.has_value() && !explicit_path->empty())
+  if (explicit_path.has_value())
   {
-    return CanonicalAbsolutePath(*explicit_path);
+    if (explicit_path->empty())
+    {
+      throw CompilerProbeError("explicit Styio path must not be empty");
+    }
+    return ResolvedStyio{CanonicalAbsolutePath(*explicit_path), CompilerSelectionSource::CommandLine};
   }
 
   if (const char *env = std::getenv("PAFIO_STYIO_BIN"))
   {
     if (*env != '\0')
     {
-      return CanonicalAbsolutePath(env);
+      return ResolvedStyio{CanonicalAbsolutePath(env), CompilerSelectionSource::Environment};
     }
   }
 
-  return FindStyioOnPath();
+  if (const auto binary = FindStyioOnPath())
+  {
+    return ResolvedStyio{*binary, CompilerSelectionSource::Path};
+  }
+  return std::nullopt;
 }
 
-CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
+CompatibilityReport CheckCompilerCompatibility(const fs::path &binary, CompilerSelectionSource source)
 {
   const json machine_info = ProbeMachineInfo(binary);
   const toml::table compat_doc = LoadCompatMatrix();
-  const toml::table &entry = FindMatchingEntry(machine_info, compat_doc);
+  const toml::table *requirements = compat_doc["runtime_requirements"].as_table();
+  if (requirements == nullptr)
+  {
+    throw CompatibilityError("compatibility matrix is missing runtime_requirements");
+  }
+  const toml::table &entry = *requirements;
 
   std::vector<std::string> capabilities = machine_info["capabilities"].get<std::vector<std::string>>();
   const std::vector<std::string> required_capabilities = LoadStringArray(entry, "required_capabilities");
@@ -359,6 +405,12 @@ CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
     throw CompatibilityError("compiler edition_max is lower than the minimum edition supported by this pafio phase");
   }
 
+  // Runtime contracts always gate admission, even for a published product.
+  const bool published_support = FindMatchingEntry(machine_info, compat_doc) != nullptr;
+  if (!published_support && source == CompilerSelectionSource::Path)
+  {
+    throw CompatibilityError("compiler version/channel is outside the published pafio compatibility matrix; explicitly select a contract-compatible compiler with --styio-bin or PAFIO_STYIO_BIN");
+  }
   std::sort(capabilities.begin(), capabilities.end());
 
   CompatibilityReport report;
@@ -369,6 +421,9 @@ CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
   report.integration_phase = entry["integration_phase"].value<std::string>().value_or("unspecified");
   report.supported_compile_plan_versions = expected_compile_plan_versions;
   report.capabilities = std::move(capabilities);
+  report.published_support = published_support;
+  report.selection_source = source == CompilerSelectionSource::CommandLine ? "command_line" :
+                            source == CompilerSelectionSource::Environment ? "environment" : "path";
   return report;
 }
 

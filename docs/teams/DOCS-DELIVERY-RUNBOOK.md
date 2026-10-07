@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-07
 
 ## Mission
 
@@ -115,3 +115,10 @@ input validates the Windows CLI and process contracts before the final complete
 regression within existing adaptation authorization; it does not establish
 Linux, macOS, or release readiness. Preserve
 the request's existing timeout and process-group semantics across platforms.
+
+2026-10-07: Updated local compiler admission wording across the CLI,
+compatibility, version-decoupling, and Styio handoff contracts. Distinguish runtime
+compatibility, published product support, selection source, and unverified
+release provenance. `doctor` warnings are admissible pair-preflight results;
+other named checks may fail independently. This does not certify any release or
+change compile-plan v1.
