@@ -4,7 +4,7 @@
 
 **Audience:** `styio` maintainers implementing compiler-side interfaces, and `pafio` maintainers validating published compiler compatibility.
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-10-07
 
 ## 1. Ownership and Boundary
 
@@ -96,7 +96,7 @@ Rules:
 
 - advertising a compile-plan version in `supported_contracts.compile_plan` means the binary accepts `styio --compile-plan <path>` for that version
 - owning a schema file in source control does not count as support
-- unpublished local branches do not count as support
+- unpublished local branches do not count as published release support; an explicitly selected local binary may nevertheless be admitted when its machine contract satisfies `runtime_requirements` (see `contracts/compat/README.md`)
 
 ### 2.2 `styio --compile-plan <path>`
 

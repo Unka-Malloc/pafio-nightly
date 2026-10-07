@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze Pafio's terminal entry, external Styio discovery, and stable machine contracts.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-07
 
 ## Commands
 
@@ -40,8 +40,11 @@ diagnostic, receipt, and runtime-event schemas. The envelope's `plan` object
 names the compile-plan outputs: `plan.path`, `plan.build_root`,
 `plan.artifact_dir`, `plan.diag_dir`, and `plan.cache_key`. Styio writes its
 receipt to `<plan.build_root>/receipt.json` and its artifacts under
-`plan.artifact_dir`; Pafio verifies those paths exist after a successful run but
-does not read or republish them.
+`plan.artifact_dir`. Immediately before executing Styio, Pafio removes only the
+previous receipt at that path and fails without launching Styio if removal
+fails. A successful run must create a fresh receipt; prior artifacts remain
+intact, and dry runs do not remove receipts. Pafio verifies the output paths
+exist afterward but does not read or republish their contents.
 
 `pafio doctor` is read-only and diagnoses project state, cache, registry trust,
 and external Styio capability.
@@ -117,3 +120,27 @@ artifact under the receipt-named output stem and lists it in
 `<plan.build_root>/receipt.json`; a consumer that requested observation reads
 that receipt from the success envelope to find it. Pafio never reads, filters,
 or republishes runtime events.
+
+## Local compiler compatibility reports
+
+Explicit compiler selection through `--styio-bin` or nonempty `PAFIO_STYIO_BIN`
+allows an unlisted product version/channel only after mandatory runtime
+contracts, capabilities, and edition checks pass. PATH-only discovery continues
+to require a published support-range match. Explicit selection never falls back
+to a different compiler when probing or admission fails.
+
+`doctor --json` keeps its read-only behavior. Its `styio` check reports `ok` for a
+published compatible product, `warning` for an explicitly selected unlisted
+compatible product, and `error` for a failed probe or mandatory check. A warning
+does not itself make `ok` false. Other doctor checks can independently fail, so a
+consumer inspecting only the selected compiler pair must inspect the named
+`styio` check and its `supported_compile_plan_versions`, not only the aggregate
+exit code. Existing machine output fields are retained.
+
+Doctor's Styio detail and successful workflow `styio` objects additionally
+include `product_support`, `selection_source`, and `release_provenance`.
+`release_provenance` is `unverified`: runtime compatibility is not release
+certification. Human workflow output emits an advisory on stderr for an unlisted
+selection; JSON output stays machine-readable. Original compiler version and
+channel values are preserved, including the plan's toolchain channel and builtin
+standard-library identity.

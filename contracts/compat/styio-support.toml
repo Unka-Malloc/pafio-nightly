@@ -1,6 +1,14 @@
 schema = 1
 pafio_version = "0.1.0-dev"
 
+# Runtime admission requirements are independent of published product ranges.
+# The row-local copies remain for older Pafio consumers of this matrix.
+[runtime_requirements]
+edition_max = "2026"
+required_capabilities = ["machine_info_json", "single_file_entry", "jsonl_diagnostics"]
+supported_compile_plan_versions = [1]
+integration_phase = "compile-plan-live"
+
 [[supported_styio]]
 min = "0.0.1"
 max_exclusive = "0.1.0"

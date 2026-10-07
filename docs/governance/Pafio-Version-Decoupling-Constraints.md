@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio, Styio, language editions, and machine contracts independently versioned.
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-10-07
 
 ## Independent Axes
 
@@ -23,6 +23,13 @@ contract, edition, profile, target, or source identities.
 
 `pafio.lock` changes only for dependency or lock-schema reasons; the Pafio
 binary version is not a semantic dependency.
+
+Explicit local selection may admit an unlisted product version/channel when the
+runtime contract passes. That decision is separate from published product
+support and unverified release provenance. Every non-dry-run workflow invokes
+the selected compiler, even when the existing output key matches a prior run.
+Pafio invalidates only the prior receipt immediately before launch and requires
+the invocation to produce a fresh receipt; it does not certify releases.
 
 The package-manager compatibility declaration is
 `contracts/compat/styio-support.toml`. Styio remains the authority for

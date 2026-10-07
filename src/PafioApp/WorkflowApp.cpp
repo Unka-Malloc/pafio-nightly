@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -293,25 +294,25 @@ int HandlePlanCommand(
         as_json);
   }
 
-  std::optional<fs::path> compiler;
+  std::optional<ResolvedStyio> compiler;
   std::optional<CompatibilityReport> compatibility;
   if (!parsed.dry_run)
   {
-    compiler = ResolveStyioBinary(parsed.styio_bin);
-    if (!compiler.has_value())
-    {
-      return EmitWorkflowFailure(
-          command_name,
-          {"CompilerSpawnError", kExitCompilerSpawn,
-           "Styio was not found; use --styio-bin, PAFIO_STYIO_BIN, or install "
-           "styio on PATH",
-           std::string(command_name)},
-          as_json);
-    }
-
     try
     {
-      compatibility = CheckCompilerCompatibility(*compiler);
+      compiler = ResolveStyioBinary(parsed.styio_bin);
+      if (!compiler.has_value())
+      {
+        return EmitWorkflowFailure(
+            command_name,
+            {"CompilerSpawnError", kExitCompilerSpawn,
+             "Styio was not found; use --styio-bin, PAFIO_STYIO_BIN, or install "
+             "styio on PATH",
+             std::string(command_name)},
+            as_json);
+      }
+
+      compatibility = CheckCompilerCompatibility(compiler->binary, compiler->source);
       if (std::find(
               compatibility->supported_compile_plan_versions.begin(),
               compatibility->supported_compile_plan_versions.end(),
@@ -327,6 +328,10 @@ int HandlePlanCommand(
       }
       request.compiler_version = compatibility->compiler_version;
       request.compiler_channel = compatibility->compiler_channel;
+      if (!compatibility->published_support && !as_json)
+      {
+        std::cerr << "warning: explicitly selected Styio satisfies runtime contracts but its version/channel is outside published Pafio support; release provenance is not verified\n";
+      }
     }
     catch (const CompilerProbeError &err)
     {
@@ -425,11 +430,28 @@ int HandlePlanCommand(
         as_json);
   }
 
+  // A successful invocation must produce its own receipt, even when its output
+  // key matches an earlier run. Leave artifacts intact and never do this for a
+  // dry run; only invalidate the known receipt immediately before execution.
+  const fs::path receipt_path = plan.build_root / "receipt.json";
+  std::error_code receipt_error;
+  fs::remove(receipt_path, receipt_error);
+  if (receipt_error)
+  {
+    return EmitWorkflowFailure(
+        command_name,
+        {"CompilerError", kExitCompiler,
+         "cannot invalidate previous Styio receipt " + receipt_path.string() +
+             ": " + receipt_error.message(),
+         std::string(command_name)},
+        as_json);
+  }
+
   ProcessResult process;
   try
   {
     process = RunProcess({
-        .program = ProcessPathString(*compiler),
+        .program = ProcessPathString(compiler->binary),
         .args = {"--compile-plan", ProcessPathString(plan.plan_path)},
         .search_path = false,
         .timeout = kExternalProcessBuildTimeout,
@@ -496,6 +518,9 @@ int HandlePlanCommand(
       {"compiler_edition_max", compatibility->compiler_edition_max},
       {"compiler_version", compatibility->compiler_version},
       {"integration_phase", compatibility->integration_phase},
+      {"product_support", compatibility->published_support ? "published" : "unlisted"},
+      {"selection_source", compatibility->selection_source},
+      {"release_provenance", "unverified"},
       {"process",
        {
            {"exit_code", process.exit_code},
