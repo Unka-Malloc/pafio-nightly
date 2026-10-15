@@ -1,0 +1,88 @@
+{
+  "after": [
+    "NODE-BASELINE"
+  ],
+  "checks": [
+    {
+      "commands": [
+        "bash docs/plans/task-resource-delivery/checks.sh focused"
+      ],
+      "coverage": {
+        "kind": "node"
+      },
+      "dirty": false,
+      "id": "pafio-task-resource-focused",
+      "pending": false,
+      "result": {
+        "command": "bash docs/plans/task-resource-delivery/checks.sh focused",
+        "details": {
+          "build": "cmake --build build-codex --target pafio pafio_native_tests exit 0 (incremental)",
+          "compiler": "../styio-nightly/build/default/bin/styio (B5-reviewed candidate, consumed in place)",
+          "gate_steps": "23 real subprocess steps ok: machine_info, pafio_doctor, success/compile_error/repaired x check|build|test|run, t22 fallback run+test, t23 f64 run+test, e06 no-fallback run+test (exit 23 expected), dry-run preservation, concurrent_build_0/1",
+          "native_tests": "39 passed via registered gtest filter",
+          "pafio": "build-codex/bin/pafio (current-source, linked after CompilePlan/WorkflowApp/Process changes)"
+        },
+        "evidence": "build-codex/task-resource-verifier-20261011/focused.log",
+        "exit_code": 0,
+        "scope": "Verifier-executed local run of the registered command on the corrected upstream B5 candidate; the host-platform check execution remains its own projection and is not claimed here.",
+        "status": "passed",
+        "summary": "Registered focused command executed by the verifier and exited 0 on the B5 Styio candidate: 39 native tests plus the real 23-step task/resource gate. Per-invocation output ownership, fixture copies and focused check coverage independently verified.",
+        "host_validation": {
+          "status": "passed",
+          "run_id": "529d2782bd18e8a56f121276550903b2",
+          "source": "Coordinator read actual completed task-resource-delivery check-stage run and node validation=passed; prior local evidence retained with its original scope."
+        }
+      },
+      "run_id": "529d2782bd18e8a56f121276550903b2",
+      "running": false,
+      "title": "Repair current result and package workflow defects checks"
+    }
+  ],
+  "commit": null,
+  "contract": {
+    "automation_check_ids": [
+      "pafio-task-resource-focused"
+    ],
+    "completion": "Check success is necessary but not sufficient. Verify the stated outcome and required external input; no fabricated result or silent skip.",
+    "execution": "Explicitly select these registered check IDs; an omitted list inherits all project checks and would run unrelated/full checks prematurely.",
+    "external_inputs": [
+      "Styio NODE-HANDOFF source-reviewed candidate; do not wait for Styio final Tree delivery."
+    ],
+    "write_scope": [
+      "Current repository implementation, contracts and focused tests required by this milestone; existing user changes are preserved."
+    ]
+  },
+  "executors": [],
+  "id": "NODE-REPAIR",
+  "outcome": "Implement permanent real Pafio task/resource workflow coverage, classify gaps separately from defects, and repair only demonstrated current-result ownership problems while preserving offline and dry-run behavior. Keep receipt content opaque and report upstream defects to the coordinator.",
+  "resources": [],
+  "result": {
+    "status": "completed",
+    "summary": "Permanent real Pafio task/resource workflow coverage implemented and independently verified. Per-invocation output roots under .pafio/build/<cache_key>/<invocation>/ repair the reproduced P4 receipt replacement; cache identity stable, receipts opaque, no old-layout fallback or deletion. Gate --task-resource drives real check/build/test/run through success->compile error->repaired success, t13 history, t22 fallback, t23 f64, e06 no-fallback, dry-run preservation and two real concurrent builds on one reusable project.",
+    "verification": {
+      "fixture_provenance": "All 5 .styio inputs and 5 .expected files byte-identical to accepted upstream sources (.out/.err renamed per fixture README)",
+      "not_done": "No platform-check pass claimed, no HANDOFF review, no Vityo E2E, no full regression, no commit/push/PR; source Task/Tree remain incomplete",
+      "registered_check": "pafio-task-resource-focused executed locally by verifier: exit 0 (build + 39 native tests + 23 real gate steps) on the B5 Styio candidate; evidence build-codex/task-resource-verifier-20261011/focused.log",
+      "source_review": "AllocateInvocationRoot claims ownership via atomic create_directory with collision retry; WorkflowApp/ValidateCompilePlanMaterialization follow returned paths; 60-minute compile cutoff removed cleanly (optional timeout field); docs/tests/contracts migrated together; git diff --check clean; py_compile clean; no privacy findings",
+      "upstream_defects": "U1 verified repaired on B5 (real snapshot probe passes field stage). New U2 reported to coordinator: Styio admit_qualified_compilation_unit rejects every Pafio-mandated namespace/name; both snapshot and runtime-observation emission exit 23 for any valid Pafio project; not producer-repairable without a contract decision; observation join stays upstream-blocked"
+    }
+  },
+  "review": [
+    {
+      "reason": "result_changed",
+      "source": {
+        "id": "NODE-BASELINE",
+        "kind": "node"
+      }
+    },
+    {
+      "evidence": "Registered command 'bash docs/plans/task-resource-delivery/checks.sh focused' re-executed and exited 0 on the B5-reviewed Styio candidate (build + 39 native tests + 23 real gate steps): build-codex/task-resource-verifier-20261011/focused.log. All 10 fixture files byte-compared to accepted upstream sources. Real probes of --emit-observable-static-snapshot and --emit-runtime-observation on snap-proj/ recorded exit 23 diagnostics (snap1.err, rtobs.err).",
+      "findings": "Implementation verified correct and complete for the admitted scope: per-invocation roots repair the reproduced P4 ownership defect with stable cache identity and opaque receipts; earlier-result preservation, dry-run, failure isolation, concurrent independence and explicit compiler selection all proven by the real gate. U1 verified repaired upstream; new upstream defect U2 reported to coordinator (Styio package_name_is_valid rejects every Pafio-mandated namespace/name; snapshot and runtime-observation emission exit 23 for any valid Pafio project; observation join remains upstream-blocked, no Pafio-side repair). No scoped Pafio defect found requiring repair; bookkeeping reconciled to actual evidence.",
+      "scope": "Independent verifier review of the completed implementation: CompilePlan.cpp AllocateInvocationRoot ownership semantics, WorkflowApp materialization/failure paths, Process.hpp timeout removal, gate --task-resource workflow, test/CMake/interop updates, docs/contracts, fixture provenance, node/check bookkeeping"
+    }
+  ],
+  "role": "worker",
+  "status": "completed",
+  "task": "TASK-001",
+  "title": "Repair current result and package workflow defects"
+}

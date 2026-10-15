@@ -432,7 +432,6 @@ int HandlePlanCommand(
         .program = ProcessPathString(*compiler),
         .args = {"--compile-plan", ProcessPathString(plan.plan_path)},
         .search_path = false,
-        .timeout = kExternalProcessBuildTimeout,
         .error_context = "Styio compile-plan execution",
     });
   }

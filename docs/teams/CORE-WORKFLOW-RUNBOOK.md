@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-12
 
 ## Mission
 
@@ -68,6 +68,12 @@ build, process contracts, the Unicode compiler-probe producer test, and CLI
 probes independently. Full platform release acceptance remains governed by the
 post-commit and release specifications.
 
+When `PAFIO_GATE_LOG_DIR` is set, `native-check.sh` retains each configure,
+build and test command, full streams and actual exits in a unique subdirectory.
+Verbose CTest output, JUnit and copied `Testing/` records preserve named results
+before another run or isolated-build cleanup. Logging does not select tests or
+change failure handling. Extractability always builds inside its isolated copy.
+
 The Windows implementation follows the [Win32 process creation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw)
 and [overlapped pipe](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-server-using-overlapped-i-o)
 contracts; argument handling was compared with established LLVM/libuv process
@@ -89,13 +95,13 @@ handoff. Do not record local paths, credentials, or backend runtime data.
 `--emit-observable-static-snapshot[=<schema-version>]` and repeatable
 `--observable-capability <name>` flags, which only add
 `emit.observable_static_snapshot` to the compile plan. Plans without the flag
-stay byte-identical; focused coverage lives in `BuildPlanTests` and
+keep ordinary semantic inputs and cache identity; focused coverage lives in `BuildPlanTests` and
 `BuildCliTests` plus the `pafio_cli_*_help` CTest entries.
 
 2026-09-05: The same commands accept `--observable-parent-snapshot <path>`
 (requires the emission flag), which only adds
 `emit.observable_static_snapshot.parent_snapshot_path`. The path stays out of
-the cache key so the build root does not change per run; the same test suites
+the cache key; output roots are independently allocated per invocation; the same test suites
 cover the flag, its usage errors, and the unchanged cache key.
 
 2026-09-05: The same commands accept `--emit-runtime-observation[=<version>]`
@@ -103,6 +109,6 @@ with the dependent `--runtime-observation-mode`,
 `--runtime-observation-capability`, `--runtime-observation-lane-capacity`, and
 `--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`, which only
 add `emit.runtime_observation` with the fields the caller set. The request enters
-the cache key so an observed run gets its own build root; plans without the flag
-stay byte-identical. The same test suites cover each flag, its dependency on the
+the cache key so an observed request has distinct cache identity; plans without the flag
+keep ordinary semantic inputs and cache identity. The same test suites cover each flag, its dependency on the
 emission flag, and the strict value parsing.

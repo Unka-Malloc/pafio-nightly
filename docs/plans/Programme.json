@@ -1,0 +1,76 @@
+{
+  "schema": "better-plan.programme",
+  "id": "PROGRAMME-PAFIO",
+  "title": "Pafio usable language ecosystem",
+  "goal": "Deliver complete usable improvements; research supports concrete implementation and does not create a parallel delivery programme.",
+  "success": [
+    "Each activated milestone preserves supported product functionality and has current engineering evidence.",
+    "Each delivered milestone leaves the integrated product buildable and usable, preserves every previously supported capability in the declared support scope, and delivers the selected new behavior end to end. Complete all affected producers, consumers, entrypoints, contracts and tests together. A partial migration, disabled existing feature, temporary broken interface or deferred required wiring is not a delivered milestone. Preserve independently retained assets and user data."
+  ],
+  "deliveries": [
+    {
+      "id": "DELIVERY-PAFIO-TASK-RESOURCE",
+      "title": "Usable task resources through the current toolchain",
+      "tree": "task-resource-delivery/Tree.json",
+      "requires": []
+    },
+    {
+      "id": "DELIVERY-PAFIO-PACKAGE-GRAPH",
+      "title": "Authoritative offline project graph",
+      "requires": [],
+      "goal": "Deliver a reusable dependency/workspace graph with incremental invalidation and existing offline guarantees.",
+      "success": [
+        "One bounded usable capability is independently reviewed, integrated and verified without removing supported functionality."
+      ],
+      "requirements": [
+        {
+          "statement": "Deliver a reusable dependency/workspace graph with incremental invalidation and existing offline guarantees.",
+          "source_ids": [
+            "REQ-PAFIO-FUTURE-PACKAGE-GRAPH"
+          ]
+        },
+        {
+          "statement": "Each delivered milestone leaves the integrated product buildable and usable, preserves every previously supported capability in the declared support scope, and delivers the selected new behavior end to end. Complete all affected producers, consumers, entrypoints, contracts and tests together. A partial migration, disabled existing feature, temporary broken interface or deferred required wiring is not a delivered milestone. Preserve independently retained assets and user data.",
+          "source_ids": [
+            "REQ-PAFIO-INTEGRITY"
+          ]
+        }
+      ],
+      "open_decisions": [
+        {
+          "title": "Select the next concrete capability and its measured acceptance before elaboration.",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "id": "DELIVERY-PAFIO-PACK-TRUST",
+      "title": "Reproducible package transfer and trust results",
+      "requires": [],
+      "goal": "Complete one package import/export or trust-client scenario; independent registry services retain their ownership.",
+      "success": [
+        "One bounded usable capability is independently reviewed, integrated and verified without removing supported functionality."
+      ],
+      "requirements": [
+        {
+          "statement": "Complete one package import/export or trust-client scenario; independent registry services retain their ownership.",
+          "source_ids": [
+            "REQ-PAFIO-FUTURE-PACK-TRUST"
+          ]
+        },
+        {
+          "statement": "Each delivered milestone leaves the integrated product buildable and usable, preserves every previously supported capability in the declared support scope, and delivers the selected new behavior end to end. Complete all affected producers, consumers, entrypoints, contracts and tests together. A partial migration, disabled existing feature, temporary broken interface or deferred required wiring is not a delivered milestone. Preserve independently retained assets and user data.",
+          "source_ids": [
+            "REQ-PAFIO-INTEGRITY"
+          ]
+        }
+      ],
+      "open_decisions": [
+        {
+          "title": "Select the next concrete capability and its measured acceptance before elaboration.",
+          "status": "open"
+        }
+      ]
+    }
+  ]
+}

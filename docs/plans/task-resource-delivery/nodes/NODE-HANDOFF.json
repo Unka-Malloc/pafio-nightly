@@ -1,0 +1,77 @@
+{
+  "after": [
+    "NODE-REPAIR"
+  ],
+  "checks": [
+    {
+      "commands": [
+        "bash docs/plans/task-resource-delivery/checks.sh integration"
+      ],
+      "coverage": {
+        "kind": "node"
+      },
+      "dirty": false,
+      "id": "pafio-task-resource-integration",
+      "pending": false,
+      "result": {
+        "outcome": "passed",
+        "observed_date": "2026-10-11",
+        "source": "task-resource-delivery host validation=passed, check-stage run completed",
+        "scope": "Registered handoff check; full host console and individual process exits are not exposed. Independent semantic review evidence remains in HANDOFF.md."
+      },
+      "run_id": "4c4c7d6b6806ae37f223ca777f1b171c",
+      "running": false,
+      "title": "Integrate and hand off the real project workflow checks"
+    }
+  ],
+  "commit": null,
+  "contract": {
+    "automation_check_ids": [
+      "pafio-task-resource-integration"
+    ],
+    "completion": "Check success is necessary but not sufficient. Verify the stated outcome and required external input; no fabricated result or silent skip.",
+    "execution": "Explicitly select these registered check IDs; an omitted list inherits all project checks and would run unrelated/full checks prematurely.",
+    "external_inputs": [],
+    "write_scope": [
+      "Current repository implementation, contracts and focused tests required by this milestone; existing user changes are preserved."
+    ]
+  },
+  "executors": [],
+  "id": "NODE-HANDOFF",
+  "outcome": "Use the repaired Styio candidate for actual check/build/test/run of the shared project, including task history/failure. Extend existing interface/workflow suites so these assertions run from the integration check, not a manual checklist alone.",
+  "resources": [],
+  "result": {
+    "summary": "Coordinator accepted the independently reviewed current dirty-source candidate and completed registered handoff check. Actual Pafio ordinary/observed workflows, invocation ownership and retained-parent cases are covered; upstream U2 is resolved. Same-candidate Vityo production integration and final regression remain outstanding.",
+    "evidence": "docs/plans/task-resource-delivery/HANDOFF.md",
+    "coordinator_host_acceptance": {
+      "check_run_id": "4c4c7d6b6806ae37f223ca777f1b171c",
+      "validation": "passed",
+      "observed_date": "2026-10-11"
+    }
+  },
+  "review": [
+    {
+      "reason": "result_changed",
+      "source": {
+        "id": "NODE-BASELINE",
+        "kind": "node"
+      }
+    },
+    {
+      "reason": "result_changed",
+      "source": {
+        "id": "NODE-REPAIR",
+        "kind": "node"
+      }
+    },
+    {
+      "scope": "Independent verifier pass over the completed review: re-read changed production source (AllocateInvocationRoot ownership semantics, unbounded wait after timeout removal on POSIX/Windows, WorkflowApp failure/dry-run envelopes), tests, contracts and docs; executed the gate's keyword-only observation selection on the coordinator-accepted U2-repaired Styio candidate",
+      "evidence": "Targeted real run: 8 steps under build-codex/task-resource-handoff-verifier-20261011/observation-subset.json — observation_lock_sync 0, snapshot_initial 0, snapshot_parent 0 (relative retained parent, empty published delta, equal cache identity, new invocation root), snapshot_missing_parent 0 (full_snapshot_required/parent_unreadable, identical snapshot bytes, no delta), runtime_only 0 (session framing, unique execution id, task settlement events), success/repaired_observed_run 0, compile_error_observed_run 23 as expected. py_compile, git diff --check and repo-hygiene-check --mode tracked all clean.",
+      "findings": "One scoped gate defect found and repaired: observation_only on an uninitialized project failed at the first --frozen step (exit 11, missing pafio.lock); the helper now establishes the lockfile via a real 'pafio sync --offline' when absent — the registered full path is unchanged because the ordinary phase already holds the lock. U2 is verified repaired through the real Pafio producer: all mandatory observation cases now pass on the rebuilt upstream candidate; no waiver/alias introduced. No additional production defect found. No Adversary findings exist on the board. The registered pafio-task-resource-integration command was not pre-run locally per coordinator instruction; check stays pending for the host execution."
+    }
+  ],
+  "role": "reviewer",
+  "status": "completed",
+  "task": "TASK-001",
+  "title": "Integrate and hand off the real project workflow"
+}

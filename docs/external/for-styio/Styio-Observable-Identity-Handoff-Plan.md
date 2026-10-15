@@ -2,7 +2,7 @@
 
 **Purpose:** Record the conditional Pafio handoff for Styio observable-language identity without scheduling premature package-manager work.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-11
 
 **Status:** Conditional, not authorized, not started, and dormant unless the activation gate in this document is met. The identity handoff is distinct from the delivered emission passthrough described in section 1.1.
 
@@ -25,18 +25,18 @@ A direct single-file compilation that has no package contract remains anonymous.
 PLAN-004 models snapshot publication as an absent-by-default compile-plan emission request, so a caller needs a way to ask Pafio to include it. That passthrough is delivered and is not identity work:
 
 1. `compile-plan v1` gains the optional `emit.observable_static_snapshot` object with `schema_version` (integer, minimum 1) and `required_capabilities` (sorted, unique strings, possibly empty); `emit.required` and every other field are unchanged.
-2. `pafio check|build|run|test` accept `--emit-observable-static-snapshot[=<schema-version>]` (default `1`) and the repeatable `--observable-capability <name>`. Without the flag the plan is byte-identical to the ordinary plan, so ordinary workflows are unaffected.
+2. `pafio check|build|run|test` accept `--emit-observable-static-snapshot[=<schema-version>]` (default `1`) and the repeatable `--observable-capability <name>`. Without the flag semantic inputs and cache identity are unchanged; output paths are invocation-owned.
 3. Pafio forwards the request verbatim. Styio validates the schema version and capability names against its own `--machine-info=json` advertisement, publishes `<output-stem>.observable-static-snapshot.json` through its artifact-output/receipt path, and lists it in `<plan.build_root>/receipt.json`. Consumers locate both through the existing `plan` object of the Pafio success envelope.
 4. Pafio still does not mint identifiers, inspect snapshots, or add identity fields; the activation gate below is untouched.
 
 Stage S2 (delta/lineage) adds one more transport input to the same object, again without identity work:
 
-5. `emit.observable_static_snapshot` gains the optional `parent_snapshot_path` string, filled only from `--observable-parent-snapshot <path>` (which requires the emission flag). It names the previous snapshot artifact as an absolute, lexically normalized filesystem path; a relative value is resolved against `workspace_root`. Like `workspace_root` it is transport, never identity, and it is excluded from the cache key so a run with a parent shares its `outputs.build_root` with the same run without one.
+5. `emit.observable_static_snapshot` gains the optional `parent_snapshot_path` string, filled only from `--observable-parent-snapshot <path>` (which requires the emission flag). It names the previous snapshot artifact as an absolute, lexically normalized filesystem path; a relative value is resolved against `workspace_root`. Like `workspace_root` it is transport, never identity, and it is excluded from the cache key so a run with a parent shares cache identity with the same run without one, while each invocation owns separate output paths.
 6. Pafio passes the path through without checking that it exists. Styio owns the outcome: with a readable, matching parent it writes `<output-stem>.observable-delta.json` next to `<output-stem>.observable-static-snapshot.json` and lists both in `<plan.build_root>/receipt.json`; with an unreadable or mismatched parent it still publishes the snapshot and records a `full_snapshot_required` reason in the receipt. The IDE finds the snapshot, the delta, or the reason through that receipt.
 
 Stage S3 (runtime and scheduler correlation, runtime-events v2) adds a second absent-by-default emission request, still without identity work:
 
-7. `compile-plan v1` gains the optional `emit.runtime_observation` object with `version` (integer, minimum 1) and, only when the caller set them, `mode`, sorted unique `required_capabilities`, `lane_capacity`, `priority_reserved`, `producer_lanes`, and `sampling` (`numerator`, `denominator`, optional `seed`). `pafio check|build|run|test` accept `--emit-runtime-observation[=<version>]` (default `2`), `--runtime-observation-mode <disabled|aggregate|sampled|detailed>`, the repeatable `--runtime-observation-capability <name>`, `--runtime-observation-lane-capacity <n>`, and `--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`; the secondary flags require the emission flag. The request enters the cache key so an observed run gets its own `outputs.build_root`; without the flag the plan is byte-identical.
+7. `compile-plan v1` gains the optional `emit.runtime_observation` object with `version` (integer, minimum 1) and, only when the caller set them, `mode`, sorted unique `required_capabilities`, `lane_capacity`, `priority_reserved`, `producer_lanes`, and `sampling` (`numerator`, `denominator`, optional `seed`). `pafio check|build|run|test` accept `--emit-runtime-observation[=<version>]` (default `2`), `--runtime-observation-mode <disabled|aggregate|sampled|detailed>`, the repeatable `--runtime-observation-capability <name>`, `--runtime-observation-lane-capacity <n>`, and `--runtime-observation-sampling <numerator>/<denominator>[@<seed>]`; the secondary flags require the emission flag. The request enters the cache key so an observed request has distinct cache identity; without the flag ordinary semantic inputs and cache identity are unchanged.
 8. Pafio forwards the request verbatim and applies no defaults. Styio owns the supported version, the capability names, the default mode, the lane-capacity bounds and defaults, the sampling defaults, and rejection before execution. Styio writes the runtime-events v2 JSONL artifact under the receipt-named output stem and lists it in `<plan.build_root>/receipt.json`; the IDE finds it through that receipt. Pafio does not read, correlate, or republish runtime events, and it still mints no identifiers.
 
 ## 2. Ownership Boundary

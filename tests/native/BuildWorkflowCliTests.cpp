@@ -318,7 +318,7 @@ TEST(BuildCliTests, DryRunPassesObservableParentSnapshotPathIntoCompilePlan)
   EXPECT_EQ(
       without_parent.at("plan").at("cache_key").get<std::string>(),
       payload.at("plan").at("cache_key").get<std::string>());
-  EXPECT_EQ(
+  EXPECT_NE(
       without_parent.at("plan").at("build_root").get<std::string>(),
       payload.at("plan").at("build_root").get<std::string>());
 }

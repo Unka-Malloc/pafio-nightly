@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-12
 
 ## Mission
 
@@ -45,6 +45,10 @@ the Better Plan workspace, and release evidence.
     including `rsync` for extractability and exported-tree checks.
 13. Keep documented global help aliases aligned with executable CLI output and
     its short-form regression test.
+14. Route current programme requirements and acceptance through `docs/plans/`;
+    retain independent historical workspaces in `docs/plan/`. Handoffs distinguish
+    commands actually run, valid reused evidence and host check results. An
+    upstream observation failure cannot be waived by ordinary workflow passes.
 
 ## Change Classes
 
@@ -68,6 +72,19 @@ defects, and run the necessary follow-up checks. Request a developer decision
 only when the repair would change the objective, a published contract, or the
 risk boundary. Do not repeat a gate simply because another workflow cites the
 same evidence.
+
+`PAFIO_GATE_LOG_DIR` enables complete ignored submit/delivery child records and
+performance samples, including output omitted from short console summaries.
+The milestone final entrypoint records the dirty candidate and explicit command
+before yielding execution to the host. Use the full retained logs and child exits
+for acceptance; a console tail is only a reference. Keep the CI profile, ordered
+checks, first-failure stop and performance thresholds unchanged. Recovery selects
+only diagnosed affected/remaining checks in the milestone entrypoint.
+
+The export policy excludes root-level `build-*` directories before copying.
+Keep that pattern rooted so similarly named documentation and test assets remain
+in the delivery. Source build directories are preserved; exported trees still
+must pass the existing structural, binary and hygiene checks.
 
 ## Cross-Team Dependencies
 

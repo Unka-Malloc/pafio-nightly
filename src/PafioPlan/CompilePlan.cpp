@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -766,7 +768,7 @@ json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &works
   return emit;
 }
 
-// An observed run gets its own build root; the compact dump of the emitted
+// Observation settings contribute to cache identity; the compact dump of the emitted
 // request is stable because nlohmann::json orders object keys.
 std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &request)
 {
@@ -778,7 +780,7 @@ std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &reque
 }
 
 // The parent snapshot path is deliberately excluded: it changes on every run and
-// must not create a new build root.
+// must not change cache identity. Output ownership is per invocation.
 std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest &request)
 {
   if (!request.observable_static_snapshot.has_value())
@@ -788,6 +790,34 @@ std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest 
   const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
   return ";observable-static-snapshot=" + std::to_string(snapshot.schema_version) + ":" +
          Join(NormalizeRequiredCapabilities(snapshot.required_capabilities), ",");
+}
+
+fs::path AllocateInvocationRoot(const fs::path &cache_root)
+{
+  static std::atomic<unsigned long long> sequence{0};
+  std::error_code error;
+  fs::create_directories(cache_root, error);
+  if (error)
+  {
+    throw pafio::PlanError("failed to create build directory: " + error.message());
+  }
+  for (;;)
+  {
+    const auto tick = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::path root = cache_root /
+        (std::to_string(tick) + "-" +
+         std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
+    // Directory creation claims ownership atomically across processes. A name
+    // collision retries allocation; existing results are never overwritten.
+    if (fs::create_directory(root, error))
+    {
+      return root;
+    }
+    if (error)
+    {
+      throw pafio::PlanError("failed to create invocation directory: " + error.message());
+    }
+  }
 }
 
 }  // namespace
@@ -843,7 +873,7 @@ BuildPlanResult WriteBuildCompilePlan(
   const std::string cache_key = Hex64(Fnv1a64(cache_material));
 
   const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
-  const fs::path build_root = workspace_root / ".pafio" / "build" / cache_key;
+  const fs::path build_root = AllocateInvocationRoot(workspace_root / ".pafio" / "build" / cache_key);
   const fs::path artifact_dir = build_root / "artifacts";
   const fs::path diag_dir = build_root / "diag";
   const fs::path plan_path = build_root / "plan.json";

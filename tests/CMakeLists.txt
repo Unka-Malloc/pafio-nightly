@@ -50,6 +50,19 @@ add_dependencies(pafio_native_tests pafio_process_tests)
 
 gtest_discover_tests(pafio_native_tests DISCOVERY_TIMEOUT 30)
 
+set(PAFIO_TEST_STYIO_BIN "" CACHE FILEPATH "Explicit real Styio candidate for workflow integration")
+if(PAFIO_TEST_STYIO_BIN)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(
+    NAME pafio_task_resource_real_workflow
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/scripts/styio-interface-gate.py"
+      --pafio-bin "$<TARGET_FILE:pafio>" --styio-bin "${PAFIO_TEST_STYIO_BIN}"
+      --require-compile-plan --task-resource
+      --work-dir "${CMAKE_BINARY_DIR}/task-resource-ctest" --json
+  )
+  set_tests_properties(pafio_task_resource_real_workflow PROPERTIES LABELS "integration;real-styio")
+endif()
+
 add_test(
   NAME pafio_cli_machine_info_json
   COMMAND bash -c "out=$(\n\"$<TARGET_FILE:pafio>\" machine-info --json\n) && printf '%s\n' \"$out\" | grep -q '\"implementation_language\":\"c++\"' && printf '%s\n' \"$out\" | grep -q '\"metadata\":\\[1\\]' && printf '%s\n' \"$out\" | grep -q '\"resolution\":\\[1\\]' && ! printf '%s\n' \"$out\" | grep -q '\"bootstrap\"' && ! printf '%s\n' \"$out\" | grep -q 'cloud_execution_policy'"

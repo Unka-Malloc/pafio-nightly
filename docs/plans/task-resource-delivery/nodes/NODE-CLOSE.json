@@ -1,0 +1,92 @@
+{
+  "after": [
+    "NODE-FINAL"
+  ],
+  "checks": [
+    {
+      "commands": [
+        "bash docs/plans/task-resource-delivery/checks.sh review"
+      ],
+      "coverage": {
+        "kind": "node"
+      },
+      "dirty": false,
+      "id": "pafio-task-resource-review",
+      "pending": false,
+      "result": {
+        "status": "passed",
+        "summary": "Registered host review check passed after independent source/evidence review.",
+        "exit_code": 0
+      },
+      "run_id": "7d5c78ffa7163d1c9cc6282c27b819c6",
+      "running": false,
+      "title": "Independently reconcile package delivery checks"
+    }
+  ],
+  "commit": null,
+  "contract": {
+    "automation_check_ids": [
+      "pafio-task-resource-review"
+    ],
+    "completion": "Check success is necessary but not sufficient. Verify the stated outcome and required external input; no fabricated result or silent skip.",
+    "execution": "Select only pafio-task-resource-review after this independent review. It performs patch hygiene, not semantic validation. The host result/run ID remain unset until actual execution; no full-suite or accepted E2E replay.",
+    "external_inputs": [],
+    "write_scope": [
+      "Current repository implementation, contracts and focused tests required by this milestone; existing user changes are preserved."
+    ]
+  },
+  "executors": [],
+  "id": "NODE-CLOSE",
+  "outcome": "Reviewer verifies current compiler input, new scenario coverage, preserved package operations and final evidence before Task/Tree delivery. Reconcile the supported-capability inventory against actual results, complete all affected migration paths, and reject half-finished refactors. Unexecuted platforms and separately assigned live acceptance remain explicitly unverified; test success is evidence, not a zero-defect proof.",
+  "resources": [],
+  "result": {
+    "summary": "Independent source/evidence review and registered host CLOSE check passed. Coordinator reconciled supplemental current-binary new/init/build/run and registry trust status evidence. Source TASK-001 and Tree delivery remain unset pending the three-repository final join.",
+    "evidence": "docs/plans/task-resource-delivery/HANDOFF.md",
+    "inspection": "build-codex/task-resource-final/close/evidence-review.json",
+    "host_final_run_id": "9fa4923cbbf5a7f1d82345fd0a8a47bb",
+    "cross_repository_impact": "No production/CMake/workflow/fixture or selected Pafio/Styio CLI/LSP change; accepted coordinator E2E inputs remain valid. No sibling writes/builds.",
+    "coverage_limits": [
+      "Two named TUF fixture cases skipped",
+      "Registry trust import CLI and external TUF fixture behavior remain unverified",
+      "No all-Python-unit/interop-shell suite claim",
+      "Linux, Windows, Release, sanitizer and alternate feature configurations unverified",
+      "Release/publication/install/live Agent/UI acceptance unverified"
+    ],
+    "registered_review_pending": false,
+    "local_checks": {
+      "evidence_migration_inspection": {
+        "exit_code": 0,
+        "evidence": "build-codex/task-resource-final/close/inspection-process.json"
+      },
+      "documentation_audit": {
+        "exit_code": 0,
+        "evidence": "build-codex/task-resource-final/close/docs-process.json"
+      },
+      "privacy": {
+        "matched_findings": 0,
+        "scanned_files": 62,
+        "evidence": "build-codex/task-resource-final/close/privacy.json"
+      },
+      "records": "build-codex/task-resource-final/close/record-checks.json",
+      "boundary": "Local inspections and the registered host reviewer check have completed; child scope and skips remain explicit."
+    },
+    "host_review_run_id": "7d5c78ffa7163d1c9cc6282c27b819c6",
+    "supplemental_cli_preservation": {
+      "evidence": "build-codex/task-resource-final/coordinator-cli-preservation/run-n9zhslzn/evidence.json",
+      "commands": 7,
+      "exit_code": 0,
+      "scope": "new/init, cold offline build/run through current selected Styio, and isolated registry trust status; no import or external trust acceptance"
+    }
+  },
+  "review": [
+    {
+      "scope": "Invocation ownership, receipt boundary, process waiting, permanent real-workflow assertions, logging/recovery, export exclusion, required migration and exact host records",
+      "findings": "Reviewed against current authority and all three handoffs. Actual recovery pass and original retained CI evidence reconcile; original export finding closed. No newly reproduced production defect. Source Task/Tree delivery stays coordinator-owned.",
+      "evidence": "docs/plans/task-resource-delivery/HANDOFF.md"
+    }
+  ],
+  "role": "reviewer",
+  "status": "completed",
+  "task": "TASK-001",
+  "title": "Independently reconcile package delivery"
+}
