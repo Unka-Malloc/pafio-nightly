@@ -16,7 +16,7 @@
       "result": {
         "outcome": "passed",
         "observed_date": "2026-10-11",
-        "source": "task-resource-delivery host validation=passed, check-stage run completed",
+        "source": "Host plan validation=passed, check-stage run completed",
         "scope": "Registered handoff check; full host console and individual process exits are not exposed. Independent semantic review evidence remains in HANDOFF.md."
       },
       "run_id": "4c4c7d6b6806ae37f223ca777f1b171c",

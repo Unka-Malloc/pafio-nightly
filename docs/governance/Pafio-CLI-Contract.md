@@ -54,8 +54,11 @@ own successful envelope and discard their current-success selection on error.
 A failed invocation cannot adopt another invocation's receipt or artifacts.
 Earlier results remain intact for readers and parent snapshots. Dry-run writes
 only its own plan and creates its output directories; it does not execute Styio
-or invalidate earlier results. There is no old-layout fallback or automatic
-artifact deletion. Workflow compilation has no internal elapsed-time cutoff.
+or invalidate earlier results. There is no old-layout fallback. Derived output
+retention is bounded: each cache key keeps the newest 8 invocation directories
+plus the directory owning a caller-referenced parent snapshot, and the current
+invocation's outputs are never removed. Workflow compilation has no internal
+elapsed-time cutoff.
 
 `pafio doctor` is read-only and diagnoses project state, cache, registry trust,
 and external Styio capability.

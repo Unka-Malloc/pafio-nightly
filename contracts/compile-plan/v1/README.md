@@ -58,8 +58,11 @@
 component is opaque and atomically allocated for each plan. `artifact_dir` and
 `diag_dir` belong exclusively to it. Identical input/cache identities do not
 share output paths. Consumers use returned paths, preserve earlier parent
-artifacts, and never infer success from an earlier receipt. This corrects the
-unpublished shared-output implementation without changing the v1 field schema.
+artifacts, and never infer success from an earlier receipt. Retention is
+bounded: each cache key keeps the newest 8 invocation directories plus the
+directory owning a caller-referenced parent snapshot; the current invocation's
+outputs are never removed. This corrects the unpublished shared-output
+implementation without changing the v1 field schema.
 
 ## Stability Rules
 
@@ -67,9 +70,11 @@ unpublished shared-output implementation without changing the v1 field schema.
 - Breaking field removals, required-field changes, or semantic rewrites require `v2`.
 - Paths in concrete plans are expected to be absolute and ephemeral.
 - Decision (2026-10): the `outputs.build_root` ownership correction stayed
-  inside `v1` because the shared-root behavior never shipped to a consumer —
-  Vityo and the interface gates are the only consumers and were updated in the
-  same delivery. Any consumer built against the unpublished shared-root
+  inside `v1` because the shared-root behavior never shipped to a published
+  consumer. This repository's interface gate covers the new layout; the Vityo
+  consumer was source-reviewed using returned `plan.*` paths, and its
+  executable validation is the milestone's external join, not proven by this
+  repository. Any consumer built against the unpublished shared-root
   assumption must adopt the returned `plan.*` paths and retain prior artifacts
   before upgrading. If a published consumer is discovered later, this change
   moves to `v2`.

@@ -30,7 +30,7 @@
         "host_validation": {
           "status": "passed",
           "run_id": "529d2782bd18e8a56f121276550903b2",
-          "source": "Coordinator read actual completed task-resource-delivery check-stage run and node validation=passed; prior local evidence retained with its original scope."
+          "source": "Coordinator read the actual completed host check-stage run and node validation=passed; prior local evidence retained with its original scope."
         }
       },
       "run_id": "529d2782bd18e8a56f121276550903b2",

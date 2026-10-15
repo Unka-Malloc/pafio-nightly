@@ -39,8 +39,11 @@ and reuses this repository's clock/sequence naming approach from AtomicFile.cpp.
 A name collision retries directory allocation; an actual filesystem error fails
 with PlanError. No arbitrary retry deadline or hash scan is introduced. Each
 invocation adds its own directory and outputs; there is no performance or storage
-reduction claim. Retention is intentional because delayed consumers and parent
-snapshots may still need earlier artifacts. No new cleanup policy was invented.
+reduction claim. Retention is bounded rather than unlimited: each cache key
+keeps the newest 8 invocation directories plus the directory owning a
+caller-referenced parent snapshot, and pruning never touches the current
+invocation's outputs. Delayed consumers and parent snapshots keep the recent
+artifacts they can still reference.
 The fixed 60-minute compile-process timeout and its unused constant were removed;
 healthy compilation runs to completion. Other process policies were not redesigned.
 

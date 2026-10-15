@@ -16,7 +16,7 @@
       "result": {
         "outcome": "passed",
         "observed_date": "2026-10-12",
-        "source": "Assigned task-resource-delivery plan FINAL validation plus complete retained first-run and recovery evidence; IDs are check-stage run IDs.",
+        "source": "Assigned host plan FINAL validation plus complete retained first-run and recovery evidence; IDs are check-stage run IDs.",
         "scope": "Seven valid original CI steps plus corrected export and remaining delivery checks; unchanged original-root native obligation explicitly reused. Coverage limitations and actual skips are recorded in HANDOFF.md.",
         "first_run": {
           "outcome": "failed",
