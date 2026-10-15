@@ -19,8 +19,8 @@
 | Core / Workflow | [CORE-WORKFLOW-RUNBOOK.md](./CORE-WORKFLOW-RUNBOOK.md) | 1,329 | 6,257 |
 | Registry / Publish | [REGISTRY-PUBLISH-RUNBOOK.md](./REGISTRY-PUBLISH-RUNBOOK.md) | 341 | 1,542 |
 | Styio / Contracts | [STYIO-CONTRACTS-RUNBOOK.md](./STYIO-CONTRACTS-RUNBOOK.md) | 965 | 4,489 |
-| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 1,490 | 7,629 |
-| **Total** | Team runbooks only | **4,918** | **23,627** |
+| Docs / Delivery | [DOCS-DELIVERY-RUNBOOK.md](./DOCS-DELIVERY-RUNBOOK.md) | 1,612 | 8,244 |
+| **Total** | Team runbooks only | **5,040** | **24,242** |
 
 ## Support File Size
 

@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-15
 
 ## Mission
 
@@ -141,3 +141,13 @@ conventions, the Docs-Maintenance-Model owner map, and the README developer
 entry now name the new layout, and `docs/plans/` plus
 `docs/plans/task-resource-delivery/` are registered collections with generated
 indexes.
+
+2026-10-15: Recorded the coordinator join and delivery closure for the
+task-resource milestone. The joined evidence is the expanded integration gate
+on the current candidate (bounded per-invocation retention), the same-candidate
+Vityo E2E, the vityod crate tests and the bounded-retention probe record
+`build-codex/join-20261015/retention-probe-evidence.json`; the milestone
+Tree/Task delivery now carries the join result and its boundaries. The
+registered CLOSE review check executed as host, and the review items
+invalidated by NODE-BASELINE/NODE-REPAIR result changes were resolved against
+the joined evidence.

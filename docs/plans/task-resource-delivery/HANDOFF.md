@@ -2,7 +2,7 @@
 
 **Purpose:** Maintain the finite FINAL/CLOSE plan, independent source review and actual engineering evidence for the existing joint milestone.
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-15
 
 ## Current FINAL/CLOSE execution contract
 
@@ -611,3 +611,34 @@ next dependent phase. Full host console and individual process exits are not
 exposed; no additional per-case totals are inferred. Existing detailed local
 evidence retains its stated scope. Vityo production integration and final
 regression remain outstanding; source Task/Tree delivery is not complete.
+
+## Coordinator join and delivery closure — 2026-10-15
+
+The coordinator joined the three current-candidate results. Candidate
+revisions: pafio `62636ea` (including the bounded per-invocation retention
+policy), styio `ba37f64`, vityo `cb8883de`; all three worktrees clean. The
+unclosed external join is now closed:
+
+- The expanded `pafio-task-resource-integration` check (`checks.sh
+  integration`) executed as host on the current binaries: `ok=true`,
+  `validation_errors` empty, including the positive static snapshot, the
+  retained-parent delta, the unreadable-parent full-snapshot fallback, the
+  observed repair sequence, concurrent invocations and dry-run preservation.
+- Same-candidate Vityo E2E through real production services and vityod:
+  `host-ehiyo1yz` — 35 scenarios and 4 contract cases accepted, `ok=true`.
+- Bounded-retention probe on the current binary: 13 sequential same-key
+  checks retained 9 directories (8 newest plus the current invocation, oldest
+  pruned); 12 further runs referencing the oldest directory as parent
+  retained 10 including the referenced owner and emitted
+  `scenario.observable-delta.json`; additional build-intent runs kept the
+  bound at 9. Record:
+  `build-codex/join-20261015/retention-probe-evidence.json`.
+- vityod crate tests: 56 passed, 0 failed.
+- Review items invalidated by NODE-BASELINE/NODE-REPAIR result changes were
+  resolved against the joined evidence. Source `TASK-001` and Tree delivery
+  are recorded; hosted E06 is closed.
+
+Boundaries are unchanged: macOS arm64 only; Windows process/I/O waiting is
+source-reviewed only, and Release/sanitizers, installed-client UI and real
+Agent/provider acceptance are not claimed. Retention pruning is best-effort
+and bounded, not a storage-saving guarantee. Landing is a separate step.

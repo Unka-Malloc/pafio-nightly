@@ -24,14 +24,14 @@
         },
         "evidence": "build-codex/task-resource-verifier-20261011/focused.log",
         "exit_code": 0,
+        "host_validation": {
+          "run_id": "529d2782bd18e8a56f121276550903b2",
+          "source": "Coordinator read the actual completed host check-stage run and node validation=passed; prior local evidence retained with its original scope.",
+          "status": "passed"
+        },
         "scope": "Verifier-executed local run of the registered command on the corrected upstream B5 candidate; the host-platform check execution remains its own projection and is not claimed here.",
         "status": "passed",
-        "summary": "Registered focused command executed by the verifier and exited 0 on the B5 Styio candidate: 39 native tests plus the real 23-step task/resource gate. Per-invocation output ownership, fixture copies and focused check coverage independently verified.",
-        "host_validation": {
-          "status": "passed",
-          "run_id": "529d2782bd18e8a56f121276550903b2",
-          "source": "Coordinator read the actual completed host check-stage run and node validation=passed; prior local evidence retained with its original scope."
-        }
+        "summary": "Registered focused command executed by the verifier and exited 0 on the B5 Styio candidate: 39 native tests plus the real 23-step task/resource gate. Per-invocation output ownership, fixture copies and focused check coverage independently verified."
       },
       "run_id": "529d2782bd18e8a56f121276550903b2",
       "running": false,
@@ -68,13 +68,6 @@
     }
   },
   "review": [
-    {
-      "reason": "result_changed",
-      "source": {
-        "id": "NODE-BASELINE",
-        "kind": "node"
-      }
-    },
     {
       "evidence": "Registered command 'bash docs/plans/task-resource-delivery/checks.sh focused' re-executed and exited 0 on the B5-reviewed Styio candidate (build + 39 native tests + 23 real gate steps): build-codex/task-resource-verifier-20261011/focused.log. All 10 fixture files byte-compared to accepted upstream sources. Real probes of --emit-observable-static-snapshot and --emit-runtime-observation on snap-proj/ recorded exit 23 diagnostics (snap1.err, rtobs.err).",
       "findings": "Implementation verified correct and complete for the admitted scope: per-invocation roots repair the reproduced P4 ownership defect with stable cache identity and opaque receipts; earlier-result preservation, dry-run, failure isolation, concurrent independence and explicit compiler selection all proven by the real gate. U1 verified repaired upstream; new upstream defect U2 reported to coordinator (Styio package_name_is_valid rejects every Pafio-mandated namespace/name; snapshot and runtime-observation emission exit 23 for any valid Pafio project; observation join remains upstream-blocked, no Pafio-side repair). No scoped Pafio defect found requiring repair; bookkeeping reconciled to actual evidence.",
