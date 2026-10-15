@@ -1,8 +1,8 @@
 # ADR-0001: Documentation Governance and Plan Workspace
 
-**Purpose:** Record the functional documentation decision that ADRs, governance documents, generated indexes, and `docs/plan/` each own a distinct part of the package-manager project workflow.
+**Purpose:** Record the functional documentation decision that ADRs, governance documents, generated indexes, and the `docs/plans/` workspace each own a distinct part of the package-manager project workflow.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-10-15
 
 ## Status
 
@@ -27,7 +27,7 @@ The documentation system now needs a smaller set of durable records grouped by f
 
 `docs/governance/` owns normative contracts: command syntax, argument indexes, manifest and lockfile rules, compatibility boundaries, lifecycle rules, and operating policies.
 
-`docs/plan/` is the active Better Plan workspace. It owns execution sequencing, checkpoints, and still-open future work. Implemented behavior must move into ADR form before the plan or historical source that introduced it is retired.
+`docs/plans/` is the active Better Plan workspace. It owns execution sequencing, checkpoints, and still-open future work; `docs/plan/` retains completed delivery evidence (see ADR-0009). Implemented behavior must move into ADR form before the plan or historical source that introduced it is retired.
 
 Generated indexes remain checked artifacts. `scripts/docs-index.py` writes `INDEX.md` files, `scripts/docs-lifecycle.py validate` checks lifecycle metadata, and `scripts/docs-gate.sh` composes the documentation gate.
 

@@ -38,6 +38,10 @@ installation or hosted execution.
    Object for requested process-group termination. Capture limits bound retained
    output while every stream continues draining. Only `ProcessRequest.timeout`
    supplies a deadline; native Windows exit codes do not claim POSIX signals.
+   The `pafio check|build|run|test` compile invocation deliberately passes no
+   internal deadline so a healthy compiler runs to completion; the invoking
+   job or environment supplies any bound, while every other external call
+   still uses `kExternalProcessStepTimeout`.
    Exercise `pafio_process_tests` on the actual target platform before updating
    a downstream fixed product matrix. CLI headers declare their own standard
    library dependencies; MSVC does not supply the incidental `<string>` import

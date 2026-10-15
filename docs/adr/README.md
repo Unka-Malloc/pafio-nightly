@@ -2,13 +2,13 @@
 
 **Purpose:** Define the conventions and scope for `pafio/docs/adr/`, which holds durable design and implementation decisions for the standalone `pafio` project.
 
-**Last updated:** 2026-06-28
+**Last updated:** 2026-10-15
 
 ## Scope
 
 1. Store architecture, lifecycle, workflow-boundary, and implementation-scope decisions that need durable context here.
 2. Keep normative policy in `docs/governance/`.
-3. Keep execution sequencing in `docs/plan/`.
+3. Keep execution sequencing in `docs/plans/`; `docs/plan/` retains completed delivery evidence.
 4. Keep gate commands and operational procedures in `docs/operations/`.
 5. Once a planned behavior is implemented, ensure the durable decision is represented here before removing the plan or historical source that introduced it.
 

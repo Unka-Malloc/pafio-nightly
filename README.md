@@ -43,4 +43,4 @@ migrated or aliased.
 The implementation is native C++20/CMake. Start with
 [docs/BUILD-AND-DEV-ENV.md](docs/BUILD-AND-DEV-ENV.md), the
 [CLI contract](docs/governance/Pafio-CLI-Contract.md), and the
-[active Better Plan](docs/plan/README.md).
+[active Better Plan](docs/plans/README.md).

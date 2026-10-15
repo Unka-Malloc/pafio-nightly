@@ -132,3 +132,12 @@ input validates the Windows CLI and process contracts before the final complete
 regression within existing adaptation authorization; it does not establish
 Linux, macOS, or release readiness. Preserve
 the request's existing timeout and process-group semantics across platforms.
+
+2026-10-15: Recorded the plan-workspace split from the task-resource delivery
+milestone. ADR-0009 owns the decision: `docs/plans/` holds the active
+programme, requirements, and per-milestone state while `docs/plan/` retains
+completed delivery evidence. ADR-0001's decision text, the ADR index
+conventions, the Docs-Maintenance-Model owner map, and the README developer
+entry now name the new layout, and `docs/plans/` plus
+`docs/plans/task-resource-delivery/` are registered collections with generated
+indexes.

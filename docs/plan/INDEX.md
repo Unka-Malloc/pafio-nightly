@@ -1,6 +1,6 @@
 # Plan Index
 
-**Purpose:** Provide the generated inventory for `docs/plan/`; Better Plan workspace rules and active plan ownership live in [README.md](./README.md).
+**Purpose:** Provide the generated inventory for `docs/plan/`; completed Better Plan evidence lives in [README.md](./README.md).
 
 **Last updated:** 2026-07-30
 

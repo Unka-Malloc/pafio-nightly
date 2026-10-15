@@ -20,6 +20,8 @@ REQUIRED_COLLECTION_DIRS = [
     DOCS / "governance",
     DOCS / "operations",
     DOCS / "plan",
+    DOCS / "plans",
+    DOCS / "plans" / "task-resource-delivery",
     DOCS / "registry",
     DOCS / "security",
     DOCS / "specs",

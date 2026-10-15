@@ -2,13 +2,14 @@
 
 **Purpose:** Assign one documentation owner to every active Pafio knowledge class.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-10-15
 
 ## Owner Map
 
 - `governance/`: normative Pafio interfaces and policy
 - `adr/`: accepted decisions and rationale
-- `plan/`: active checkpoints and completed evidence
+- `plan/`: completed delivery evidence
+- `plans/`: active programme, milestone sequencing, and pending state
 - `registry/`: registry client behavior only
 - `security/`: local supply-chain and subprocess boundaries
 - `external/for-styio/`: published compiler handoff

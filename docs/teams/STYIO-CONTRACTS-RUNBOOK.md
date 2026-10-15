@@ -88,3 +88,10 @@ pure passthrough for Styio stage S3 runtime-events v2. Pafio applies no defaults
 Styio owns the version, capability, bound, and sampling validation, writes the
 receipt-named runtime-events JSONL artifact, and lists it in its receipt. Pafio
 never reads runtime events.
+
+2026-10-15: Aligned section 6 of the external interface requirement spec with
+the implemented gate: compile-plan execution runs a real build and
+materializes outputs under the invocation's declared roots, and the
+`--task-resource` selection adds real Pafio check/build/test/run workflows
+covering compile-failure/repair transitions, concurrent invocations,
+snapshot/delta, and runtime observation.
