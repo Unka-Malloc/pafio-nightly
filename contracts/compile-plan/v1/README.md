@@ -66,3 +66,10 @@ unpublished shared-output implementation without changing the v1 field schema.
 - Additive optional fields are allowed within `v1`.
 - Breaking field removals, required-field changes, or semantic rewrites require `v2`.
 - Paths in concrete plans are expected to be absolute and ephemeral.
+- Decision (2026-10): the `outputs.build_root` ownership correction stayed
+  inside `v1` because the shared-root behavior never shipped to a consumer —
+  Vityo and the interface gates are the only consumers and were updated in the
+  same delivery. Any consumer built against the unpublished shared-root
+  assumption must adopt the returned `plan.*` paths and retain prior artifacts
+  before upgrading. If a published consumer is discovered later, this change
+  moves to `v2`.

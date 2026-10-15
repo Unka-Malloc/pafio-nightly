@@ -58,7 +58,7 @@
       "pafio-task-resource-final"
     ],
     "completion": "Check success is necessary but not sufficient. Verify the stated outcome and required external input; no fabricated result or silent skip.",
-    "execution": "Select only pafio-task-resource-final. The single full CI run failed only at delivery structure; its seven valid passes remain retained in host-6gt38m8v. Actual HOST follow-up through recover-final.py passed in host-goi713j_, executing affected/remaining delivery checks with the identical original-root native evidence explicitly reused. Do not replay the full suite. HANDOFF.md reconciles coverage, exact commands/exits and skips.",
+    "execution": "Select only pafio-task-resource-final. The registered entrypoint runs the complete submit gate under the evidence recorder. For this milestone the single full CI run failed only at delivery structure; its seven valid passes remain retained in host-6gt38m8v. The HOST discharged the remaining obligation once through the recorded recovery in host-goi713j_, executing affected/remaining delivery checks with the identical original-root native evidence explicitly reused; that recovery was a per-run selection, not the entrypoint. HANDOFF.md reconciles coverage, exact commands/exits and skips.",
     "external_inputs": [
       "Coordinator-accepted same-candidate Vityo E2E and all repository source reviews: runtime 0c7f97c7be1e7eb93dcefee3d62ebc76 / check d5deb633e4fe8f39e9bad2a56c7ea1de. See current HANDOFF.md; no E2E replay without invalidated inputs."
     ],

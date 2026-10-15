@@ -248,14 +248,17 @@ The permanent copy, structure, binary and hygiene checks remain enabled.
 | Export binary/hygiene and root documentation children | Not run in the first invocation. HOST now executes them in their existing order after successful copy/structure checks, stopping on first failure. |
 | Delivery native child | Not previously reached, but calls the same original-root `native-check.sh` and `build-codex`, not an exported-source build. Reconcile with the valid original native pass explicitly; do not replay the same full CTest. |
 
-`checks.sh final` now invokes `recover-final.py` through the unchanged recorder.
-This milestone-only selection calls the actual delivery copy/structure/child
-implementations and records the reused native obligation separately from executed
-steps. It does not add a skip option to the permanent submit or delivery gates.
-Copy failure, structural errors and child failures still fail the check. Each
-HOST attempt retains its own input record, complete streams, child results and
-exits under a new `host-*` directory; the original directory is not overwritten.
-No full suite or delivery pre-run was performed by this repair Worker.
+`checks.sh final` invokes `python3 scripts/submit-gate.py --profile ci --json`
+through the unchanged recorder. For this milestone's single diagnosed failure
+the HOST discharged the check once through `recover-final.py`, a one-shot
+selection that called the actual delivery copy/structure/child implementations
+and recorded the reused native obligation separately from executed steps. That
+recovery never became the registered entrypoint and the script is removed once
+its recorded run is complete; it added no skip option to the permanent submit
+or delivery gates. Copy failure, structural errors and child failures still
+fail the check. Each HOST attempt retains its own input record, complete
+streams, child results and exits under a new `host-*` directory; the original
+directory is not overwritten.
 
 The permanent export regression uses a synthetic source tree and the actual copy
 script/policy. All four delivery unit tests passed (`repair/delivery-unit.json`

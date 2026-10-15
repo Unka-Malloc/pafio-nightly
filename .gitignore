@@ -94,3 +94,7 @@ docs/audit/defects/*
 !tests/**/tmp/**
 !tests/**/*.tmp
 !tests/**/*.log
+
+# Better Plan runtime lock state is host-local; never commit it.
+**/.better-plan.lock
+**/.better-plan-checks/

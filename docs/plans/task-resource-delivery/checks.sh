@@ -19,10 +19,11 @@ case "${1:-}" in
     python3 scripts/styio-interface-gate.py --styio-bin "${STYIO_BIN:-$PWD/../styio-nightly/build/default/bin/styio}" --pafio-bin "$PWD/build-codex/bin/pafio" --require-compile-plan --task-resource --work-dir "$PWD/build-codex/task-resource-integration" --json
     ;;
   final)
-    # First full run: host-6gt38m8v. Recover its failed export and remaining
-    # delivery checks; reuse the unchanged native pass instead of replaying it.
+    # Runs the complete submit gate once under the retained-evidence wrapper;
+    # each host invocation keeps its own host-* record. Any diagnosed-failure
+    # recovery is a per-run selection, never a registered entrypoint.
     python3 docs/plans/task-resource-delivery/retain-final.py \
-      python3 docs/plans/task-resource-delivery/recover-final.py
+      python3 scripts/submit-gate.py --profile ci --json
     ;;
   review)
     git diff --check
