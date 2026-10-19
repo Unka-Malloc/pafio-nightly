@@ -52,6 +52,7 @@ set(PAFIO_PLAN_SOURCES
 
 set(PAFIO_PACKAGE_SERVICE_SOURCES
     PafioPack/Pack.cpp
+    PafioPack/PackageSelection.cpp
     PafioPublish/Publish.cpp
     PafioTree/Render.cpp
     PafioVendor/Vendor.cpp

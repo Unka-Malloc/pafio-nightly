@@ -10,30 +10,12 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include "BuildTestSupport.hpp"
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-
-namespace
-{
-
-fs::path MakeTempDir(const std::string &label)
-{
-  const fs::path root = fs::temp_directory_path() / "pafio-native-publish-tests" / label;
-  fs::remove_all(root);
-  fs::create_directories(root);
-  return root;
-}
-
-void WriteFile(const fs::path &path, const std::string &content)
-{
-  fs::create_directories(path.parent_path());
-  std::ofstream out(path);
-  ASSERT_TRUE(out.good());
-  out << content;
-  ASSERT_TRUE(out.good());
-}
-
-}  // namespace
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::WriteFile;
 
 TEST(PublishTests, DryRunPreparesArchiveForPublishablePackage)
 {

@@ -1,6 +1,7 @@
 #include "PafioApp/PackageApp.hpp"
 
 #include "PafioCLI/Support.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/ToolPaths.hpp"
@@ -30,15 +31,6 @@ using json = nlohmann::json;
 
 namespace
 {
-
-std::string NormalizeRegistryRootValue(std::string value)
-{
-  while (!value.empty() && value.back() == '/')
-  {
-    value.pop_back();
-  }
-  return value;
-}
 
 bool EndsWith(std::string_view value, std::string_view suffix)
 {
@@ -70,7 +62,7 @@ std::string ProcessFailureText(const pafio::ProcessResult &result)
 std::string RegistryControlPlaneBaseUrl(std::string registry_root)
 {
   constexpr std::string_view kControlPlaneBase = "/api/pafio-registry-control/v1";
-  registry_root = NormalizeRegistryRootValue(std::move(registry_root));
+  registry_root = pafio::NormalizeRegistryRoot(std::move(registry_root));
   if (EndsWith(registry_root, kControlPlaneBase))
   {
     return registry_root;

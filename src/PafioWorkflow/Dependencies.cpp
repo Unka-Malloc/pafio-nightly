@@ -39,12 +39,6 @@ bool IsRegistryRootUrl(const std::string &value)
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
 }
 
-std::string PackageShortName(const std::string &package_name)
-{
-  pafio::RequirePackageName(package_name, "package name");
-  return package_name.substr(package_name.find('/') + 1U);
-}
-
 std::string ReadFile(const fs::path &path)
 {
   std::ifstream in(path);
@@ -258,7 +252,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     throw ValidationError("--rev is only valid with --git and --version is only valid with --registry");
   }
 
-  const std::string alias = request.alias.value_or(PackageShortName(request.package_name));
+  const std::string alias = request.alias.value_or(pafio::PackageShortName(request.package_name));
   const std::string original_manifest = ReadFile(request.manifest_path);
   const fs::path lockfile_path = request.manifest_path.parent_path() / "pafio.lock";
   const std::optional<std::string> original_lock = fs::exists(lockfile_path) ? std::optional<std::string>(ReadFile(lockfile_path)) : std::nullopt;

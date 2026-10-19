@@ -323,15 +323,6 @@ ParseWorkspace(const toml::table &doc) {
 }
 
 std::string
-PackageShortName(const std::string &package_name) {
-  const auto slash = package_name.find('/');
-  if (slash == std::string::npos || slash + 1 >= package_name.size()) {
-    throw pafio::ValidationError("package.name must match namespace/name");
-  }
-  return package_name.substr(slash + 1);
-}
-
-std::string
 QuoteTomlKey(const std::string &value) {
   if (std::regex_match(value, BareKeyRegex())) {
     return value;
@@ -419,7 +410,7 @@ BuildScaffoldManifest(const std::string &package_name, const std::string &kind) 
   }
   else {
     package.bins.push_back(pafio::BinTarget{
-      .name = PackageShortName(package_name),
+      .name = pafio::PackageShortName(package_name),
       .path = "src/main.styio",
     });
   }

@@ -55,7 +55,7 @@ the Better Plan workspace, and release evidence.
 
 ```bash
 python3 scripts/docs-audit.py
-python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/repo-hygiene-gate.py --mode tracked
 git diff --check
 ```
 

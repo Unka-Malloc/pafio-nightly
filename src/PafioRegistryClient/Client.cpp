@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/FileLock.hpp"
 #include "PafioCore/Paths.hpp"
@@ -68,14 +69,6 @@ UniqueTemporaryPath(const fs::path &path, const std::string_view label) {
     (path.filename().string() + ".tmp." + std::string(label) + "." +
      std::to_string(ProcessId()) + "." + std::to_string(nonce) + "." +
      std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
-}
-
-std::string
-NormalizeRegistryRoot(std::string value) {
-  while (!value.empty() && value.back() == '/') {
-    value.pop_back();
-  }
-  return value;
 }
 
 bool
@@ -391,7 +384,7 @@ FetchUrlToFile(
 
 std::string
 JoinUrl(const std::string &root, const std::string &relative_path) {
-  return NormalizeRegistryRoot(root) + "/" + NormalizeRelativeRegistryPath(relative_path, "registry object path").generic_string();
+  return pafio::NormalizeRegistryRoot(root) + "/" + NormalizeRelativeRegistryPath(relative_path, "registry object path").generic_string();
 }
 
 fs::path

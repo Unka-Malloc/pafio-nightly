@@ -24,14 +24,6 @@ enum class SecurityHandlerResult
   kResolved,
 };
 
-std::string
-NormalizeRegistryRoot(std::string value) {
-  while (!value.empty() && value.back() == '/') {
-    value.pop_back();
-  }
-  return value;
-}
-
 bool
 IsHttpRegistryRoot(const std::string &value) {
   return value.starts_with("http://") || value.starts_with("https://");
@@ -100,7 +92,7 @@ NormalizeReadRegistryRoot(
   const pafio::RegistryReadSecurityRequest &request,
   pafio::RegistryReadSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
@@ -131,7 +123,7 @@ NormalizeWriteRegistryRoot(
   const pafio::RegistryWriteSecurityRequest &request,
   pafio::RegistryWriteSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
