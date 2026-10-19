@@ -74,7 +74,7 @@ jobs:
           resolve_ref() {
             local repository="$1"
             if git ls-remote --exit-code --heads \
-              "https://github.com/Unka-Malloc/${repository}.git" \
+              "https://github.com/${{ github.repository_owner }}/${repository}.git" \
               "refs/heads/${CANDIDATE_REF}" >/dev/null 2>&1; then
               printf '%s\n' "${CANDIDATE_REF}"
             else
@@ -88,14 +88,14 @@ jobs:
       - name: Checkout styio-nightly sibling repository
         uses: actions/checkout@v5
         with:
-          repository: Unka-Malloc/styio-nightly
+          repository: ${{ github.repository_owner }}/styio-nightly
           ref: ${{ steps.sibling_refs.outputs.styio }}
           path: styio-nightly
 
       - name: Checkout Vityo sibling repository
         uses: actions/checkout@v5
         with:
-          repository: Unka-Malloc/vityo-nightly
+          repository: ${{ github.repository_owner }}/vityo-nightly
           ref: ${{ steps.sibling_refs.outputs.vityo }}
           path: vityo-nightly
 

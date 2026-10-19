@@ -18,8 +18,10 @@ from artifact_policy import load_policy
 
 POLICY = load_policy()
 FORBIDDEN_DIRS = set(POLICY.forbidden_dirs)
+FORBIDDEN_DIR_GLOBS = list(POLICY.forbidden_dir_globs)
 FORBIDDEN_FILE_NAMES = set(POLICY.forbidden_file_names)
 FORBIDDEN_FILE_GLOBS = list(POLICY.forbidden_file_globs)
+FORBIDDEN_CONTRACT_TERMS = list(POLICY.forbidden_contract_terms)
 REQUIRED_GITIGNORE_PATTERNS = list(POLICY.required_gitignore_patterns)
 REQUIRED_DOC_REFERENCES = {
     pathlib.Path("docs/governance/Docs-Maintenance-Model.md"): [
@@ -80,7 +82,16 @@ def is_forbidden_path(relative_path: pathlib.Path) -> bool:
         return True
     if relative_path.name in FORBIDDEN_FILE_NAMES:
         return True
-    return any(fnmatch.fnmatch(relative_path.name, pattern) for pattern in FORBIDDEN_FILE_GLOBS)
+    if any(
+        fnmatch.fnmatch(part, pattern)
+        for part in relative_path.parts
+        for pattern in FORBIDDEN_DIR_GLOBS
+    ):
+        return True
+    if any(fnmatch.fnmatch(relative_path.name, pattern) for pattern in FORBIDDEN_FILE_GLOBS):
+        return True
+    lowered = relative_path.as_posix().lower()
+    return any(term in lowered for term in FORBIDDEN_CONTRACT_TERMS)
 
 
 def check_forbidden_paths(repo_root: pathlib.Path, mode: str) -> list[str]:

@@ -51,7 +51,7 @@ Pafio must not:
 4. add fields solely because an unapproved Styio plan mentions them,
 5. make observable-language support a requirement for ordinary build, check, run, or test workflows.
 
-The upstream delivery reference is `styio-nightly:docs/plan/observable-static-snapshot/Plan.md` (PLAN-004). That plan and the long-term evolution attachment are planning inputs, not authority to change Pafio.
+The upstream delivery reference is the Styio `observable-static-snapshot` plan document (PLAN-004). That plan and the long-term evolution attachment are planning inputs, not authority to change Pafio.
 
 ## 3. Activation Gate
 

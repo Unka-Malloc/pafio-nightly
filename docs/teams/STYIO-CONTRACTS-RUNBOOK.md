@@ -17,8 +17,6 @@ Styio.
 3. `docs/governance/Pafio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
-6. `contracts/ecosystem/owner-matrix.json`
-7. `scripts/verify-ecosystem-contracts.py`
 
 ## Daily Workflow
 
@@ -26,9 +24,7 @@ Styio.
 2. Probe `styio --machine-info=json` before workflow delegation.
 3. Keep `generated_by.tool = "pafio"` in compile plans.
 4. Treat diagnostics, receipts, and runtime events as Styio-owned payloads.
-5. Replay semantic checks from immutable owner commits before executing the
-   Pafio, Styio, and Vityo product composition.
-6. Keep the global `-h` and `--help` spellings in the published CLI contract
+5. Keep the global `-h` and `--help` spellings in the published CLI contract
    aligned with Pafio's executable help surface.
 
 ## Change Classes

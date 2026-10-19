@@ -1,6 +1,6 @@
 # Styio Pafio License Policy
 
-**Purpose:** Record the source-license boundary enforced by `styio-audit`.
+**Purpose:** Record the source-license boundary enforced by the repository audit gates.
 
 **Last updated:** 2026-04-24
 

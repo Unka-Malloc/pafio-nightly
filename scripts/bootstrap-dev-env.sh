@@ -19,7 +19,7 @@ Optional environment:
   PAFIO_NIGHTLY_TOOL_VENV   Python virtualenv used for standardized cmake/ctest
                             Default: $TOOL_VENV
 
-Standardized baseline shared by pafio-nightly and styio-nightly:
+Standardized baseline shared by the Pafio and Styio development checkouts:
   Debian                  $DEBIAN_STANDARD_VERSION (trixie)
   LLVM / Clang / LLD      $LLVM_STANDARD_SERIES via clang-18 toolchain packages
   CMake / CTest           $CMAKE_STANDARD_VERSION (installed into the tool venv)

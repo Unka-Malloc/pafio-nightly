@@ -8,73 +8,22 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from artifact_policy import load_policy
+
+POLICY = load_policy()
+POLICY_PATH = "scripts/artifact-policy.json"
 DEFAULT_MAX_FILE_BYTES = 20 * 1024 * 1024
 TEXT_EXTENSIONS = {".cmake", ".cpp", ".h", ".hpp", ".json", ".md", ".py", ".sh", ".toml", ".txt", ".xml", ".yaml", ".yml"}
-FORBIDDEN_GLOBS = [
-    ".DS_Store",
-    ".cursor/*",
-    ".idea/*",
-    ".vscode/*",
-    "__pycache__/*",
-    "*.a",
-    "*.dll",
-    "*.dylib",
-    "*.exe",
-    "*.log",
-    "*.obj",
-    "*.o",
-    "*.so",
-    "*.tmp",
-    "CMakeCache.txt",
-    "CMakeFiles/*",
-    "Makefile",
-    "Testing/*",
-    "build",
-    "build/*",
-    "build-*",
-    "build-*/*",
-    "dist",
-    "dist/*",
-    ".pafio",
-    ".pafio/*",
-]
-REQUIRED_GITIGNORE_PATTERNS = [
-    ".DS_Store",
-    ".cursor/",
-    ".idea/",
-    ".vscode/",
-    ".cache/",
-    "__pycache__/",
-    ".pytest_cache/",
-    ".mypy_cache/",
-    ".ruff_cache/",
-    ".venv/",
-    "venv/",
-    "node_modules/",
-    "build/",
-    "build-*/",
-    "tmp/",
-    "*.tmp",
-    "*.log",
-    "docs/audit/defects/*",
-    "!docs/audit/defects/*.md",
-    "!docs/**/build/",
-    "!docs/**/build/**",
-    "!docs/**/build-*/",
-    "!docs/**/build-*/**",
-    "!docs/**/tmp/",
-    "!docs/**/tmp/**",
-    "!docs/**/*.tmp",
-    "!docs/**/*.log",
-    "!tests/**/build/",
-    "!tests/**/build/**",
-    "!tests/**/build-*/",
-    "!tests/**/build-*/**",
-    "!tests/**/tmp/",
-    "!tests/**/tmp/**",
-    "!tests/**/*.tmp",
-    "!tests/**/*.log",
-]
+FORBIDDEN_DIRS = set(POLICY.forbidden_dirs)
+FORBIDDEN_DIR_GLOBS = list(POLICY.forbidden_dir_globs)
+FORBIDDEN_FILE_NAMES = set(POLICY.forbidden_file_names)
+FORBIDDEN_FILE_GLOBS = list(POLICY.forbidden_file_globs)
+FORBIDDEN_CONTRACT_TERMS = list(POLICY.forbidden_contract_terms)
+REQUIRED_GITIGNORE_PATTERNS = list(POLICY.required_gitignore_patterns)
 REQUIRED_DOC_REFERENCES = {
     Path("docs/README.md"): [
         "scripts/docs-index.py",
@@ -86,11 +35,6 @@ REQUIRED_DOC_REFERENCES = {
         "scripts/delivery-gate.sh",
     ],
 }
-FORBIDDEN_CONTRACT_TERMS = [
-    "open" + "api",
-    "ara" + "zzo",
-    "redo" + "cly",
-]
 
 
 def run_git(*args: str, check: bool = True) -> str:
@@ -128,8 +72,18 @@ def tracked_files() -> list[str]:
 def match_forbidden(path: str) -> str | None:
     if path.startswith("docs/audit/defects/") and not path.endswith(".md"):
         return "docs/audit/defects/<non-md>"
-    for pattern in FORBIDDEN_GLOBS:
-        if fnmatch.fnmatch(path, pattern):
+    parts = Path(path).parts
+    for part in parts:
+        if part in FORBIDDEN_DIRS:
+            return part
+        for pattern in FORBIDDEN_DIR_GLOBS:
+            if fnmatch.fnmatch(part, pattern):
+                return pattern
+    name = parts[-1] if parts else path
+    if name in FORBIDDEN_FILE_NAMES:
+        return name
+    for pattern in FORBIDDEN_FILE_GLOBS:
+        if fnmatch.fnmatch(name, pattern):
             return pattern
     return None
 
@@ -192,6 +146,8 @@ def working_file_text(rel: str) -> str | None:
 def contract_reference_violations(files: list[str], source: str) -> list[str]:
     problems: list[str] = []
     for rel in files:
+        if rel == POLICY_PATH:
+            continue
         text = staged_file_text(rel) if source == "staged" else working_file_text(rel)
         if text is None:
             continue
@@ -273,6 +229,8 @@ def history_violations(rev_range: str, max_bytes: int) -> list[str]:
         if size > max_bytes:
             problems.append(f"{path}: blob size {size} bytes in pushed history range {rev_range} exceeds soft limit {max_bytes} bytes")
     for path, oid in object_ids_by_path.items():
+        if path == POLICY_PATH:
+            continue
         blob = subprocess.run(
             ["git", "-C", str(REPO_ROOT), "cat-file", "blob", oid],
             text=False,
