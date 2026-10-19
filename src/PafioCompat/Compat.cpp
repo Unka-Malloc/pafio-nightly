@@ -108,7 +108,11 @@ json ProbeMachineInfo(const fs::path &binary)
       "tool",
       "compiler_version",
       "channel",
+      "active_integration_phase",
       "supported_contracts",
+      "supported_contract_versions",
+      "supported_adapter_modes",
+      "feature_flags",
       "capabilities",
       "edition_max",
   };
@@ -126,6 +130,22 @@ json ProbeMachineInfo(const fs::path &binary)
   if (!payload["capabilities"].is_array())
   {
     throw pafio::CompatibilityError("compiler handshake field 'capabilities' must be an array");
+  }
+  if (!payload["active_integration_phase"].is_string() || payload["active_integration_phase"].get<std::string>().empty())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'active_integration_phase' must be a non-empty string");
+  }
+  if (!payload["supported_contract_versions"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_contract_versions' must be an object");
+  }
+  if (!payload["supported_adapter_modes"].is_array())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_adapter_modes' must be an array");
+  }
+  if (!payload["feature_flags"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'feature_flags' must be an object");
   }
   if (payload["tool"] != "styio")
   {
@@ -326,7 +346,18 @@ CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
   report.compiler_version = machine_info["compiler_version"].get<std::string>();
   report.compiler_channel = machine_info["channel"].get<std::string>();
   report.compiler_edition_max = machine_info["edition_max"].get<std::string>();
-  report.integration_phase = entry["integration_phase"].value<std::string>().value_or("unspecified");
+  // The phase reported to consumers is the compiler's advertised
+  // active_integration_phase; the matrix entry's phase is the requirement it
+  // must satisfy, not a value to echo back.
+  const std::string compiler_phase = machine_info["active_integration_phase"].get<std::string>();
+  const std::string required_phase = entry["integration_phase"].value<std::string>().value_or("");
+  if (!required_phase.empty() && compiler_phase != required_phase)
+  {
+    throw CompatibilityError(
+        "compiler active_integration_phase '" + compiler_phase +
+        "' does not match the phase required by this pafio phase: " + required_phase);
+  }
+  report.integration_phase = compiler_phase;
   report.supported_compile_plan_versions = expected_compile_plan_versions;
   report.capabilities = std::move(capabilities);
   return report;
