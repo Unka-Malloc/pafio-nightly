@@ -87,7 +87,18 @@ std::string Join(const std::vector<std::string> &parts, std::string_view separat
 
 fs::path AbsoluteTargetPath(const pafio::ResolvedPackage &package, const std::string &relative_path)
 {
-  return pafio::CanonicalAbsolutePath(package.root_dir / relative_path);
+  const fs::path absolute = pafio::CanonicalAbsolutePath(package.root_dir / relative_path);
+  if (package.snapshot_root.has_value())
+  {
+    const fs::path relative = absolute.lexically_relative(pafio::CanonicalAbsolutePath(*package.snapshot_root));
+    const std::string text = relative.generic_string();
+    if (text == ".." || text.starts_with("../"))
+    {
+      throw pafio::PlanError(
+          "materialized package target path escapes its source snapshot: " + relative_path);
+    }
+  }
+  return absolute;
 }
 
 void RequireExistingSourceFile(const fs::path &path, std::string_view context)

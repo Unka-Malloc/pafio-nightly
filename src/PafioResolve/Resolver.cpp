@@ -1,5 +1,6 @@
 #include "PafioResolve/Resolver.hpp"
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/FnvHash.hpp"
 #include "PafioCore/Paths.hpp"
@@ -106,21 +107,12 @@ std::string SourceKindString(SourceKind kind)
   return "path";
 }
 
-std::string NormalizeRegistryRootForKey(std::string value)
-{
-  while (!value.empty() && value.back() == '/')
-  {
-    value.pop_back();
-  }
-  return value;
-}
-
 std::string RegistryLockHintKey(
     const std::string &registry_root,
     const std::string &package_name,
     const std::string &version)
 {
-  return NormalizeRegistryRootForKey(registry_root) + '\n' + package_name + '\n' + version;
+  return pafio::NormalizeRegistryRoot(registry_root) + '\n' + package_name + '\n' + version;
 }
 
 std::string SnapshotRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
@@ -190,6 +182,7 @@ public:
 
   SourceOrigin Materialize(const std::string &normalized_source, const std::string &rev)
   {
+    pafio::RequireGitRevisionToken(rev, "git dependency '" + normalized_source + "' rev");
     const std::string repo_hash = pafio::Hex64(pafio::Fnv1a64(normalized_source));
     if (const std::optional<fs::path> vendored_snapshot = FindVendoredSnapshot(repo_hash, rev); vendored_snapshot.has_value())
     {
@@ -679,6 +672,12 @@ private:
             continue;
           }
           const fs::path member_manifest = pafio::CanonicalAbsolutePath(root_manifest_path.parent_path() / member / "pafio.toml");
+          if (origin_hint.snapshot_root.has_value() &&
+              !PathIsWithin(member_manifest, origin_hint.snapshot_root.value()))
+          {
+            throw pafio::ResolutionError(
+                "workspace member escapes its materialized source snapshot: " + member_manifest.string());
+          }
           if (!fs::exists(member_manifest))
           {
             throw pafio::ResolutionError("dependency workspace member manifest not found: " + member_manifest.string());
@@ -731,13 +730,13 @@ private:
       throw pafio::ResolutionError("path dependency manifest not found: " + dependency_root.string());
     }
 
-    if (parent.origin.kind == SourceKind::kGit)
+    if (parent.origin.snapshot_root.has_value())
     {
       if (!PathIsWithin(dependency_root.parent_path(), parent.origin.snapshot_root.value()) &&
           pafio::CanonicalAbsolutePath(dependency_root.parent_path()) != pafio::CanonicalAbsolutePath(parent.origin.snapshot_root.value()))
       {
         throw pafio::ResolutionError(
-            "git-sourced path dependency escapes its pinned snapshot: " + dependency_root.string());
+            "path dependency escapes its materialized source snapshot: " + dependency_root.string());
       }
       return SelectPackageManifestFromRoot(dependency_root, parent.origin, dependency.package);
     }

@@ -28,6 +28,12 @@ Sha256DigestPattern() {
   return pattern;
 }
 
+const std::regex &
+GitRevisionPattern() {
+  static const std::regex pattern("^[A-Za-z0-9_][A-Za-z0-9._~^/-]*$");
+  return pattern;
+}
+
 }  // namespace
 
 bool
@@ -43,6 +49,26 @@ IsExactSemver(const std::string &version) {
 bool
 IsSha256Digest(const std::string &digest) {
   return std::regex_match(digest, Sha256DigestPattern());
+}
+
+bool
+IsGitRevisionToken(const std::string &rev) {
+  return std::regex_match(rev, GitRevisionPattern()) && rev.find("..") == std::string::npos &&
+         rev.find("//") == std::string::npos && !rev.ends_with('/');
+}
+
+std::string
+NormalizeRegistryRoot(std::string value) {
+  while (!value.empty() && value.back() == '/') {
+    value.pop_back();
+  }
+  return value;
+}
+
+std::string
+PackageShortName(const std::string &package_name) {
+  RequirePackageName(package_name, "package.name");
+  return package_name.substr(package_name.find('/') + 1U);
 }
 
 void
@@ -66,6 +92,13 @@ void
 RequireSha256Digest(const std::string &digest, std::string_view context) {
   if (!IsSha256Digest(digest)) {
     throw ValidationError(std::string(context) + " must be a lowercase sha256 hex digest");
+  }
+}
+
+void
+RequireGitRevisionToken(const std::string &rev, std::string_view context) {
+  if (!IsGitRevisionToken(rev)) {
+    throw ValidationError(std::string(context) + " must be a safe git revision token");
   }
 }
 
