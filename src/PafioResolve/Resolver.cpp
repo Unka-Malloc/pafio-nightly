@@ -808,13 +808,23 @@ private:
           *dependency.package + "@" + *dependency.version);
     }
 
+    const std::string materialize_key = dependency.source + '\x1f' + *dependency.package + '\x1f' +
+        *dependency.version + '\x1f' + (options_.offline ? "1" : "0") + '\x1f' +
+        locked_sha256.value_or("");
+    const auto memoized = materialized_registry_.find(materialize_key);
     const pafio::RegistryMaterializationResult materialized =
-        pafio::MaterializeRegistryPackage(
-            dependency.source,
-            *dependency.package,
-            *dependency.version,
-            options_.offline,
-            locked_sha256);
+        memoized != materialized_registry_.end()
+            ? memoized->second
+            : materialized_registry_
+                  .emplace(
+                      materialize_key,
+                      pafio::MaterializeRegistryPackage(
+                          dependency.source,
+                          *dependency.package,
+                          *dependency.version,
+                          options_.offline,
+                          locked_sha256))
+                  .first->second;
     const SourceOrigin registry_origin{
         .kind = SourceKind::kRegistry,
         .registry_root = materialized.registry_root,
@@ -1027,6 +1037,7 @@ private:
   std::unordered_map<std::string, size_t> node_by_source_fingerprint_;
   std::unordered_map<std::string, std::string> locked_registry_digests_;
   std::unordered_map<std::string, size_t> node_by_package_name_;
+  std::unordered_map<std::string, pafio::RegistryMaterializationResult> materialized_registry_;
   std::unordered_map<size_t, VisitState> visit_state_by_index_;
   std::unordered_map<size_t, std::vector<std::string>> path_ids_by_index_;
   std::vector<size_t> active_stack_;
