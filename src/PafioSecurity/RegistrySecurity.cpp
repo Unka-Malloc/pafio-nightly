@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 
 namespace fs = std::filesystem;
@@ -294,15 +295,7 @@ NormalizeRegistryRelativePath(const std::string &relative_path, const std::strin
 
 bool
 IsRegistrySha256Digest(const std::string &value) {
-  if (value.size() != 64U) {
-    return false;
-  }
-  for (const unsigned char ch : value) {
-    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f')) {
-      return false;
-    }
-  }
-  return true;
+  return IsSha256Digest(value);
 }
 
 }  // namespace pafio

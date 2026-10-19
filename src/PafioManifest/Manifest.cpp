@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioManifest/TomlString.hpp"
 
@@ -18,18 +19,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-
-const std::regex &
-NameRegex() {
-  static const std::regex pattern("^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$");
-  return pattern;
-}
-
-const std::regex &
-SemverRegex() {
-  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
-  return pattern;
-}
 
 const std::regex &
 BareKeyRegex() {
@@ -112,22 +101,6 @@ RequireStringArray(const toml::table &table, std::string_view key, std::string_v
 }
 
 void
-ValidatePackageName(const std::string &name, std::string_view context) {
-  if (!std::regex_match(name, NameRegex())) {
-    throw pafio::ValidationError(std::string(context) + " must match namespace/name");
-  }
-}
-
-void
-ValidateSemver(const std::string &version, std::string_view context) {
-  if (!std::regex_match(version, SemverRegex())) {
-    throw pafio::ValidationError(
-      std::string(context) + " must be exact semver x.y.z (ranges, prerelease, and prefixes are not supported in single-version-v1)"
-    );
-  }
-}
-
-void
 ValidateRelativePath(const std::string &path_value, std::string_view context) {
   if (!IsNonEmptyRelativePath(path_value)) {
     throw pafio::ValidationError(std::string(context) + " must be an explicit relative path");
@@ -171,7 +144,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
     dependency.alias = alias;
     dependency.package = OptionalString(*dep, "package");
     if (dependency.package.has_value()) {
-      ValidatePackageName(*dependency.package, "dependency '" + alias + "' package");
+      pafio::RequirePackageName(*dependency.package, "dependency '" + alias + "' package");
     }
 
     if (has_path) {
@@ -196,7 +169,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
       }
       dependency.source_kind = pafio::DependencySourceKind::kRegistry;
       dependency.version = RequireValue<std::string>(*dep, "version", "dependency '" + alias + "'");
-      ValidateSemver(*dependency.version, "dependency '" + alias + "' version");
+      pafio::RequireExactSemver(*dependency.version, "dependency '" + alias + "' version");
       dependency.source = RequireValue<std::string>(*dep, "registry", "dependency '" + alias + "'");
       ValidateRegistryRoot(dependency.source, "dependency '" + alias + "' registry");
     }
@@ -315,8 +288,8 @@ ParsePackage(const toml::table &doc) {
   package.dependencies = ParseDependencies(doc, "dependencies");
   package.dev_dependencies = ParseDependencies(doc, "dev-dependencies");
 
-  ValidatePackageName(package.name, "package.name");
-  ValidateSemver(package.version, "package.version");
+  pafio::RequirePackageName(package.name, "package.name");
+  pafio::RequireExactSemver(package.version, "package.version");
   if (package.edition.empty()) {
     throw pafio::ValidationError("package.edition must be an explicit string");
   }
@@ -430,7 +403,7 @@ EmitDependencySection(std::ostringstream &out, const std::string &section_name, 
 
 pafio::ManifestDocument
 BuildScaffoldManifest(const std::string &package_name, const std::string &kind) {
-  ValidatePackageName(package_name, "package.name");
+  pafio::RequirePackageName(package_name, "package.name");
 
   pafio::PackageConfig package;
   package.name = package_name;

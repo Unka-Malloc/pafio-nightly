@@ -15,6 +15,7 @@ endfunction()
 set(PAFIO_FOUNDATION_SOURCES
     PafioCompat/Compat.cpp
     PafioCore/AtomicFile.cpp
+    PafioCore/ContractLexicon.cpp
     PafioCore/FileLock.cpp
     PafioCore/Paths.cpp
     PafioCore/Process.cpp

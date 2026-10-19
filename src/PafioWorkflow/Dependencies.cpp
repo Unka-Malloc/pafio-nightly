@@ -1,6 +1,7 @@
 #include "PafioWorkflow/Dependencies.hpp"
 
 #include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/FileLock.hpp"
 #include "PafioCore/Paths.hpp"
@@ -24,18 +25,6 @@ namespace fs = std::filesystem;
 namespace
 {
 
-const std::regex &PackageNameRegex()
-{
-  static const std::regex pattern("^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$");
-  return pattern;
-}
-
-const std::regex &SemverRegex()
-{
-  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
-  return pattern;
-}
-
 bool IsNonEmptyRelativePath(const std::string &value)
 {
   if (value.empty())
@@ -50,27 +39,9 @@ bool IsRegistryRootUrl(const std::string &value)
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
 }
 
-void ValidatePackageName(const std::string &value, const std::string &context)
-{
-  if (!std::regex_match(value, PackageNameRegex()))
-  {
-    throw pafio::ValidationError(context + " must match namespace/name");
-  }
-}
-
-void ValidateSemver(const std::string &value, const std::string &context)
-{
-  if (!std::regex_match(value, SemverRegex()))
-  {
-    throw pafio::ValidationError(
-        context +
-        " must be exact semver x.y.z (ranges, prerelease, and prefixes are not supported in single-version-v1)");
-  }
-}
-
 std::string PackageShortName(const std::string &package_name)
 {
-  ValidatePackageName(package_name, "package name");
+  pafio::RequirePackageName(package_name, "package name");
   return package_name.substr(package_name.find('/') + 1U);
 }
 
@@ -244,7 +215,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
   {
     throw ValidationError("dependency source must be a non-empty string");
   }
-  ValidatePackageName(request.package_name, "dependency package");
+  pafio::RequirePackageName(request.package_name, "dependency package");
   const int source_kind_count = static_cast<int>(request.use_git) + static_cast<int>(request.use_registry) +
                                 static_cast<int>(!request.use_git && !request.use_registry);
   if (source_kind_count != 1)
@@ -276,7 +247,7 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     {
       throw ValidationError("registry dependencies require --version <x.y.z>");
     }
-    ValidateSemver(*request.version, "dependency version");
+    pafio::RequireExactSemver(*request.version, "dependency version");
     if (!IsRegistryRootUrl(request.source))
     {
       throw ValidationError("registry dependency source must use file://, http://, or https://");
