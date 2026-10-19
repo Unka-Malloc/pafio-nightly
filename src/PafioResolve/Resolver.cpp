@@ -293,7 +293,7 @@ private:
         .program = pafio::ResolvedGitPath(),
         .args = {"clone", "--mirror", normalized_source, pafio::ProcessPathString(repo_dir)},
         .search_path = false,
-        .timeout = pafio::kExternalProcessStepTimeout,
+        .timeout = std::nullopt,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)
@@ -326,7 +326,7 @@ private:
         .program = pafio::ResolvedGitPath(),
         .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "fetch", "--prune", "origin"},
         .search_path = false,
-        .timeout = pafio::kExternalProcessStepTimeout,
+        .timeout = std::nullopt,
         .error_context = "resolver process",
     });
     if (result.exit_code != 0)

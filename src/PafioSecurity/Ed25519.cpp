@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/Process.hpp"
+#include "PafioCore/Sha256.hpp"
 #include "PafioCore/ToolPaths.hpp"
 
 namespace fs = std::filesystem;
@@ -113,6 +115,17 @@ Ed25519VerifyPem(std::string_view public_key_pem, std::string_view message, std:
     return false;
   }
 
+  // Verification is a pure function over these inputs and spawns an openssl
+  // child process per call; identical envelopes recur across package
+  // materializations, so memoize the verdict within this process.
+  static std::map<std::string, bool> verdict_cache;
+  const std::string cache_key =
+    pafio::Sha256Text(std::string(public_key_pem)) + '\x1f' +
+    pafio::Sha256Text(std::string(message)) + '\x1f' + std::string(signature_b64);
+  if (const auto cached = verdict_cache.find(cache_key); cached != verdict_cache.end()) {
+    return cached->second;
+  }
+
   const ScopedTemporaryDirectory temporary_directory;
   const fs::path &temp_root = temporary_directory.path();
 
@@ -145,7 +158,9 @@ Ed25519VerifyPem(std::string_view public_key_pem, std::string_view message, std:
       .max_stderr_bytes = 4096,
       .error_context = "ed25519 verify",
     });
-    return result.exit_code == 0 && !result.timed_out;
+    const bool verified = result.exit_code == 0 && !result.timed_out;
+    verdict_cache.emplace(cache_key, verified);
+    return verified;
   }
   catch (const ProcessFailure &) {
     return false;

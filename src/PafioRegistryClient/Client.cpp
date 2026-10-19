@@ -434,6 +434,16 @@ LoadRegistryObjectText(
     if (!IsHttpRegistry(registry_root)) {
       throw pafio::FetchError("registry root must use file://, http://, or https://: " + registry_root);
     }
+    // Online objects are immutable within one CLI run; dedupe across package
+    // materializations so each metadata object costs one GET per process.
+    static std::map<std::string, std::string> online_object_cache;
+    const std::string online_key = registry_root + '\x1f' + session_key;
+    if (!offline) {
+      if (const auto hit = online_object_cache.find(online_key); hit != online_object_cache.end()) {
+        session_objects.emplace(session_key, hit->second);
+        return hit->second;
+      }
+    }
     const fs::path cache_path = RegistryObjectCachePath(pafio_home, registry_root, session_key);
     if (offline) {
       if (!fs::exists(cache_path)) {
@@ -450,6 +460,7 @@ LoadRegistryObjectText(
         RegistryRemoteObjectKind::kMetadata
       );
       text = ReadTextFile(cache_path, "cached " + context);
+      online_object_cache.emplace(online_key, text);
     }
   }
   session_objects.emplace(session_key, text);

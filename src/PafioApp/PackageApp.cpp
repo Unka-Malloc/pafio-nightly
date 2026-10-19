@@ -106,7 +106,7 @@ json RunRegistryV2ControlPlanePublish(
       .program = pafio::ResolvedCurlPath(),
       .args = args,
       .search_path = false,
-      .timeout = pafio::kExternalProcessStepTimeout,
+      .timeout = std::nullopt,
       .stdin_text = request_body,
       .error_context = "registry control-plane publish request",
   });
