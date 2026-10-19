@@ -1,6 +1,7 @@
 #include "PafioResolve/Resolver.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/FnvHash.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/ToolPaths.hpp"
@@ -52,32 +53,9 @@ struct ManifestSelection
   SourceOrigin origin;
 };
 
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
 std::string PathKey(const fs::path &path)
 {
-  return CanonicalAbsolutePath(path).generic_string();
-}
-
-uint64_t Fnv1a64(const std::string &value)
-{
-  uint64_t hash = 1469598103934665603ULL;
-  for (const unsigned char ch : value)
-  {
-    hash ^= ch;
-    hash *= 1099511628211ULL;
-  }
-  return hash;
-}
-
-std::string Hex64(uint64_t value)
-{
-  std::ostringstream out;
-  out << std::hex << value;
-  return out.str();
+  return pafio::CanonicalAbsolutePath(path).generic_string();
 }
 
 bool LooksLikeRemoteGitSource(const std::string &source)
@@ -87,7 +65,7 @@ bool LooksLikeRemoteGitSource(const std::string &source)
 
 bool PathIsWithin(const fs::path &candidate, const fs::path &root)
 {
-  const fs::path relative = CanonicalAbsolutePath(candidate).lexically_relative(CanonicalAbsolutePath(root));
+  const fs::path relative = pafio::CanonicalAbsolutePath(candidate).lexically_relative(pafio::CanonicalAbsolutePath(root));
   if (relative.empty())
   {
     return false;
@@ -104,7 +82,7 @@ std::string NormalizeGitSource(const std::string &source, const fs::path &packag
   }
 
   const fs::path source_path(std::u8string(source.begin(), source.end()));
-  fs::path normalized = CanonicalAbsolutePath(source_path.is_absolute() ? source_path : package_dir / source_path);
+  fs::path normalized = pafio::CanonicalAbsolutePath(source_path.is_absolute() ? source_path : package_dir / source_path);
   std::string value = pafio::ProcessPathString(normalized);
 #if defined(_WIN32)
   std::replace(value.begin(), value.end(), '\\', '/');
@@ -147,8 +125,8 @@ std::string RegistryLockHintKey(
 
 std::string SnapshotRelativeKey(const SourceOrigin &origin, const fs::path &package_dir)
 {
-  const fs::path snapshot_root = CanonicalAbsolutePath(origin.snapshot_root.value());
-  const fs::path relative = CanonicalAbsolutePath(package_dir).lexically_relative(snapshot_root);
+  const fs::path snapshot_root = pafio::CanonicalAbsolutePath(origin.snapshot_root.value());
+  const fs::path relative = pafio::CanonicalAbsolutePath(package_dir).lexically_relative(snapshot_root);
   const std::string key = relative.generic_string();
   return key.empty() ? "." : key;
 }
@@ -199,12 +177,12 @@ class GitSourceCache
 {
 public:
   explicit GitSourceCache(const fs::path &pafio_home, const bool offline, std::optional<fs::path> vendor_root)
-      : pafio_home_(CanonicalAbsolutePath(pafio_home)),
+      : pafio_home_(pafio::CanonicalAbsolutePath(pafio_home)),
         offline_(offline)
   {
     if (vendor_root.has_value())
     {
-      vendor_root_ = CanonicalAbsolutePath(*vendor_root);
+      vendor_root_ = pafio::CanonicalAbsolutePath(*vendor_root);
     }
     fs::create_directories(pafio_home_ / "git" / "repos");
     fs::create_directories(pafio_home_ / "git" / "checkouts");
@@ -212,7 +190,7 @@ public:
 
   SourceOrigin Materialize(const std::string &normalized_source, const std::string &rev)
   {
-    const std::string repo_hash = Hex64(Fnv1a64(normalized_source));
+    const std::string repo_hash = pafio::Hex64(pafio::Fnv1a64(normalized_source));
     if (const std::optional<fs::path> vendored_snapshot = FindVendoredSnapshot(repo_hash, rev); vendored_snapshot.has_value())
     {
       return SourceOrigin{
@@ -276,7 +254,7 @@ private:
     const fs::path ready_marker = snapshot_root / ".pafio-snapshot-ready";
     if (fs::exists(ready_marker) || fs::exists(snapshot_root / "pafio.toml"))
     {
-      return CanonicalAbsolutePath(snapshot_root);
+      return pafio::CanonicalAbsolutePath(snapshot_root);
     }
     return std::nullopt;
   }
@@ -347,7 +325,7 @@ private:
 
     fs::remove_all(snapshot_root);
     fs::create_directories(snapshot_root);
-    const fs::path archive_path = snapshot_root.parent_path() / (Hex64(Fnv1a64(rev)) + ".tar");
+    const fs::path archive_path = snapshot_root.parent_path() / (pafio::Hex64(pafio::Fnv1a64(rev)) + ".tar");
     const pafio::ProcessResult archive = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
         .args = {
@@ -445,7 +423,7 @@ class SingleVersionResolver
 {
 public:
   explicit SingleVersionResolver(const fs::path &manifest_path, const pafio::ResolveOptions &options)
-      : root_manifest_path_(CanonicalAbsolutePath(manifest_path)),
+      : root_manifest_path_(pafio::CanonicalAbsolutePath(manifest_path)),
         root_manifest_(pafio::LoadManifest(root_manifest_path_)),
         options_(NormalizeOptions(root_manifest_path_, options)),
         git_cache_(pafio::ResolvePafioHome(), options_.offline, options_.vendor_root)
@@ -545,7 +523,7 @@ private:
     }
     else
     {
-      normalized.vendor_root = CanonicalAbsolutePath(*normalized.vendor_root);
+      normalized.vendor_root = pafio::CanonicalAbsolutePath(*normalized.vendor_root);
     }
     return normalized;
   }
@@ -635,7 +613,7 @@ private:
         throw pafio::WorkspaceError("workspace member is also excluded: " + member);
       }
 
-      const fs::path member_manifest = CanonicalAbsolutePath(root_manifest_path_.parent_path() / member / "pafio.toml");
+      const fs::path member_manifest = pafio::CanonicalAbsolutePath(root_manifest_path_.parent_path() / member / "pafio.toml");
       if (!fs::exists(member_manifest))
       {
         throw pafio::WorkspaceError("workspace member manifest not found: " + member_manifest.string());
@@ -700,7 +678,7 @@ private:
           {
             continue;
           }
-          const fs::path member_manifest = CanonicalAbsolutePath(root_manifest_path.parent_path() / member / "pafio.toml");
+          const fs::path member_manifest = pafio::CanonicalAbsolutePath(root_manifest_path.parent_path() / member / "pafio.toml");
           if (!fs::exists(member_manifest))
           {
             throw pafio::ResolutionError("dependency workspace member manifest not found: " + member_manifest.string());
@@ -747,7 +725,7 @@ private:
 
   ManifestSelection ResolvePathDependency(const Node &parent, const pafio::Dependency &dependency)
   {
-    const fs::path dependency_root = CanonicalAbsolutePath(parent.package_dir / dependency.source / "pafio.toml");
+    const fs::path dependency_root = pafio::CanonicalAbsolutePath(parent.package_dir / dependency.source / "pafio.toml");
     if (!fs::exists(dependency_root))
     {
       throw pafio::ResolutionError("path dependency manifest not found: " + dependency_root.string());
@@ -756,7 +734,7 @@ private:
     if (parent.origin.kind == SourceKind::kGit)
     {
       if (!PathIsWithin(dependency_root.parent_path(), parent.origin.snapshot_root.value()) &&
-          CanonicalAbsolutePath(dependency_root.parent_path()) != CanonicalAbsolutePath(parent.origin.snapshot_root.value()))
+          pafio::CanonicalAbsolutePath(dependency_root.parent_path()) != pafio::CanonicalAbsolutePath(parent.origin.snapshot_root.value()))
       {
         throw pafio::ResolutionError(
             "git-sourced path dependency escapes its pinned snapshot: " + dependency_root.string());
@@ -908,7 +886,7 @@ private:
       const SourceOrigin &origin,
       const std::vector<std::string> &parent_path)
   {
-    const fs::path normalized_manifest_path = CanonicalAbsolutePath(manifest_path);
+    const fs::path normalized_manifest_path = pafio::CanonicalAbsolutePath(manifest_path);
     const fs::path package_dir = normalized_manifest_path.parent_path();
     const std::string source_fingerprint = BuildSourceFingerprint(origin, package_dir);
 

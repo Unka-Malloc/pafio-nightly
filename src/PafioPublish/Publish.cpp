@@ -1,6 +1,8 @@
 #include "PafioPublish/Publish.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioCore/Sha256.hpp"
 #include "PafioManifest/Manifest.hpp"
 #include "PafioPack/Pack.hpp"
@@ -35,14 +37,9 @@ struct PackageSelection
   pafio::ManifestDocument manifest;
 };
 
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
 std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_manifest_path)
 {
-  const fs::path normalized_root_manifest = CanonicalAbsolutePath(root_manifest_path);
+  const fs::path normalized_root_manifest = pafio::CanonicalAbsolutePath(root_manifest_path);
   const fs::path root_dir = normalized_root_manifest.parent_path();
   const pafio::ManifestDocument root_manifest = pafio::LoadManifest(normalized_root_manifest);
 
@@ -60,7 +57,7 @@ std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_mani
   {
     for (const std::string &member : root_manifest.workspace->members)
     {
-      const fs::path member_manifest_path = CanonicalAbsolutePath(root_dir / member / "pafio.toml");
+      const fs::path member_manifest_path = pafio::CanonicalAbsolutePath(root_dir / member / "pafio.toml");
       const pafio::ManifestDocument member_manifest = pafio::LoadManifest(member_manifest_path);
       if (!member_manifest.package.has_value())
       {
@@ -79,7 +76,7 @@ std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_mani
 
 PackageSelection SelectPackageForPublish(const pafio::PublishRequest &request)
 {
-  const fs::path root_manifest_path = CanonicalAbsolutePath(request.manifest_path);
+  const fs::path root_manifest_path = pafio::CanonicalAbsolutePath(request.manifest_path);
   const std::vector<PackageSelection> candidates = CollectPackageCandidates(root_manifest_path);
   if (candidates.empty())
   {

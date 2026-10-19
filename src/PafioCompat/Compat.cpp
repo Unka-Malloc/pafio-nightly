@@ -30,38 +30,12 @@ using json = nlohmann::json;
 namespace
 {
 
-constexpr std::string_view kEmbeddedStyioSupportToml = R"toml(
-schema = 1
-pafio_version = "0.1.0-dev"
-
-[[supported_styio]]
-min = "0.0.1"
-max_exclusive = "0.1.0"
-channel = "stable"
-edition_max = "2026"
-required_capabilities = [
-  "machine_info_json",
-  "single_file_entry",
-  "jsonl_diagnostics"
-]
-supported_compile_plan_versions = [1]
-integration_phase = "compile-plan-live"
-notes = "Current compatibility requires a styio compiler that advertises compile-plan v1 and accepts styio --compile-plan for build/run/test orchestration."
-
-[[supported_styio]]
-min = "0.0.1"
-max_exclusive = "0.1.0"
-channel = "nightly"
-edition_max = "2026"
-required_capabilities = [
-  "machine_info_json",
-  "single_file_entry",
-  "jsonl_diagnostics"
-]
-supported_compile_plan_versions = [1]
-integration_phase = "compile-plan-live"
-notes = "The coordinated nightly lane consumes the same compile-plan v1 contract as the stable lane."
-)toml";
+// The contract file contracts/compat/styio-support.toml is the single
+// authority; CMake bakes its contents into this literal at configure time so
+// dev-tree and installed binaries always evaluate the same matrix.
+constexpr std::string_view kEmbeddedStyioSupportToml =
+#include "EmbeddedStyioSupportToml.inc"
+;
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -95,20 +69,6 @@ int ParseEdition(const std::string &edition)
 
 toml::table LoadCompatMatrix()
 {
-  const fs::path compat_matrix_path = pafio::ProjectRoot() / "contracts" / "compat" / "styio-support.toml";
-  if (fs::exists(compat_matrix_path))
-  {
-    try
-    {
-      return toml::parse_file(compat_matrix_path.string());
-    }
-    catch (const toml::parse_error &err)
-    {
-      throw pafio::CompatibilityError(
-          "failed to parse compatibility matrix '" + compat_matrix_path.string() + "': " + std::string(err.description()));
-    }
-  }
-
   try
   {
     return toml::parse(kEmbeddedStyioSupportToml, std::string_view{"embedded styio-support.toml"});

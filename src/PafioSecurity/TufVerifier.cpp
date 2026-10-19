@@ -374,12 +374,32 @@ VerifyConfig(const std::map<std::string, std::string> &objects, pafio::TufVerify
   (void)RequireBoolField(capabilities, "transparency_log", "registry v2 config capabilities", result);
 }
 
+// A snapshot meta entry is a targets document when its signed payload
+// declares type "targets" — not because of where it happens to live.
+bool
+IsTargetsObject(const std::map<std::string, std::string> &objects, const std::string &relative_path) {
+  const auto it = objects.find(relative_path);
+  if (it == objects.end()) {
+    return false;
+  }
+  try {
+    const json envelope = json::parse(it->second);
+    return envelope.is_object() &&
+      envelope.contains("signed") && envelope["signed"].is_object() &&
+      envelope["signed"].value("type", "") == "targets";
+  }
+  catch (const json::parse_error &) {
+    return false;
+  }
+}
+
 pafio::TufVerifyResult
 VerifyPackageChain(
   const std::map<std::string, std::string> &objects,
   const std::string &package_name,
   const std::string &package_namespace,
   const std::optional<std::string> &trusted_root_sha256,
+  const std::string &targets_relative_path,
   const bool verify_full_registry
 ) {
   pafio::TufVerifyResult result;
@@ -430,9 +450,8 @@ VerifyPackageChain(
     );
 
     const std::string targets_relative =
-      NormalizeRelative("trust/targets/" + package_namespace + ".json", "registry v2 targets path", result);
-    if (!snapshot_meta_entries.contains(targets_relative) && !snapshot_meta_entries.contains("trust/targets/" + package_namespace + ".json")) {
-      // Accept either normalized key form present in snapshot meta.
+      NormalizeRelative(targets_relative_path, "registry v2 targets path", result);
+    {
       bool found = false;
       for (auto it = snapshot_meta_entries.begin(); it != snapshot_meta_entries.end(); ++it) {
         const std::string normalized = NormalizeRelative(it.key(), "registry v2 snapshot meta path", result);
@@ -445,11 +464,6 @@ VerifyPackageChain(
       if (!found) {
         Fail(result, "tuf.targets_missing", "registry v2 snapshot does not list targets for namespace " + package_namespace);
       }
-    }
-    else {
-      const json &meta = snapshot_meta_entries.contains(targets_relative) ? snapshot_meta_entries[targets_relative]
-                                                                          : snapshot_meta_entries["trust/targets/" + package_namespace + ".json"];
-      VerifyMetaHash(meta, targets_relative, objects, "registry v2 snapshot targets", result, false);
     }
 
     const json targets_signed = VerifyRoleEnvelope(
@@ -472,7 +486,7 @@ VerifyPackageChain(
       for (auto it = snapshot_meta_entries.begin(); it != snapshot_meta_entries.end(); ++it) {
         const std::string normalized = NormalizeRelative(it.key(), "registry v2 snapshot meta path", result);
         VerifyMetaHash(it.value(), normalized, objects, "registry v2 snapshot meta " + normalized, result, false);
-        if (normalized.rfind("trust/targets/", 0) == 0) {
+        if (IsTargetsObject(objects, normalized)) {
           (void)VerifyRoleEnvelope(
             ParseObject(RequireObjectBytes(objects, normalized, result), "registry v2 targets metadata", result),
             "registry v2 targets metadata '" + normalized + "'",
@@ -559,9 +573,17 @@ VerifyTufChainForPackage(
   const std::map<std::string, std::string> &objects_by_relative_path,
   const std::string &package_name,
   const std::string &package_namespace,
-  const std::optional<std::string> &trusted_root_sha256
+  const std::optional<std::string> &trusted_root_sha256,
+  const std::string &targets_relative_path
 ) {
-  return VerifyPackageChain(objects_by_relative_path, package_name, package_namespace, trusted_root_sha256, false);
+  return VerifyPackageChain(
+    objects_by_relative_path,
+    package_name,
+    package_namespace,
+    trusted_root_sha256,
+    targets_relative_path,
+    false
+  );
 }
 
 TufVerifyResult
@@ -635,10 +657,11 @@ VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relat
 
     std::string first_package;
     std::string first_namespace;
+    std::string first_targets_relative;
     for (auto it = snapshot_meta_entries.begin(); it != snapshot_meta_entries.end(); ++it) {
       const std::string normalized = NormalizeRelative(it.key(), "registry v2 snapshot meta path", result);
       VerifyMetaHash(it.value(), normalized, objects_by_relative_path, "registry v2 snapshot meta", result, false);
-      if (normalized.rfind("trust/targets/", 0) == 0) {
+      if (IsTargetsObject(objects_by_relative_path, normalized)) {
         const json targets_signed = VerifyRoleEnvelope(
           ParseObject(
             RequireObjectBytes(objects_by_relative_path, normalized, result),
@@ -655,6 +678,7 @@ VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relat
         if (!packages.empty() && first_package.empty()) {
           first_package = packages.begin().key();
           first_namespace = RequireStringField(targets_signed, "namespace", "registry v2 targets metadata", result);
+          first_targets_relative = normalized;
         }
       }
     }
@@ -662,7 +686,14 @@ VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relat
       result.ok = true;
       return result;
     }
-    return VerifyPackageChain(objects_by_relative_path, first_package, first_namespace, std::nullopt, true);
+    return VerifyPackageChain(
+      objects_by_relative_path,
+      first_package,
+      first_namespace,
+      std::nullopt,
+      first_targets_relative,
+      true
+    );
   }
   catch (const std::runtime_error &) {
     result.ok = false;

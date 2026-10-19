@@ -987,7 +987,8 @@ MaterializeRegistryPackage(
     tuf_objects,
     package_name,
     package_namespace,
-    trusted_root_sha256
+    trusted_root_sha256,
+    targets_relative
   );
   if (!tuf.ok) {
     throw FetchError(

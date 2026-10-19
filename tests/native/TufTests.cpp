@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -237,14 +238,14 @@ TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
 {
   const fs::path work_dir = MakeTempDir("tuf-fixture");
   const auto objects = BuildFixtureObjects(work_dir);
-  const pafio::TufVerifyResult ok = pafio::VerifyTufChainForPackage(objects, "acme/util", "acme");
+  const pafio::TufVerifyResult ok = pafio::VerifyTufChainForPackage(objects, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
   ASSERT_TRUE(ok.ok) << ok.error_code << ": " << ok.error;
 
   for (const char *relative : {"trust/root.json", "trust/timestamp.json", "trust/snapshot.json", "trust/targets/acme.json"})
   {
     auto tampered = objects;
     tampered[relative] = TamperedEnvelope(tampered[relative]);
-    const pafio::TufVerifyResult failed = pafio::VerifyTufChainForPackage(tampered, "acme/util", "acme");
+    const pafio::TufVerifyResult failed = pafio::VerifyTufChainForPackage(tampered, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
     EXPECT_FALSE(failed.ok) << relative;
     EXPECT_FALSE(failed.error_code.empty()) << relative;
   }
