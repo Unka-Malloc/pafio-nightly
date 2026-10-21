@@ -1,0 +1,175 @@
+{
+  "after": [],
+  "checks": [
+    {
+      "commands": [
+        "bash docs/plans/task-resource-delivery/checks.sh baseline"
+      ],
+      "coverage": {
+        "kind": "node"
+      },
+      "dirty": false,
+      "id": "pafio-task-resource-baseline",
+      "pending": false,
+      "result": {
+        "branch": "agent/downstream-pafio-paths",
+        "changed_inputs": {
+          "source_tree": "clean at HEAD; no uncommitted src/ or tests/ changes",
+          "tracked_modified": [
+            "docs/INDEX.md (+2/-1: plans index registration, date)",
+            "docs/plan/README.md (+2/-2: programme pointer, date)"
+          ],
+          "untracked": [
+            "docs/plans/ (11 files: Programme.json, Requirements.json, README.md, task-resource-delivery Tree/TASK-001/nodes/checks.sh)"
+          ]
+        },
+        "check_log": "baseline-checks.log",
+        "command": "bash docs/plans/task-resource-delivery/checks.sh baseline",
+        "configuration": {
+          "build_type": "Debug",
+          "cmake": "4.3.1",
+          "fetchcontent": "googletest, nlohmann_json vendored under build-codex/_deps",
+          "generator": "Unix Makefiles",
+          "pafio_build_tests": "ON",
+          "platform": "macOS arm64 (Darwin 25.5.0)"
+        },
+        "executables": {
+          "pafio": "build-codex/bin/pafio (linked 2026-10-05T21:48; HEAD a20dce6 committed 2026-10-05T22:02 from same clean worktree; make reports no stale inputs)",
+          "pafio_native_tests": "build-codex/bin/pafio_native_tests",
+          "pafio_process_tests": "build-codex/bin/pafio_process_tests",
+          "selected_styio": "../styio-nightly/build/default/bin/styio + styio_lspd (coordinator handoff; consumed in place, not rebuilt)"
+        },
+        "exit_code": 0,
+        "probes": {
+          "doctor_selected_styio": {
+            "channel": "nightly",
+            "compile_plan": [
+              1
+            ],
+            "compiler_version": "0.0.1",
+            "evidence": "doctor-selected-styio.log",
+            "exit": 0
+          },
+          "dry_run_build_probe": {
+            "cache_key": "97c31ee0b0db0e64",
+            "evidence": "dry-run-probe.log",
+            "exit": 0,
+            "project": "probe-proj/ (ignored)",
+            "status": "planned",
+            "styio_status": "not_run"
+          }
+        },
+        "source_revision": "a20dce6e9d889e892457b45b14d8d745e686ed34",
+        "status": "passed",
+        "summary": "Current-source baseline confirmed: checks.sh baseline exit 0 (cmake configure + incremental build + pafio --help). Existing build-codex binary is a valid current-source build: worktree sources clean at HEAD a20dce6, zero compile/link actions required, make dependency tracking found no stale inputs. Real dry-run build probe and doctor compat probe against the coordinator-selected Styio candidate succeeded.",
+        "host_validation": {
+          "status": "passed",
+          "run_id": "48372c268d273d8f6619f77c97c541d5",
+          "source": "Coordinator read the actual completed host check-stage run and node validation=passed; prior local evidence retained with its original scope."
+        }
+      },
+      "run_id": "48372c268d273d8f6619f77c97c541d5",
+      "running": false,
+      "title": "Build the current Pafio working tree checks"
+    }
+  ],
+  "commit": null,
+  "contract": {
+    "automation_check_ids": [
+      "pafio-task-resource-baseline"
+    ],
+    "completion": "Check success is necessary but not sufficient. Verify the stated outcome and required external input; no fabricated result or silent skip.",
+    "execution": "Explicitly select these registered check IDs; an omitted list inherits all project checks and would run unrelated/full checks prematurely.",
+    "external_inputs": [],
+    "write_scope": [
+      "Current repository implementation, contracts and focused tests required by this milestone; existing user changes are preserved."
+    ]
+  },
+  "executors": [],
+  "id": "NODE-BASELINE",
+  "outcome": "Record local changes, build inputs and current C1/offline behavior. Use the compiler candidate selected by the integration owner; do not fetch a published substitute for local changes. Enumerate the existing supported capabilities and platforms from owner contracts, link their current tests, and identify missing coverage. The inventory bounds preservation claims; it is not a new capability promise.",
+  "resources": [],
+  "result": {
+    "baseline": {
+      "branch": "agent/downstream-pafio-paths",
+      "changed_inputs": "2 tracked docs edits (docs/INDEX.md, docs/plan/README.md) + untracked docs/plans/ plan workspace; all src/ and tests/ content clean at HEAD",
+      "configuration": "macOS arm64, Debug, Unix Makefiles, CMake 4.3.1, PAFIO_BUILD_TESTS=ON",
+      "executable": "build-codex/bin/pafio reports 'pafio 0.1.0-dev'; machine-info advertises compile_plan/metadata/resolution/workflow v1, manifest/lock v1",
+      "source_revision": "a20dce6e9d889e892457b45b14d8d745e686ed34"
+    },
+    "evidence_dir": "build-codex/task-resource-baseline-20261011/ (ignored): baseline-checks.log, doctor-selected-styio.log, dry-run-probe.log, check-result.json, probe-proj/",
+    "issue_ledger": [
+      {
+        "finding": "scripts/styio-interface-gate.py performs pafio doctor + build --dry-run then executes 'styio --compile-plan' directly; it never drives real pafio check/build/test/run. checks.sh 'focused' and 'integration' are byte-identical commands.",
+        "id": "P1",
+        "owner_stage": "NODE-REPAIR/NODE-HANDOFF",
+        "severity": "coverage",
+        "status": "open->repair"
+      },
+      {
+        "finding": "Non-dry-run BuildCli/RunCli/TestCli tests and tests/interop gates use scripted fake styio executors; no permanent test runs real pafio check/build/test/run against a real compiler.",
+        "id": "P2",
+        "owner_stage": "NODE-REPAIR",
+        "severity": "coverage",
+        "status": "open->repair"
+      },
+      {
+        "finding": "Receipt opacity is intentional under the Pafio CLI contract. Current-invocation freshness and stale-artifact isolation lack permanent real Pafio workflow coverage at baseline.",
+        "id": "P3",
+        "owner_stage": "NODE-REPAIR",
+        "severity": "coverage",
+        "status": "open->repair"
+      },
+      {
+        "finding": "build_root is deterministic (.pafio/build/<cache_key> over inputs); identical concurrent invocations share output paths and plan.json writes are non-atomic. Upstream handoff requires callers to not share output paths for concurrent invocations; malformed plans without recoverable output roots require caller invalidation.",
+        "id": "P4",
+        "owner_stage": "NODE-REPAIR evaluates; document for HANDOFF",
+        "severity": "investigation",
+        "status": "reproducer required at baseline"
+      },
+      {
+        "finding": "Task creation-time history, task failure with/without fallback, and f64 are language-side behaviors (repaired upstream B1-B3/C1); Pafio currently has no test task/project fixture exercising them through check/build/test/run.",
+        "id": "P5",
+        "owner_stage": "NODE-REPAIR/NODE-HANDOFF",
+        "severity": "coverage",
+        "status": "noted"
+      },
+      {
+        "finding": "tests/integration/ declares real-subprocess tests but contains only READMEs; no registered real-executor integration tests.",
+        "id": "P6",
+        "owner_stage": "NODE-REPAIR",
+        "severity": "coverage",
+        "status": "noted"
+      },
+      {
+        "finding": "Stale-looking binary resolved: build-codex/bin/pafio (2026-10-05) is a valid current-source build; incremental reuse confirmed by zero recompiles + clean worktree.",
+        "id": "P7",
+        "owner_stage": "NODE-BASELINE",
+        "severity": "info",
+        "status": "closed"
+      }
+    ],
+    "not_done": "No full regression, no focused/integration gate run, no source edits, no commits. NODE-REPAIR owns gate/test extension and defect closure.",
+    "status": "completed",
+    "summary": "Current-source baseline established. checks.sh baseline passed (exit 0) with incremental reuse of a verified current-source build-codex tree. Supported-capability/platform inventory recorded with test links and coverage gaps; finite issue ledger opened for REPAIR.",
+    "supported_inventory": {
+      "cli_surface": "machine-info, doctor, metadata, new/init, check, add, remove, sync, tree, vendor, build, run, test, pack, publish, registry trust (import/status)",
+      "offline_contract": "--locked forbids lock mutation, --offline forbids network, --frozen = both; vendor/pack provide local state; compiler install/ownership stays external",
+      "platforms": "Evidence this round: macOS arm64 Debug only. Declared CI lanes: Linux Debian 13 (blocking gate), macOS latest smoke, Windows dispatch-only lane. Other platforms unverified this milestone",
+      "test_links": "146 CTest cases: pafio_native_tests suites (BuildPlan 9, BuildCli 14, Check 4, Sync 4, Run 4, Test 4, Manifest 11, Lockfile 4, LockGeneration 2, Resolver 7, Tree 3, Add 4, Remove 1, Metadata 2, Pack 4, Publish 9+4, Security 9, TufVerifier 2, Vendor 1, ResolutionContract 2, Paths 3, Process 7, AtomicFile 1, FileLock 1, Doctor 1) + pafio_process_tests PortableProcess 10 + 19 pafio_cli_* shell probes; 7 unit python gate tests; interop gates under tests/interop/ use scripted fake styio",
+      "workflow_contract": "check/build/run/test sync dependencies then emit compile-plan v1 and execute 'styio --compile-plan'; discovery --styio-bin -> PAFIO_STYIO_BIN -> PATH; compat matrix requires channel/version match, capabilities machine_info_json+single_file_entry+jsonl_diagnostics, compile_plan v1, edition_max>=2026"
+    },
+    "upstream_reuse": "Styio handoff B1-B4/C1 repairs accepted in place via selected binaries; pafio doctor against selected styio passed (0.0.1/nightly, compile_plan [1]). No upstream defect found in this stage."
+  },
+  "review": [
+    {
+      "scope": "Recorded baseline evidence against actual repository state: git revision/branch/changed inputs, build-codex binary currency, evidence logs, registered check command, issue ledger claims against source, supported inventory, node/check bookkeeping flags",
+      "evidence": "Independent rerun of 'bash docs/plans/task-resource-delivery/checks.sh baseline' exited 0; doctor/dry-run/probe logs under build-codex/task-resource-baseline-20261011/; source spot-checks of every ledger item P1-P7",
+      "findings": "All recorded evidence verified accurate against source and live state; ledger source observations confirmed; P1/P2/P5/P6 are coverage gaps, P3 opacity is intentional and P4 requires an actual result-ownership reproducer (gate executes styio --compile-plan directly, fake-styio test executors, receipt existence-only check, deterministic build_root, README-only tests/integration, zero .styio fixtures). Repaired one recorded diffstat: docs/INDEX.md is +2/-1, not +1/-1. No stale pending flags; check record consistent with executed evidence. Untracked '11 files' described the pre-execution plan-workspace inputs; the directory now also contains this node's BASELINE.md and empty .better-plan utility lock artifacts. No source or bookkeeping defect beyond the corrected stat."
+    }
+  ],
+  "role": "worker",
+  "status": "completed",
+  "task": "TASK-001",
+  "title": "Build the current Pafio working tree"
+}

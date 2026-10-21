@@ -1,13 +1,13 @@
 #include "PafioPlan/CompilePlan.hpp"
 
 #include "PafioCore/Errors.hpp"
-#include "PafioCore/FnvHash.hpp"
-#include "PafioCore/Paths.hpp"
 #include "PafioCore/Version.hpp"
 #include "PafioResolve/Resolver.hpp"
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -58,6 +58,29 @@ void ValidateIntent(std::string_view intent)
   }
 }
 
+fs::path CanonicalAbsolutePath(const fs::path &path)
+{
+  return fs::absolute(path).lexically_normal();
+}
+
+uint64_t Fnv1a64(const std::string &value)
+{
+  uint64_t hash = 1469598103934665603ULL;
+  for (const unsigned char ch : value)
+  {
+    hash ^= ch;
+    hash *= 1099511628211ULL;
+  }
+  return hash;
+}
+
+std::string Hex64(uint64_t value)
+{
+  std::ostringstream out;
+  out << std::hex << value;
+  return out.str();
+}
+
 std::string ReadFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -87,18 +110,7 @@ std::string Join(const std::vector<std::string> &parts, std::string_view separat
 
 fs::path AbsoluteTargetPath(const pafio::ResolvedPackage &package, const std::string &relative_path)
 {
-  const fs::path absolute = pafio::CanonicalAbsolutePath(package.root_dir / relative_path);
-  if (package.snapshot_root.has_value())
-  {
-    const fs::path relative = absolute.lexically_relative(pafio::CanonicalAbsolutePath(*package.snapshot_root));
-    const std::string text = relative.generic_string();
-    if (text == ".." || text.starts_with("../"))
-    {
-      throw pafio::PlanError(
-          "materialized package target path escapes its source snapshot: " + relative_path);
-    }
-  }
-  return absolute;
+  return CanonicalAbsolutePath(package.root_dir / relative_path);
 }
 
 void RequireExistingSourceFile(const fs::path &path, std::string_view context)
@@ -506,7 +518,7 @@ std::string BuildSourceHash(const pafio::ResolvedGraphResult &graph)
     digest_input.append(ReadFile(path));
     digest_input.push_back('\0');
   }
-  return pafio::Hex64(pafio::Fnv1a64(digest_input));
+  return Hex64(Fnv1a64(digest_input));
 }
 
 json BuildTargetsJson(const pafio::ResolvedPackage &package)
@@ -756,7 +768,7 @@ json BuildEmitJson(const pafio::BuildPlanRequest &request, const fs::path &works
   return emit;
 }
 
-// An observed run gets its own build root; the compact dump of the emitted
+// Observation settings contribute to cache identity; the compact dump of the emitted
 // request is stable because nlohmann::json orders object keys.
 std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &request)
 {
@@ -768,7 +780,7 @@ std::string RuntimeObservationCacheMaterial(const pafio::BuildPlanRequest &reque
 }
 
 // The parent snapshot path is deliberately excluded: it changes on every run and
-// must not create a new build root.
+// must not change cache identity. Output ownership is per invocation.
 std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest &request)
 {
   if (!request.observable_static_snapshot.has_value())
@@ -778,6 +790,133 @@ std::string ObservableStaticSnapshotCacheMaterial(const pafio::BuildPlanRequest 
   const pafio::ObservableStaticSnapshotRequest &snapshot = *request.observable_static_snapshot;
   return ";observable-static-snapshot=" + std::to_string(snapshot.schema_version) + ":" +
          Join(NormalizeRequiredCapabilities(snapshot.required_capabilities), ",");
+}
+
+fs::path AllocateInvocationRoot(const fs::path &cache_root)
+{
+  static std::atomic<unsigned long long> sequence{0};
+  std::error_code error;
+  fs::create_directories(cache_root, error);
+  if (error)
+  {
+    throw pafio::PlanError("failed to create build directory: " + error.message());
+  }
+  for (;;)
+  {
+    const auto tick = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::path root = cache_root /
+        (std::to_string(tick) + "-" +
+         std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
+    // Directory creation claims ownership atomically across processes. A name
+    // collision retries allocation; existing results are never overwritten.
+    if (fs::create_directory(root, error))
+    {
+      return root;
+    }
+    if (error)
+    {
+      throw pafio::PlanError("failed to create invocation directory: " + error.message());
+    }
+  }
+}
+
+struct InvocationDir
+{
+  unsigned long long tick;
+  unsigned long long sequence;
+  fs::path path;
+};
+
+// Invocation directory names are "<steady-clock tick>-<sequence>"; both parts
+// are decimal integers so retention compares numerically instead of by name
+// width. Names that do not parse are never touched by pruning.
+bool ParseInvocationDirName(const std::string &name, unsigned long long &tick, unsigned long long &sequence)
+{
+  const std::size_t dash = name.find('-');
+  if (dash == 0 || dash == std::string::npos || dash + 1 == name.size())
+  {
+    return false;
+  }
+  unsigned long long parts[2] = {0, 0};
+  std::size_t part = 0;
+  for (std::size_t index = 0; index < name.size(); ++index)
+  {
+    if (index == dash)
+    {
+      part = 1;
+      continue;
+    }
+    const char ch = name[index];
+    if (ch < '0' || ch > '9' || parts[part] > 100000000000000000ULL)
+    {
+      return false;
+    }
+    parts[part] = parts[part] * 10 + static_cast<unsigned long long>(ch - '0');
+  }
+  tick = parts[0];
+  sequence = parts[1];
+  return true;
+}
+
+// The invocation directory that owns a caller-referenced parent snapshot must
+// survive pruning, or a delta request would lose the base it still needs.
+fs::path ParentSnapshotOwner(
+    const pafio::BuildPlanRequest &request,
+    const fs::path &workspace_root,
+    const fs::path &cache_root)
+{
+  if (!request.observable_static_snapshot.has_value() ||
+      !request.observable_static_snapshot->parent_snapshot_path.has_value())
+  {
+    return {};
+  }
+  const fs::path parent =
+      NormalizeParentSnapshotPath(*request.observable_static_snapshot->parent_snapshot_path, workspace_root);
+  const fs::path relative = parent.lexically_relative(cache_root);
+  if (relative.empty() || relative.begin()->empty() || *relative.begin() == "..")
+  {
+    return {};
+  }
+  return cache_root / *relative.begin();
+}
+
+// Derived per-invocation outputs stay owned by their invocation, but a cache
+// key retains at most the newest kRetainedInvocationRoots directories plus the
+// current one and the owner of a referenced parent snapshot. Removal is
+// best-effort: a prune failure must never fail a compile.
+constexpr std::size_t kRetainedInvocationRoots = 8;
+
+void PruneInvocationRoots(const fs::path &cache_root, const fs::path &current, const fs::path &preserve)
+{
+  std::vector<InvocationDir> entries;
+  std::error_code error;
+  for (const fs::directory_entry &entry : fs::directory_iterator(cache_root, error))
+  {
+    if (!entry.is_directory(error) || error)
+    {
+      error.clear();
+      continue;
+    }
+    InvocationDir dir{0, 0, entry.path()};
+    if (!ParseInvocationDirName(dir.path.filename().string(), dir.tick, dir.sequence) ||
+        dir.path == current || dir.path == preserve)
+    {
+      continue;
+    }
+    entries.push_back(std::move(dir));
+  }
+  if (error || entries.size() <= kRetainedInvocationRoots)
+  {
+    return;
+  }
+  std::sort(entries.begin(), entries.end(), [](const InvocationDir &a, const InvocationDir &b) {
+    return a.tick != b.tick ? a.tick > b.tick : a.sequence > b.sequence;
+  });
+  for (std::size_t index = kRetainedInvocationRoots; index < entries.size(); ++index)
+  {
+    fs::remove_all(entries[index].path, error);
+    error.clear();
+  }
 }
 
 }  // namespace
@@ -830,10 +969,12 @@ BuildPlanResult WriteBuildCompilePlan(
       ";source=" + source_hash +
       ObservableStaticSnapshotCacheMaterial(request) +
       RuntimeObservationCacheMaterial(request);
-  const std::string cache_key = pafio::Hex64(pafio::Fnv1a64(cache_material));
+  const std::string cache_key = Hex64(Fnv1a64(cache_material));
 
-  const fs::path workspace_root = pafio::CanonicalAbsolutePath(graph.manifest_path.parent_path());
-  const fs::path build_root = workspace_root / ".pafio" / "build" / cache_key;
+  const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
+  const fs::path cache_root = workspace_root / ".pafio" / "build" / cache_key;
+  const fs::path build_root = AllocateInvocationRoot(cache_root);
+  PruneInvocationRoots(cache_root, build_root, ParentSnapshotOwner(request, workspace_root, cache_root));
   const fs::path artifact_dir = build_root / "artifacts";
   const fs::path diag_dir = build_root / "diag";
   const fs::path plan_path = build_root / "plan.json";

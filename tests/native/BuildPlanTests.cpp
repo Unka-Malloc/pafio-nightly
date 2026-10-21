@@ -12,6 +12,24 @@ using pafio::testsupport::MakeTempDir;
 using pafio::testsupport::ReadFile;
 using pafio::testsupport::WriteFile;
 
+namespace
+{
+void ExpectSameInputsWithIndependentOutputs(
+    const pafio::BuildPlanResult &first, const pafio::BuildPlanResult &second)
+{
+  EXPECT_EQ(first.cache_key, second.cache_key);
+  EXPECT_NE(first.build_root, second.build_root);
+  EXPECT_NE(first.plan_path, second.plan_path);
+  EXPECT_EQ(first.build_root.parent_path(), second.build_root.parent_path());
+  json first_plan = json::parse(first.plan_json);
+  json second_plan = json::parse(second.plan_json);
+  first_plan.erase("outputs");
+  second_plan.erase("outputs");
+  EXPECT_EQ(first_plan, second_plan);
+  EXPECT_EQ(ReadFile(first.plan_path), first.plan_json);
+}
+}  // namespace
+
 TEST(BuildPlanTests, WritesCompilePlanForSingleLibPackage)
 {
   const fs::path root = MakeTempDir("single-lib-dry-run");
@@ -94,7 +112,7 @@ TEST(BuildPlanTests, EmitsObservableStaticSnapshotRequestOnlyWhenRequested)
       .manifest_path = root / "pafio.toml",
       .intent = "check",
   });
-  EXPECT_EQ(baseline.plan_json, baseline_again.plan_json);
+  ExpectSameInputsWithIndependentOutputs(baseline, baseline_again);
   EXPECT_FALSE(json::parse(baseline.plan_json)["emit"].contains("observable_static_snapshot"));
 
   const pafio::BuildPlanResult requested = pafio::WriteBuildCompilePlan({
@@ -164,7 +182,7 @@ TEST(BuildPlanTests, ObservableParentSnapshotPathIsEmittedOnlyWhenRequestedAndNe
       },
   });
   EXPECT_EQ(with_parent.cache_key, without_parent.cache_key);
-  EXPECT_EQ(with_parent.build_root, without_parent.build_root);
+  EXPECT_NE(with_parent.build_root, without_parent.build_root);
   EXPECT_NE(with_parent.cache_key, baseline.cache_key);
 
   const json with_parent_request = json::parse(with_parent.plan_json)["emit"]["observable_static_snapshot"];
@@ -194,7 +212,7 @@ TEST(BuildPlanTests, ObservableParentSnapshotPathIsEmittedOnlyWhenRequestedAndNe
       .manifest_path = root / "pafio.toml",
       .intent = "check",
   });
-  EXPECT_EQ(baseline_again.plan_json, baseline.plan_json);
+  ExpectSameInputsWithIndependentOutputs(baseline, baseline_again);
 
   EXPECT_THROW(
       pafio::WriteBuildCompilePlan({
@@ -295,7 +313,7 @@ TEST(BuildPlanTests, EmitsRuntimeObservationRequestOnlyWhenRequested)
       json::parse(seedless.plan_json)["emit"]["runtime_observation"].dump(),
       R"({"sampling":{"denominator":16,"numerator":1},"version":2})");
 
-  // The request is deterministic: the same request lands in the same build root.
+  // Cache identity is deterministic; invocation outputs remain independent.
   const pafio::BuildPlanResult full_again = pafio::WriteBuildCompilePlan({
       .manifest_path = root / "pafio.toml",
       .intent = "run",
@@ -310,7 +328,7 @@ TEST(BuildPlanTests, EmitsRuntimeObservationRequestOnlyWhenRequested)
       },
   });
   EXPECT_EQ(full_again.cache_key, full.cache_key);
-  EXPECT_EQ(full_again.plan_json, full.plan_json);
+  ExpectSameInputsWithIndependentOutputs(full, full_again);
 
   // Both emission requests coexist and each contributes its own cache material.
   const pafio::BuildPlanResult both = pafio::WriteBuildCompilePlan({
@@ -328,7 +346,7 @@ TEST(BuildPlanTests, EmitsRuntimeObservationRequestOnlyWhenRequested)
       .manifest_path = root / "pafio.toml",
       .intent = "run",
   });
-  EXPECT_EQ(baseline_again.plan_json, baseline.plan_json);
+  ExpectSameInputsWithIndependentOutputs(baseline, baseline_again);
   EXPECT_EQ(baseline_again.cache_key, baseline.cache_key);
 }
 

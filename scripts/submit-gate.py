@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -36,7 +37,22 @@ class Step:
 
 def run_step(step: Step) -> dict:
     started = time.perf_counter()
-    proc = subprocess.run(step.command, cwd=step.cwd, capture_output=True, text=True)
+    log_root = os.environ.get("PAFIO_GATE_LOG_DIR")
+    log_dir = pathlib.Path(log_root) / step.name if log_root else None
+    if log_dir:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / "command.json").write_text(
+            json.dumps({"command": step.command, "cwd": str(step.cwd)}) + "\n"
+        )
+        env = dict(os.environ, PAFIO_GATE_LOG_DIR=str(log_dir))
+        with (log_dir / "stdout.log").open("w") as stdout, (log_dir / "stderr.log").open("w") as stderr:
+            proc = subprocess.run(step.command, cwd=step.cwd, env=env, stdout=stdout, stderr=stderr)
+        (log_dir / "process.exit").write_text(f"{proc.returncode}\n")
+        output = (log_dir / "stdout.log").read_text()
+        errors = (log_dir / "stderr.log").read_text()
+    else:
+        proc = subprocess.run(step.command, cwd=step.cwd, capture_output=True, text=True)
+        output, errors = proc.stdout, proc.stderr
     duration_ms = (time.perf_counter() - started) * 1000.0
     return {
         "name": step.name,
@@ -44,8 +60,8 @@ def run_step(step: Step) -> dict:
         "cwd": str(step.cwd),
         "returncode": proc.returncode,
         "duration_ms": round(duration_ms, 3),
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
+        "stdout": output,
+        "stderr": errors,
         "ok": proc.returncode == 0,
     }
 
