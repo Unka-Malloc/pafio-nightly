@@ -1,6 +1,8 @@
 #include "PafioPlan/CompilePlan.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/FnvHash.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioCore/Version.hpp"
 #include "PafioResolve/Resolver.hpp"
 
@@ -56,29 +58,6 @@ void ValidateIntent(std::string_view intent)
   }
 }
 
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
-uint64_t Fnv1a64(const std::string &value)
-{
-  uint64_t hash = 1469598103934665603ULL;
-  for (const unsigned char ch : value)
-  {
-    hash ^= ch;
-    hash *= 1099511628211ULL;
-  }
-  return hash;
-}
-
-std::string Hex64(uint64_t value)
-{
-  std::ostringstream out;
-  out << std::hex << value;
-  return out.str();
-}
-
 std::string ReadFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -108,7 +87,18 @@ std::string Join(const std::vector<std::string> &parts, std::string_view separat
 
 fs::path AbsoluteTargetPath(const pafio::ResolvedPackage &package, const std::string &relative_path)
 {
-  return CanonicalAbsolutePath(package.root_dir / relative_path);
+  const fs::path absolute = pafio::CanonicalAbsolutePath(package.root_dir / relative_path);
+  if (package.snapshot_root.has_value())
+  {
+    const fs::path relative = absolute.lexically_relative(pafio::CanonicalAbsolutePath(*package.snapshot_root));
+    const std::string text = relative.generic_string();
+    if (text == ".." || text.starts_with("../"))
+    {
+      throw pafio::PlanError(
+          "materialized package target path escapes its source snapshot: " + relative_path);
+    }
+  }
+  return absolute;
 }
 
 void RequireExistingSourceFile(const fs::path &path, std::string_view context)
@@ -516,7 +506,7 @@ std::string BuildSourceHash(const pafio::ResolvedGraphResult &graph)
     digest_input.append(ReadFile(path));
     digest_input.push_back('\0');
   }
-  return Hex64(Fnv1a64(digest_input));
+  return pafio::Hex64(pafio::Fnv1a64(digest_input));
 }
 
 json BuildTargetsJson(const pafio::ResolvedPackage &package)
@@ -840,9 +830,9 @@ BuildPlanResult WriteBuildCompilePlan(
       ";source=" + source_hash +
       ObservableStaticSnapshotCacheMaterial(request) +
       RuntimeObservationCacheMaterial(request);
-  const std::string cache_key = Hex64(Fnv1a64(cache_material));
+  const std::string cache_key = pafio::Hex64(pafio::Fnv1a64(cache_material));
 
-  const fs::path workspace_root = CanonicalAbsolutePath(graph.manifest_path.parent_path());
+  const fs::path workspace_root = pafio::CanonicalAbsolutePath(graph.manifest_path.parent_path());
   const fs::path build_root = workspace_root / ".pafio" / "build" / cache_key;
   const fs::path artifact_dir = build_root / "artifacts";
   const fs::path diag_dir = build_root / "diag";

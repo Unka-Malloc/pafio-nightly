@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 
 namespace fs = std::filesystem;
@@ -22,14 +23,6 @@ enum class SecurityHandlerResult
   kContinue,
   kResolved,
 };
-
-std::string
-NormalizeRegistryRoot(std::string value) {
-  while (!value.empty() && value.back() == '/') {
-    value.pop_back();
-  }
-  return value;
-}
 
 bool
 IsHttpRegistryRoot(const std::string &value) {
@@ -99,7 +92,7 @@ NormalizeReadRegistryRoot(
   const pafio::RegistryReadSecurityRequest &request,
   pafio::RegistryReadSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
@@ -130,7 +123,7 @@ NormalizeWriteRegistryRoot(
   const pafio::RegistryWriteSecurityRequest &request,
   pafio::RegistryWriteSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
@@ -294,15 +287,7 @@ NormalizeRegistryRelativePath(const std::string &relative_path, const std::strin
 
 bool
 IsRegistrySha256Digest(const std::string &value) {
-  if (value.size() != 64U) {
-    return false;
-  }
-  for (const unsigned char ch : value) {
-    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f')) {
-      return false;
-    }
-  }
-  return true;
+  return IsSha256Digest(value);
 }
 
 }  // namespace pafio

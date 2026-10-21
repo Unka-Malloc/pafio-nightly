@@ -15,7 +15,6 @@ the Better Plan workspace, and release evidence.
 2. `docs/` collections and generated indexes.
 3. Documentation, lifecycle, audit, hygiene, and delivery gates.
 4. Public handoff documentation after executable owner contracts pass.
-5. Fixed-revision owner-matrix and coordinated release evidence.
 
 ## Daily Workflow
 
@@ -56,7 +55,7 @@ the Better Plan workspace, and release evidence.
 
 ```bash
 python3 scripts/docs-audit.py
-python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/repo-hygiene-gate.py --mode tracked
 git diff --check
 ```
 

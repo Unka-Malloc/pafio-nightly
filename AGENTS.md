@@ -16,4 +16,4 @@
   a temporary branch to the `upstream` remote.
 - Before opening an upstream pull request, first merge the temporary branch
   into downstream `nightly` and verify that the upstream pull request head is
-  exactly `Unka-Malloc:nightly`.
+  exactly the `origin` owner's `nightly` branch.

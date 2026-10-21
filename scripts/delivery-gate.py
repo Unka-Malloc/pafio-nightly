@@ -13,7 +13,7 @@ from dataclasses import dataclass
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 COPY_SCRIPT = ROOT / "scripts" / "copy-to-external-repo.sh"
 CHECK_NO_BINARIES = ROOT / "scripts" / "check_no_binaries.py"
-REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-check.py"
+REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-gate.py"
 DOCS_AUDIT = ROOT / "scripts" / "docs-audit.py"
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -85,7 +85,7 @@ def delivery_steps(export_root: pathlib.Path) -> list[Step]:
                 "--repo-root",
                 str(export_root),
                 "--mode",
-                "all",
+                "export",
                 "--skip-doc-check",
             ],
             export_root,

@@ -232,18 +232,6 @@ int EmitSuccess(const json &payload, bool as_json)
   return kExitSuccess;
 }
 
-int EmitBootstrapNotImplemented(std::string_view command, bool as_json)
-{
-  return EmitError(
-      CommandError{
-          .category = "BootstrapNotImplemented",
-          .code = kExitNotImplemented,
-          .message = "command is recognized but not implemented in the native bootstrap scaffold",
-          .command = std::string(command),
-      },
-      as_json);
-}
-
 int PrintGlobalHelp()
 {
   std::cout

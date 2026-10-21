@@ -23,7 +23,7 @@ The following are local artifacts and must not be tracked:
 ## Validation
 
 ```bash
-python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/repo-hygiene-gate.py --mode tracked
 python3 scripts/check_no_binaries.py --mode tracked
 python3 scripts/delivery-gate.py
 ```

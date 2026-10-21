@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CHECK_NO_BINARIES = ROOT / "scripts" / "check_no_binaries.py"
-REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-check.py"
+REPO_HYGIENE = ROOT / "scripts" / "repo-hygiene-gate.py"
 DOCS_AUDIT = ROOT / "scripts" / "docs-audit.py"
 NATIVE_CHECK = ROOT / "scripts" / "native-check.sh"
 EXTRACTABILITY_CHECK = ROOT / "scripts" / "extractability-check.sh"

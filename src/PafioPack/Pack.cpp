@@ -1,7 +1,10 @@
 #include "PafioPack/Pack.hpp"
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioManifest/Manifest.hpp"
+#include "PafioPack/PackageSelection.hpp"
 
 #include <algorithm>
 #include <array>
@@ -21,34 +24,12 @@ namespace fs = std::filesystem;
 namespace
 {
 
-struct PackageSelection
-{
-  fs::path manifest_path;
-  fs::path package_root;
-  pafio::ManifestDocument manifest;
-};
-
 struct PackEntry
 {
   std::string archive_path;
   std::optional<fs::path> source_path;
   std::optional<std::string> inline_contents;
 };
-
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
-std::string PackageShortName(const std::string &package_name)
-{
-  const size_t slash = package_name.find('/');
-  if (slash == std::string::npos || slash + 1U >= package_name.size())
-  {
-    throw pafio::ValidationError("package.name must match namespace/name");
-  }
-  return package_name.substr(slash + 1U);
-}
 
 bool IsRelativePathPrefix(const fs::path &candidate, const fs::path &prefix)
 {
@@ -63,7 +44,7 @@ bool IsRelativePathPrefix(const fs::path &candidate, const fs::path &prefix)
 
 bool IsUnderRoot(const fs::path &candidate, const fs::path &root)
 {
-  return IsRelativePathPrefix(CanonicalAbsolutePath(candidate), CanonicalAbsolutePath(root));
+  return IsRelativePathPrefix(pafio::CanonicalAbsolutePath(candidate), pafio::CanonicalAbsolutePath(root));
 }
 
 bool IsExcludedGeneratedTopLevel(const fs::path &relative_path)
@@ -101,90 +82,7 @@ std::string ReadBinaryFile(const fs::path &path)
   return buffer.str();
 }
 
-std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_manifest_path)
-{
-  const fs::path normalized_root_manifest = CanonicalAbsolutePath(root_manifest_path);
-  const fs::path root_dir = normalized_root_manifest.parent_path();
-  const pafio::ManifestDocument root_manifest = pafio::LoadManifest(normalized_root_manifest);
-
-  std::vector<PackageSelection> candidates;
-  if (root_manifest.package.has_value())
-  {
-    candidates.push_back({
-        .manifest_path = normalized_root_manifest,
-        .package_root = root_dir,
-        .manifest = root_manifest,
-    });
-  }
-
-  if (root_manifest.workspace.has_value())
-  {
-    for (const std::string &member : root_manifest.workspace->members)
-    {
-      const fs::path member_manifest_path = CanonicalAbsolutePath(root_dir / member / "pafio.toml");
-      const pafio::ManifestDocument member_manifest = pafio::LoadManifest(member_manifest_path);
-      if (!member_manifest.package.has_value())
-      {
-        throw pafio::WorkspaceError("workspace member manifest must define [package]: " + member_manifest_path.string());
-      }
-      candidates.push_back({
-          .manifest_path = member_manifest_path,
-          .package_root = member_manifest_path.parent_path(),
-          .manifest = member_manifest,
-      });
-    }
-  }
-
-  return candidates;
-}
-
-PackageSelection SelectPackageForPack(const pafio::PackRequest &request)
-{
-  const fs::path root_manifest_path = CanonicalAbsolutePath(request.manifest_path);
-  const std::vector<PackageSelection> candidates = CollectPackageCandidates(root_manifest_path);
-  if (candidates.empty())
-  {
-    throw pafio::PackError("pack requires a manifest with a local [package] target");
-  }
-
-  if (request.package_name.has_value())
-  {
-    std::vector<const PackageSelection *> matches;
-    for (const PackageSelection &candidate : candidates)
-    {
-      if (candidate.manifest.package->name == *request.package_name)
-      {
-        matches.push_back(&candidate);
-      }
-    }
-    if (matches.empty())
-    {
-      throw pafio::PackError("selected package was not found under the active manifest: " + *request.package_name);
-    }
-    if (matches.size() > 1U)
-    {
-      throw pafio::PackError("selected package is ambiguous under the active manifest: " + *request.package_name);
-    }
-    return *matches.front();
-  }
-
-  for (const PackageSelection &candidate : candidates)
-  {
-    if (candidate.manifest_path == root_manifest_path && candidate.manifest.package.has_value())
-    {
-      return candidate;
-    }
-  }
-
-  if (candidates.size() == 1U)
-  {
-    return candidates.front();
-  }
-
-  throw pafio::PackError("workspace pack is ambiguous; select a root package with --package <namespace/name>");
-}
-
-std::vector<fs::path> CollectExcludedWorkspaceRoots(const PackageSelection &selection)
+std::vector<fs::path> CollectExcludedWorkspaceRoots(const pafio::PackageSelection &selection)
 {
   std::vector<fs::path> excluded_roots;
   if (!selection.manifest.workspace.has_value())
@@ -227,12 +125,12 @@ std::vector<fs::path> CollectExcludedWorkspaceRoots(const PackageSelection &sele
   return excluded_roots;
 }
 
-std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, const fs::path &archive_path)
+std::vector<PackEntry> CollectPackEntries(const pafio::PackageSelection &selection, const fs::path &archive_path)
 {
-  const fs::path package_root = CanonicalAbsolutePath(selection.package_root);
-  const fs::path manifest_path = CanonicalAbsolutePath(selection.manifest_path);
+  const fs::path package_root = pafio::CanonicalAbsolutePath(selection.package_root);
+  const fs::path manifest_path = pafio::CanonicalAbsolutePath(selection.manifest_path);
   const fs::path lockfile_path = package_root / "pafio.lock";
-  const fs::path normalized_archive_path = CanonicalAbsolutePath(archive_path);
+  const fs::path normalized_archive_path = pafio::CanonicalAbsolutePath(archive_path);
   if (IsUnderRoot(normalized_archive_path, package_root))
   {
     const fs::path relative_output = normalized_archive_path.lexically_relative(package_root);
@@ -255,7 +153,7 @@ std::vector<PackEntry> CollectPackEntries(const PackageSelection &selection, con
   for (fs::recursive_directory_iterator it(package_root), end; it != end; ++it)
   {
     const fs::directory_entry &entry = *it;
-    const fs::path absolute_entry = CanonicalAbsolutePath(entry.path());
+    const fs::path absolute_entry = pafio::CanonicalAbsolutePath(entry.path());
     const fs::path relative_entry = absolute_entry.lexically_relative(package_root);
     if (relative_entry.empty() || relative_entry == ".")
     {
@@ -466,20 +364,21 @@ namespace pafio
 
 PackResult WriteSourcePackage(const PackRequest &request)
 {
-  const PackageSelection selection = SelectPackageForPack(request);
+  const pafio::PackageSelection selection =
+      pafio::SelectWorkspacePackage<pafio::PackError>(request.manifest_path, request.package_name, "pack");
   const PackageConfig &package = *selection.manifest.package;
-  const std::string short_name = PackageShortName(package.name);
+  const std::string short_name = pafio::PackageShortName(package.name);
   const std::string archive_prefix = short_name + "-" + package.version;
-  const fs::path package_root = CanonicalAbsolutePath(selection.package_root);
+  const fs::path package_root = pafio::CanonicalAbsolutePath(selection.package_root);
   const fs::path archive_path = request.output_path.has_value()
-                                    ? CanonicalAbsolutePath(*request.output_path)
-                                    : CanonicalAbsolutePath(package_root / "dist" / (archive_prefix + ".tar"));
+                                    ? pafio::CanonicalAbsolutePath(*request.output_path)
+                                    : pafio::CanonicalAbsolutePath(package_root / "dist" / (archive_prefix + ".tar"));
 
   const std::vector<PackEntry> entries = CollectPackEntries(selection, archive_path);
   WriteTarArchive(entries, archive_path, archive_prefix);
 
   return {
-      .manifest_path = CanonicalAbsolutePath(selection.manifest_path),
+      .manifest_path = pafio::CanonicalAbsolutePath(selection.manifest_path),
       .package_root = package_root,
       .archive_path = archive_path,
       .package_name = package.name,

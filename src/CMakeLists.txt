@@ -15,6 +15,7 @@ endfunction()
 set(PAFIO_FOUNDATION_SOURCES
     PafioCompat/Compat.cpp
     PafioCore/AtomicFile.cpp
+    PafioCore/ContractLexicon.cpp
     PafioCore/FileLock.cpp
     PafioCore/Paths.cpp
     PafioCore/Process.cpp
@@ -51,6 +52,7 @@ set(PAFIO_PLAN_SOURCES
 
 set(PAFIO_PACKAGE_SERVICE_SOURCES
     PafioPack/Pack.cpp
+    PafioPack/PackageSelection.cpp
     PafioPublish/Publish.cpp
     PafioTree/Render.cpp
     PafioVendor/Vendor.cpp
@@ -72,7 +74,17 @@ set(PAFIO_CLI_SHELL_SOURCES
     PafioCLI/CLI.cpp
 )
 
+set(PAFIO_COMPAT_CONTRACT "${CMAKE_SOURCE_DIR}/contracts/compat/styio-support.toml")
+file(READ "${PAFIO_COMPAT_CONTRACT}" PAFIO_STYIO_SUPPORT_TOML)
+set(PAFIO_GENERATED_INCLUDE "${CMAKE_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${PAFIO_GENERATED_INCLUDE}")
+file(WRITE "${PAFIO_GENERATED_INCLUDE}/EmbeddedStyioSupportToml.inc"
+  "R\"PAFIO_TOML(\n${PAFIO_STYIO_SUPPORT_TOML})PAFIO_TOML\"")
+set_source_files_properties(PafioCompat/Compat.cpp PROPERTIES
+  OBJECT_DEPENDS "${PAFIO_GENERATED_INCLUDE}/EmbeddedStyioSupportToml.inc")
+
 pafio_add_internal_static_library(pafio_foundation ${PAFIO_FOUNDATION_SOURCES})
+target_include_directories(pafio_foundation PRIVATE "${PAFIO_GENERATED_INCLUDE}")
 if(WIN32)
   target_link_libraries(pafio_foundation PRIVATE Rpcrt4)
 endif()

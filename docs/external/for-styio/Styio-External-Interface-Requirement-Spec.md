@@ -162,7 +162,7 @@ The compiler must honor:
 - `entry.package_id`
 - `entry.target_kind`
 - `entry.target_name`
-- `entry.root_source`
+- `entry.file`
 
 The compiler must not re-discover a different default target when the plan already names one.
 
