@@ -27,7 +27,7 @@ The documentation system now needs a smaller set of durable records grouped by f
 
 `docs/governance/` owns normative contracts: command syntax, argument indexes, manifest and lockfile rules, compatibility boundaries, lifecycle rules, and operating policies.
 
-`docs/plans/` is the active Better Plan workspace. It owns execution sequencing, checkpoints, and still-open future work; `docs/plan/` retains completed delivery evidence (see ADR-0009). Implemented behavior must move into ADR form before the plan or historical source that introduced it is retired.
+`docs/plans/` is the active internal Better Plan workspace — coordination state kept out of the published tree. It owns execution sequencing, checkpoints, and still-open future work; `docs/plan/` retains completed delivery evidence (see ADR-0009). Implemented behavior must move into ADR form before the plan or historical source that introduced it is retired.
 
 Generated indexes remain checked artifacts. `scripts/docs-index.py` writes `INDEX.md` files, `scripts/docs-lifecycle.py validate` checks lifecycle metadata, and `scripts/docs-gate.sh` composes the documentation gate.
 

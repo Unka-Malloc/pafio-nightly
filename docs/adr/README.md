@@ -8,7 +8,7 @@
 
 1. Store architecture, lifecycle, workflow-boundary, and implementation-scope decisions that need durable context here.
 2. Keep normative policy in `docs/governance/`.
-3. Keep execution sequencing in `docs/plans/`; `docs/plan/` retains completed delivery evidence.
+3. Keep execution sequencing in `docs/plans/` (internal workspace, excluded from the published tree); `docs/plan/` retains completed delivery evidence.
 4. Keep gate commands and operational procedures in `docs/operations/`.
 5. Once a planned behavior is implemented, ensure the durable decision is represented here before removing the plan or historical source that introduced it.
 

@@ -6,6 +6,6 @@
 
 ## Shards
 
-- [Pafio Registry / Control-Plane Audit Shard 2026-04-22](./pafio-registry-2026-04-22.md)
-- [pafio-core-process audit shard - 2026-04-22](./pafio-core-process-2026-04-22.md)
-- [PAFIO Subprocess Timeout Audit - 2026-04-22](./pafio-subprocess-timeouts-2026-04-22.md)
+Audit shards live in the internal evidence store, not in the published tree;
+this index documents where parallel audit findings are kept for the
+`pafio-nightly` workspace.

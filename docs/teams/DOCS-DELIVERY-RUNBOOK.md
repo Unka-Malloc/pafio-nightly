@@ -133,20 +133,18 @@ Linux, macOS, or release readiness. Preserve
 the request's existing timeout and process-group semantics across platforms.
 
 2026-10-15: Recorded the plan-workspace split from the task-resource delivery
-milestone. ADR-0009 owns the decision: `docs/plans/` holds the active
-programme, requirements, and per-milestone state while `docs/plan/` retains
-completed delivery evidence. ADR-0001's decision text, the ADR index
-conventions, the Docs-Maintenance-Model owner map, and the README developer
-entry now name the new layout, and `docs/plans/` plus
-`docs/plans/task-resource-delivery/` are registered collections with generated
-indexes.
+milestone. ADR-0009 owns the decision: `docs/plans/` is the internal
+coordination workspace holding the active programme, requirements, and
+per-milestone state — it is kept out of the published tree — while
+`docs/plan/` retains completed delivery evidence. ADR-0001's decision text,
+the ADR index conventions, the Docs-Maintenance-Model owner map, and the
+README developer entry now name the new layout.
 
 2026-10-15: Recorded the coordinator join and delivery closure for the
 task-resource milestone. The joined evidence is the expanded integration gate
 on the current candidate (bounded per-invocation retention), the same-candidate
-Vityo E2E, the vityod crate tests and the bounded-retention probe record
-`build-codex/join-20261015/retention-probe-evidence.json`; the milestone
-Tree/Task delivery now carries the join result and its boundaries. The
-registered CLOSE review check executed as host, and the review items
-invalidated by NODE-BASELINE/NODE-REPAIR result changes were resolved against
+cross-repo E2E run, and the bounded-retention probe record kept in the ignored
+evidence tree; the milestone delivery state carries the join result and its
+boundaries. The registered close-out review executed as host, and the review
+items invalidated by baseline and repair result changes were resolved against
 the joined evidence.
