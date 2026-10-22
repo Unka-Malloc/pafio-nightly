@@ -132,6 +132,48 @@ TEST(ManifestTests, LoadsRegistryDependencySource) {
   EXPECT_EQ(manifest.package->dependencies[0].source_kind, pafio::DependencySourceKind::kRegistry);
 }
 
+TEST(ManifestTests, RejectsGitDependencyWithUrlUserinfo) {
+  const fs::path manifest_path = WriteTempToml(
+    "[pafio]\n"
+    "manifest-version = 1\n\n"
+    "[package]\n"
+    "name = \"acme/app\"\n"
+    "version = \"0.1.0\"\n"
+    "edition = \"2026\"\n\n"
+    "[build]\n"
+    "implicit-std = true\n\n"
+    "[[bin]]\n"
+    "name = \"app\"\n"
+    "path = \"src/main.styio\"\n\n"
+    "[dependencies]\n"
+    "core = { package = \"acme/core\", git = \"https://user:token@example.test/core.git\", rev = \"123abc\" }\n",
+    "git-userinfo-dependency.toml"
+  );
+
+  EXPECT_THROW(pafio::LoadManifest(manifest_path), pafio::ValidationError);
+}
+
+TEST(ManifestTests, RejectsRegistryDependencyWithUrlUserinfo) {
+  const fs::path manifest_path = WriteTempToml(
+    "[pafio]\n"
+    "manifest-version = 1\n\n"
+    "[package]\n"
+    "name = \"acme/app\"\n"
+    "version = \"0.1.0\"\n"
+    "edition = \"2026\"\n\n"
+    "[build]\n"
+    "implicit-std = true\n\n"
+    "[[bin]]\n"
+    "name = \"app\"\n"
+    "path = \"src/main.styio\"\n\n"
+    "[dependencies]\n"
+    "core = { package = \"acme/core\", version = \"0.1.0\", registry = \"https://user:token@packages.example.test\" }\n",
+    "registry-userinfo-dependency.toml"
+  );
+
+  EXPECT_THROW(pafio::LoadManifest(manifest_path), pafio::ValidationError);
+}
+
 TEST(ManifestTests, SerializesSinglePackageFixtureCanonically) {
   const fs::path fixture_path = FixturePath("tests/unit/fixtures/manifests/ok-single-package/pafio.toml");
   const auto manifest = pafio::LoadManifest(fixture_path);

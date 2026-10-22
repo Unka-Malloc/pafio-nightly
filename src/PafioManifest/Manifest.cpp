@@ -41,6 +41,33 @@ IsRegistryRootUrl(const std::string &value) {
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
 }
 
+// A URL carrying userinfo (scheme://user[:pass]@host) embeds credentials in
+// the source string; they would end up serialized into pafio.toml/pafio.lock,
+// publish metadata, logs, or diagnostics. Authentication must come from a
+// credential provider, never from the manifest text.
+bool
+UrlHasUserinfo(const std::string &value) {
+  const std::size_t scheme = value.find("://");
+  if (scheme == std::string::npos) {
+    return false;
+  }
+  const std::size_t authority_start = scheme + 3;
+  const std::size_t authority_end = value.find('/', authority_start);
+  const std::string_view authority =
+      authority_end == std::string::npos
+          ? std::string_view(value).substr(authority_start)
+          : std::string_view(value).substr(authority_start, authority_end - authority_start);
+  return authority.find('@') != std::string_view::npos;
+}
+
+void
+RequireNoUrlUserinfo(const std::string &value, std::string_view context) {
+  if (UrlHasUserinfo(value)) {
+    throw pafio::ValidationError(
+        std::string(context) + " must not embed credentials in the URL userinfo; configure authentication separately");
+  }
+}
+
 const toml::table &
 RequireTable(const toml::table &parent, std::string_view key, std::string_view context) {
   if (const toml::table *table = parent[key].as_table()) {
@@ -112,6 +139,7 @@ ValidateRegistryRoot(const std::string &registry_root, std::string_view context)
   if (!IsRegistryRootUrl(registry_root)) {
     throw pafio::ValidationError(std::string(context) + " must use file://, http://, or https://");
   }
+  RequireNoUrlUserinfo(registry_root, context);
 }
 
 std::vector<pafio::Dependency>
@@ -158,6 +186,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
       if (dependency.source.empty()) {
         throw pafio::ValidationError("dependency '" + alias + "' git must be a non-empty string");
       }
+      RequireNoUrlUserinfo(dependency.source, "dependency '" + alias + "' git");
       dependency.rev = RequireValue<std::string>(*dep, "rev", "dependency '" + alias + "'");
       if (dependency.rev->empty()) {
         throw pafio::ValidationError("dependency '" + alias + "' rev must be a non-empty string");

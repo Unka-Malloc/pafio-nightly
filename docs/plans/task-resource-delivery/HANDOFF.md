@@ -9,8 +9,8 @@
 This plan maps only to hosted E06 and existing source `TASK-001`,
 `NODE-FINAL` and `NODE-CLOSE` in this Tree. Current authority is the assigned
 objective, coordinator blackboard decisions
-`77b032475d93d4c9135d513e3b5b60bb` and
-`7c6812a3be740e08b1a0ee77baa1db12`, `../README.md`,
+`run-01` and
+`run-02`, `../README.md`,
 `../Requirements.json`, `Tree.json`, `tasks/TASK-001.json` and owner contracts.
 Planning read these records, `BASELINE.md` and all three current HANDOFFs.
 Earlier sections below retain their historical execution scope; their old
@@ -18,10 +18,10 @@ external-admission wording does not supersede the coordinator's later acceptance
 
 The coordinator accepted all three source reviews and the same-candidate real
 production-service/vityod → Pafio → Styio E2E: Vityo runtime
-`0c7f97c7be1e7eb93dcefee3d62ebc76`, check
-`d5deb633e4fe8f39e9bad2a56c7ea1de`. Its HANDOFF records all 35 required real
+`run-03`, check
+`run-04`. Its HANDOFF records all 35 required real
 cases and four boundaries, gate not skipped and child exit 0, with full evidence
-under `../vityo-nightly/build/task-resource-integration/host-gy1mv_16/`.
+under `../vityo-nightly/build/task-resource-integration/run-dir/`.
 Unknown child skips remain unknown. This is accepted upstream evidence, not a
 new planning execution or an aggregate with earlier overlapping runs.
 Styio's final build has coordinator-reported exit 0 with no production-source
@@ -29,14 +29,14 @@ change; Pafio must not wait within an Agent turn for sibling final checks.
 
 | Execution lane | Explicit prerequisites | Finite outcome / registered check |
 | --- | --- | --- |
-| FINAL Worker / `NODE-FINAL`, hosted `ea86a087deafbd6e46b2d7125b510d87` | Planning bootstrap `f39cea5dbe1347338642bad23134c10a`; accepted external join above | Prepare exact inputs and complete ignored logging; yield to HOST for only `pafio-task-resource-final`; repair actual scoped failures with affected/remaining recovery. |
-| Independent CLOSE Reviewer / `NODE-CLOSE`, hosted `77bc71e9255be51d67dec8b6d3843bbc` | Same bootstrap **and** FINAL, including actual registered host evidence | Inspect final source, migration and complete evidence; reconcile this repository and amend this handoff; select only `pafio-task-resource-review`. |
+| FINAL Worker / `NODE-FINAL`, hosted `run-05` | Planning bootstrap `run-06`; accepted external join above | Prepare exact inputs and complete ignored logging; yield to HOST for only `pafio-task-resource-final`; repair actual scoped failures with affected/remaining recovery. |
+| Independent CLOSE Reviewer / `NODE-CLOSE`, hosted `run-07` | Same bootstrap **and** FINAL, including actual registered host evidence | Inspect final source, migration and complete evidence; reconcile this repository and amend this handoff; select only `pafio-task-resource-review`. |
 
-Hosted execution task `888861bd5b71cc6bc4cf881dbf818b57` belongs to the assigned
+Hosted execution task `run-08` belongs to the assigned
 plan and maps to the existing source task; it creates no source Task or Tree.
 Both roles retain the host's current non-fast configuration. FINAL has exclusive
 Pafio write ownership, then transfers it to CLOSE. No subordinate agents or
-additional lanes. Preserve the dirty checkout, `build-codex`, accepted baseline,
+additional lanes. Preserve the dirty checkout, `build-evidence`, accepted baseline,
 focused and integration evidence, permanent independent assets and user data.
 Read the sibling HANDOFFs and consume the selected CLI/LSP in place:
 `../styio-nightly/build/default/bin/styio` and `styio_lspd`. No sibling rebuilds
@@ -59,12 +59,12 @@ temporary cleanup or later checks overwrite them. Do not add a hash/cache system
 speculative checks or a general recovery framework.
 
 Keep full stdout/stderr, JSON, exact commands and true process exits under ignored
-`build-codex/task-resource-final/`, with distinct first-run/follow-up evidence.
+`build-evidence/task-resource-final/`, with distinct first-run/follow-up evidence.
 Record current revision, dirty diff/paths and necessary untracked inputs, selected
 executables/stat, build configuration and relevant allowlisted environment. Do not
 export raw machine/runtime data or snapshot sibling sources. Preserve native and
 extractability build isolation when supplying configuration; do not globally
-redirect the isolated-copy build into the original `build-codex`. Retain the
+redirect the isolated-copy build into the original `build-evidence`. Retain the
 existing selected compiler configuration and report actual feature/platform skips.
 Preserve real exits across tee/pipelines and logging cleanup. The full registered
 regression belongs to HOST after Worker handoff: no manual full-suite pre-run.
@@ -116,16 +116,16 @@ identified. This reconciliation changes evidence records only; the selected
 Pafio/Styio CLI/LSP and their production inputs are unchanged.
 
 The assigned host plan exposes FINAL validation passed after check-stage run
-`9fa4923cbbf5a7f1d82345fd0a8a47bb`. Its actual recovery directory is
-`build-codex/task-resource-final/host-goi713j_/`: process, check and retention
+`run-09`. Its actual recovery directory is
+`build-evidence/task-resource-final/run-dir/`: process, check and retention
 exits are all 0. Copy, structure, exported binary/hygiene checks and the existing
 root documentation audit passed. The original failed full run is retained in
-`host-6gt38m8v/`, check-stage run `2abf2639832b10b02b49c944343ea04b`.
+`run-dir/`, check-stage run `run-10`.
 Its process/check exit 1 is preserved; it is not relabelled as a passing run.
 The reconciliation below accounts for the original obligations across both runs.
 
 The host subsequently passed the registered CLOSE check
-`7d5c78ffa7163d1c9cc6282c27b819c6` and completed the Pafio final runtime.
+`run-11` and completed the Pafio final runtime.
 Coordinator accepts this local candidate; source Task/Tree delivery awaits the
 three-repository final join. The temporary Verifier override has been restored.
 Supplemental CLI preservation checks use only isolated generated projects and
@@ -141,10 +141,10 @@ store data; they neither alter production inputs nor replay the complete suite.
 | FINAL logging and recovery | Direct child redirection and recorded exits preserve failures. Native records are retained before copy cleanup; performance measurement ends before evidence writing. The permanent CI eight-step order and first-failure stop remain unchanged. The milestone follow-up runs actual remaining delivery implementations and identifies reused native evidence separately. |
 | Export contamination | The first failure's structural errors all refer to generated root build variants. Rooted `/build-*/` excludes these from export without deleting local data or excluding nested documentation/test assets. The existing actual-copy unit regression and host recovery support the repair; no permanent structural/binary/hygiene rule was removed. |
 | Required migration | One-off inspection found the removed compile timeout and retired direct-compiler gate path absent. The active producer, CLI/compile-plan docs, tests and handoff all require invocation-owned paths. All ten copied Styio source/expectation files are byte-equal to their owner assets. No tracked source asset was deleted; historical `docs/plan/` and prior invocation outputs remain independent retained assets. |
-| Stale evidence records | FINAL previously recorded the first failure and an unobserved recovery. The existing Node/check and this handoff now distinguish the actual recovery pass from the failed full run. The subsequent registered CLOSE patch check passed as `7d5c78ffa7163d1c9cc6282c27b819c6`; coordinator reconciled that host result after the Reviewer returned. |
+| Stale evidence records | FINAL previously recorded the first failure and an unobserved recovery. The existing Node/check and this handoff now distinguish the actual recovery pass from the failed full run. The subsequent registered CLOSE patch check passed as `run-11`; coordinator reconciled that host result after the Reviewer returned. |
 
 The one-off inspection executed with exit 0 and is retained only under ignored
-`build-codex/task-resource-final/close/`: `inspection-process.json`, full streams,
+`build-evidence/task-resource-final/close/`: `inspection-process.json`, full streams,
 `inspect_evidence.py` and `evidence-review.json`. It reads existing evidence and
 current inputs; it executes no product suite. It checks child stream/summary
 agreement, actual exits, complete named XML outcomes, retained `Testing/` records,
@@ -154,14 +154,14 @@ so the JSON details are read from the verbose log rather than reconstructed.
 
 ### Final evidence and supported-capability reconciliation
 
-References below are relative to `build-codex/task-resource-final/`.
+References below are relative to `build-evidence/task-resource-final/`.
 The two CTest configurations overlap and are not added. The real workflow is one
 CTest case containing subprocess assertions, not 30 additional CTest cases.
 
 | Obligation / baseline capability | Actual named evidence and boundary |
 | --- | --- |
-| Original current-source native regression | `host-6gt38m8v/regression_native_check/native-vQadjYh5/`: configure/build/CTest exits 0; XML records 147 cases, 145 passed and two skipped, zero failures. Full commands, streams, cache, XML and `Testing/` are retained. |
-| Isolated source extractability | `host-6gt38m8v/regression_extractability/native-GMhzM8ww/`: isolated-copy configure/build/CTest exits 0; 146 cases, 144 passed and the same two skips. Its fresh configuration does not register the optional real-Styio case. It is not an additional ecosystem pass. |
+| Original current-source native regression | `run-dir/regression_native_check/native-vQadjYh5/`: configure/build/CTest exits 0; XML records 147 cases, 145 passed and two skipped, zero failures. Full commands, streams, cache, XML and `Testing/` are retained. |
+| Isolated source extractability | `run-dir/regression_extractability/native-GMhzM8ww/`: isolated-copy configure/build/CTest exits 0; 146 cases, 144 passed and the same two skips. Its fresh configuration does not register the optional real-Styio case. It is not an additional ecosystem pass. |
 | machine-info, help, doctor and metadata | `pafio_cli_machine_info_json`, version/help/short-help and flag rejection probes; `DoctorTests.DiagnosesOwnedStateWithoutRepairingOrInstallingAnything`; both `MetadataTests` passed. Real workflow `machine_info` and `pafio_doctor` passed against the selected compiler. |
 | check/build/run/test and observation | All `BuildPlanTests`, `BuildCliTests`, `CheckCliTests`, `RunCliTests` and `TestCliTests` passed. `pafio_task_resource_real_workflow` passed with 30 complete named steps and no validation errors: good/error/repaired commands, handled/unhandled task failure, f64, dry-run, concurrent builds, snapshots/delta and runtime cases. Expected compiler-failure exit 23 is not a failed test. |
 | Manifest, lock, dependency graph, add/remove/tree | `ManifestTests`, `LockfileTests`, `LockGenerationTests`, `ResolverTests`, `ResolutionContractTests`, `AddCliTests`, `RemoveCliTests` and `TreeCliTests` passed, including deterministic resolution, conflicts/cycles, verified cache and rollback. |
@@ -171,8 +171,8 @@ CTest case containing subprocess assertions, not 30 additional CTest cases.
 | new/init | Coordinator exercised current-binary `new` and `init`, checked generated manifest/source files, and performed cold offline build/run for both using the selected Styio. All seven supplemental commands exited 0; the four machine build/run results reported succeeded synchronization/compiler execution and exited process 0. Evidence: `coordinator-cli-preservation/run-n9zhslzn/evidence.json`. |
 | Filesystem and process portability | `PathsTests`, `ProcessTests`, `PortableProcess`, `AtomicFileTests` and `FileLockTests` passed on this macOS arm64 Debug host only. |
 | Quality and documentation | Original binary/hygiene/docs/ecosystem-CLI steps exited 0. Recovery reran the affected documentation audit and all three nested index/lifecycle/team checks, plus exported binary/hygiene checks, with exit 0. CLOSE's record-only edits receive the scoped checks listed below. |
-| Performance | `host-6gt38m8v/performance_baseline/report.json`: machine-info, help, locked/offline metadata and sync, single-package tree and dry-run build all passed existing thresholds; each has one warmup and five measured samples with full outputs/exits. This is threshold evidence, not a claimed speedup or billing saving. |
-| Delivery | Failed copy contents and structural diagnostics remain in the first run. `host-goi713j_/report.json` records corrected export and all remaining children passed. Its explicit `reused` entry accounts for the unchanged original-root native command. Delivery's native/docs scripts target the original root; do not call this an exported-source build. The separate extractability result supplies isolated-build evidence. |
+| Performance | `run-dir/performance_baseline/report.json`: machine-info, help, locked/offline metadata and sync, single-package tree and dry-run build all passed existing thresholds; each has one warmup and five measured samples with full outputs/exits. This is threshold evidence, not a claimed speedup or billing saving. |
+| Delivery | Failed copy contents and structural diagnostics remain in the first run. `run-dir/report.json` records corrected export and all remaining children passed. Its explicit `reused` entry accounts for the unchanged original-root native command. Delivery's native/docs scripts target the original root; do not call this an exported-source build. The separate extractability result supplies isolated-build evidence. |
 | Python and interop harnesses | Reuse the Worker's 15 preparation gate-unit cases, four affected delivery unit cases and synthetic logging/recovery probes within their recorded scope. No complete Python-unit or interop-shell suite is claimed by the registered CTest result. |
 
 Actual skipped cases in both XML records are
@@ -222,14 +222,14 @@ authorize later work, publication, installation or live acceptance.
 ## Retained FINAL host failure and scoped recovery — 2026-10-12
 
 The actual HOST invocation `pafio-task-resource-final` exited 1. Its complete
-first-run evidence remains at `build-codex/task-resource-final/host-6gt38m8v/`;
+first-run evidence remains at `build-evidence/task-resource-final/run-dir/`;
 `stdout.log` contains the full submit JSON, `process.exit` and `check.exit`
 both contain 1, and retention exited 0. The Worker originally had no host run ID
 or follow-up evidence; CLOSE subsequently reconciled both actual check-stage
 records above without altering this failed result.
 
 The failure is confined to `delivery_package`: the export policy excluded
-`build/` and `build-codex/` but copied other root `build-*` directories.
+`build/` and `build-evidence/` but copied other root `build-*` directories.
 Their generated temporary/cache artifacts violated the unchanged delivery
 structure rules before any delivery child check ran. The seven earlier submit
 steps returned 0. The repair adds rooted `/build-*/` to `export_excludes`;
@@ -246,7 +246,7 @@ The permanent copy, structure, binary and hygiene checks remain enabled.
 | Performance baseline | Exit 0; all six benchmarks passed their unchanged thresholds. Executable, benchmark inputs and configuration are unchanged; reuse. |
 | Delivery copy and structure | Actual structure failure; corrected export selection must run again under HOST. |
 | Export binary/hygiene and root documentation children | Not run in the first invocation. HOST now executes them in their existing order after successful copy/structure checks, stopping on first failure. |
-| Delivery native child | Not previously reached, but calls the same original-root `native-check.sh` and `build-codex`, not an exported-source build. Reconcile with the valid original native pass explicitly; do not replay the same full CTest. |
+| Delivery native child | Not previously reached, but calls the same original-root `native-check.sh` and `build-evidence`, not an exported-source build. Reconcile with the valid original native pass explicitly; do not replay the same full CTest. |
 
 `checks.sh final` invokes `python3 scripts/submit-gate.py --profile ci --json`
 through the unchanged recorder. For this milestone's single diagnosed failure
@@ -310,12 +310,12 @@ performance sample counts/threshold and permanent gate membership are unchanged.
 No recovery selection is guessed before an actual failure. The check result and
 run ID remain pending/null until HOST executes it.
 
-`build-codex/task-resource-final/prepared.txt` references the prepared inputs;
+`build-evidence/task-resource-final/prepared.txt` references the prepared inputs;
 HOST creates a separate `host-*` directory referenced by `latest.txt`. Each host
 record includes the executing dirty patch/untracked inputs, revision/status,
 CMake configuration, selected CLI/LSP stats and allowlisted relevant environment.
 Only Pafio inputs are copied. The host command explicitly selects the existing
-`build-codex` and accepted in-place compiler; the isolated extractability command
+`build-evidence` and accepted in-place compiler; the isolated extractability command
 sets its own build directory inside its temporary source copy. It cannot reuse
 or overwrite the original build via the outer environment.
 
@@ -348,7 +348,7 @@ feature file leaves release and release-only Styio checks disabled by default.
 CLOSE must reconcile actual caches, named results and warnings after the run;
 none of these boundaries is an inferred test pass or waiver.
 
-Preparation evidence is under `build-codex/task-resource-final/preparation/`:
+Preparation evidence is under `build-evidence/task-resource-final/preparation/`:
 15 existing submit/performance/delivery unit tests passed (`gate-unit.*`).
 The logging probe exercised synthetic configure success/failure, build failure,
 CTest failure, extraction cleanup/isolation, full large child output in the
@@ -372,7 +372,7 @@ passes, invalidated inputs, failed/repaired cases and the unexecuted remainder.
 Before the automatic same-ID follow-up, replace the explicit command selection
 in `checks.sh final` with the required affected/remaining commands through the
 same recorder. Do not replay the complete submit suite or drop failed gates.
-CLOSE owns independent semantic/migration/capability review and actual host-result
+CLOSE owns independent semantic/migration/capability review and actual run-dir
 reconciliation. No production candidate invalidation was introduced here;
 inspect any host rebuild changes before reporting cross-repository impact.
 Source Task/Tree delivery is still unset. Other platforms/configurations,
@@ -389,18 +389,18 @@ after Agent review; a future host result is not a reviewer-local pass.
 ## Candidate and external dependency
 
 Preserve the existing `agent/downstream-pafio-paths` branch, base
-`a20dce6e9d889e92`, all existing edits and `build-codex`. The candidate includes
+`run-id`, all existing edits and `build-evidence`. The candidate includes
 uncommitted source/tests/docs, so its base revision alone is insufficient.
 
 | Relative reference | Meaning |
 | --- | --- |
-| `build-codex/bin/pafio` | Source-built Pafio candidate; Worker final build and subsequent focused build evidence reused |
+| `build-evidence/bin/pafio` | Source-built Pafio candidate; Worker final build and subsequent focused build evidence reused |
 | `../styio-nightly/build/default/bin/styio` | Explicitly selected accepted U2 compiler, consumed in place |
 | `../styio-nightly/build/default/bin/styio_lspd` | Associated accepted daemon; not launched by this reviewer |
 | `tests/integration/fixtures/task-resource/` | Five authoritative Styio sources and five byte-identical expected outputs, plus Pafio manifest |
-| `build-codex/task-resource-focused/project/` | Existing reusable real project, restored to t13 history input |
-| `build-codex/task-resource-integration/project/` | Same fixture project location used by the registered integration command |
-| `build-codex/task-resource-handoff-20261011/` | Ignored independent review evidence; exact argv, outputs and exits stay here |
+| `build-evidence/task-resource-focused/project/` | Existing reusable real project, restored to t13 history input |
+| `build-evidence/task-resource-integration/project/` | Same fixture project location used by the registered integration command |
+| `build-evidence/task-resource-handoff-20261011/` | Ignored independent review evidence; exact argv, outputs and exits stay here |
 
 The accepted baseline in `BASELINE.md` and its prior runtime result were reused.
 No baseline replay, sibling source edit or sibling build occurred. No production
@@ -464,11 +464,11 @@ status. The following are separate executions; their counts are not aggregated.
 
 | Command or evidence | Actual result | Evidence |
 | --- | --- | --- |
-| Worker final `cmake --build build-codex --target pafio pafio_native_tests` | Exit 0, reused current C++ candidate | `build-codex/task-resource-repair-20261011/build-final.log` |
-| Retained Worker focused native selection | 39 passed, exit 0; existing package/offline/locked/frozen and plan/CLI behavior | `build-codex/task-resource-repair-20261011/native-focused.log` |
-| Retained Worker real gate | 23 steps with expected exits, no validation errors; unobserved scope only | `build-codex/task-resource-repair-20261011/focused-workflow.json` |
-| Retained verifier focused command on B5 | Reported exit 0, 39 native tests and the same 23 real steps; independent review inspected the retained evidence | `build-codex/task-resource-verifier-20261011/focused.log` |
-| Earlier real CTest registration | One real workflow passed, before mandatory observation cases were added; not a pass for the expanded test | `build-codex/task-resource-repair-20261011/real-ctest.log` |
+| Worker final `cmake --build build-evidence --target pafio pafio_native_tests` | Exit 0, reused current C++ candidate | `build-evidence/task-resource-repair-20261011/build-final.log` |
+| Retained Worker focused native selection | 39 passed, exit 0; existing package/offline/locked/frozen and plan/CLI behavior | `build-evidence/task-resource-repair-20261011/native-focused.log` |
+| Retained Worker real gate | 23 steps with expected exits, no validation errors; unobserved scope only | `build-evidence/task-resource-repair-20261011/focused-workflow.json` |
+| Retained verifier focused command on B5 | Reported exit 0, 39 native tests and the same 23 real steps; independent review inspected the retained evidence | `build-evidence/task-resource-verifier-20261011/focused.log` |
+| Earlier real CTest registration | One real workflow passed, before mandatory observation cases were added; not a pass for the expanded test | `build-evidence/task-resource-repair-20261011/real-ctest.log` |
 | Reviewer real snapshot-admission command | Exit 23, U2 package-name rejection | `snapshot-admission.json` under reviewer evidence |
 | Reviewer real runtime-admission command | Exit 23, same U2 rejection | `runtime-admission.json` under reviewer evidence |
 | Reviewer Python AST, patch whitespace, authoritative fixture comparison | AST valid; diff check exit 0; all 10 source/expectation byte comparisons identical | `static-checks.txt`, `diff-check.log` under reviewer evidence |
@@ -491,7 +491,7 @@ The retained ordinary gate's individual results are:
 | concurrent build 0 / 1 | 0 / 0; equal cache identity, separate paths and compiler sessions |
 
 The prior host focused check was observed as passed in the assigned plan record
-(`529d2782bd18e8a56f121276550903b2`). That platform result covers the then-current
+(`run-12`). That platform result covers the then-current
 focused command, not the observation additions. This review has not run the
 complete integration command locally and does not claim a host integration
 pass. This avoids duplicating the full workflow before the host's one registered
@@ -543,7 +543,7 @@ Independent verification after the coordinator accepted the rebuilt U2 Styio
 candidate (`../styio-nightly/build/default/bin/styio`, relinked 2026-10-11;
 `styio_lspd` alongside). No upstream source or binary was modified or rebuilt
 here. Evidence lives under the ignored
-`build-codex/task-resource-handoff-verifier-20261011/` directory.
+`build-evidence/task-resource-handoff-verifier-20261011/` directory.
 
 - **U2 confirmed repaired through the real Pafio producer path.** The permanent
   gate's observation selection executed every mandatory case on one real
@@ -591,7 +591,7 @@ exist on this board to reconcile.
 ## Privacy
 
 Raw commands, compiler session data, absolute tool paths and runtime payloads stay
-in ignored `build-codex/`. Blackboard notes and maintained docs contain relative
+in ignored `build-evidence/`. Blackboard notes and maintained docs contain relative
 references and safe summaries. The scoped scan and disposition are recorded below;
 they do not claim universal secret detection.
 
@@ -602,10 +602,10 @@ they do not claim universal secret detection.
 | `scripts/artifact-policy.json:84` | Keep generated local build data out of delivery exports | Build cache, toolchain paths and generated temporary artifacts; values omitted | Actual first-run structural failure confirms unwanted local export contents; no external publication occurred | Potential disclosure if such an export were published; the gate stopped it locally | Added rooted build-variant exclusion; actual-copy unit regression and actual HOST recovery export checks passed |
 | CLOSE-reviewed changed/unignored text; no matched line | Local-home paths, private-key blocks, credential literals and private addresses; manual runtime-data review | No matched sensitive category | `close/privacy.json` records 62 scanned files with no matches; maintained records contain relative references and result summaries only | No detected disclosure in this scope; not universal secret detection | No content remediation needed; complete logs and raw inputs remain ignored; later result-only additions reviewed manually |
 
-## Coordinator host-check acceptance (2026-10-11)
+## Coordinator run-dir acceptance (2026-10-11)
 
 The host subsequently completed the registered handoff check with
-`validation=passed` (check-stage run `4c4c7d6b6806ae37f223ca777f1b171c`).
+`validation=passed` (check-stage run `run-13`).
 The coordinator accepts the current reviewed dirty-source candidate for the
 next dependent phase. Full host console and individual process exits are not
 exposed; no additional per-case totals are inferred. Existing detailed local
@@ -625,14 +625,14 @@ unclosed external join is now closed:
   retained-parent delta, the unreadable-parent full-snapshot fallback, the
   observed repair sequence, concurrent invocations and dry-run preservation.
 - Same-candidate Vityo E2E through real production services and vityod:
-  `host-ehiyo1yz` — 35 scenarios and 4 contract cases accepted, `ok=true`.
+  `run-dir` — 35 scenarios and 4 contract cases accepted, `ok=true`.
 - Bounded-retention probe on the current binary: 13 sequential same-key
   checks retained 9 directories (8 newest plus the current invocation, oldest
   pruned); 12 further runs referencing the oldest directory as parent
   retained 10 including the referenced owner and emitted
   `scenario.observable-delta.json`; additional build-intent runs kept the
   bound at 9. Record:
-  `build-codex/join-20261015/retention-probe-evidence.json`.
+  `build-evidence/join-20261015/retention-probe-evidence.json`.
 - vityod crate tests: 56 passed, 0 failed.
 - Review items invalidated by NODE-BASELINE/NODE-REPAIR result changes were
   resolved against the joined evidence. Source `TASK-001` and Tree delivery

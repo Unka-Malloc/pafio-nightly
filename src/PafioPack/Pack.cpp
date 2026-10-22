@@ -8,10 +8,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <optional>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -69,6 +71,79 @@ bool IsExcludedWorkspaceSubtree(const fs::path &relative_path, const std::vector
   return false;
 }
 
+// Hidden entries are local state (tooling config, editor files, credentials
+// stores); they are never package payload.
+bool IsHiddenEntry(const fs::path &relative_path)
+{
+  for (const fs::path &component : relative_path)
+  {
+    const std::string name = component.string();
+    if (!name.empty() && name.front() == '.')
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Names that conventionally carry credentials or local state. A non-hidden
+// file matching one of these fails the pack outright so a secret can never
+// ride inside a published archive.
+bool IsSecretNamedFile(const fs::path &relative_path)
+{
+  const std::string name = relative_path.filename().string();
+  std::string lower = name;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
+  if (lower == ".env" || lower.starts_with(".env.") || lower == ".netrc" || lower == ".npmrc")
+  {
+    return true;
+  }
+  if (lower == "id_rsa" || lower.starts_with("id_rsa.") || lower == "id_ed25519" || lower.starts_with("id_ed25519."))
+  {
+    return true;
+  }
+  static const std::array<std::string_view, 8> kSecretExtensions = {
+      ".pem", ".key", ".p12", ".pfx", ".kdbx", ".tfstate", ".tfvars", ".htpasswd"};
+  for (const std::string_view ext : kSecretExtensions)
+  {
+    if (lower.size() > ext.size() && lower.ends_with(ext))
+    {
+      return true;
+    }
+  }
+  static const std::array<std::string_view, 5> kSecretWords = {
+      "secret", "credential", "password", "passwd", "token"};
+  for (const std::string_view word : kSecretWords)
+  {
+    if (lower.find(word) != std::string::npos)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Credential shapes scanned over packaged file contents: a private-key block,
+// a provider API token, or a structured JWT must never leave the machine
+// inside a published archive.
+const std::vector<std::pair<std::string_view, std::regex>> &SecretContentPatterns()
+{
+  static const std::vector<std::pair<std::string_view, std::regex>> patterns = {
+      {"private-key-block", std::regex(R"(-----BEGIN [A-Z0-9]+ ?PRIVATE KEY-----)")},
+      {"aws-access-key", std::regex(R"((AKIA|ASIA)[A-Z0-9]{16})")},
+      {"github-token", std::regex(R"(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")},
+      {"anthropic-key", std::regex(R"(sk-ant-[A-Za-z0-9_-]{20,})")},
+      {"google-api-key", std::regex(R"(AIza[A-Za-z0-9_-]{35})")},
+      {"openai-key", std::regex(R"(sk-[A-Za-z0-9_-]{20,})")},
+      {"slack-token", std::regex(R"(xox[baprs]-[A-Za-z0-9-]{10,})")},
+      {"stripe-key", std::regex(R"((sk|rk)_(live|test)_[A-Za-z0-9]{20,})")},
+      {"json-web-token", std::regex(R"(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})")},
+  };
+  return patterns;
+}
+
 std::string ReadBinaryFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -80,6 +155,20 @@ std::string ReadBinaryFile(const fs::path &path)
   std::ostringstream buffer;
   buffer << in.rdbuf();
   return buffer.str();
+}
+
+void RejectSecretContents(const PackEntry &entry)
+{
+  const std::string contents =
+      entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
+  for (const auto &[rule, pattern] : SecretContentPatterns())
+  {
+    if (std::regex_search(contents, pattern))
+    {
+      throw pafio::PackError(
+          "pack refuses to archive credential-shaped content (" + std::string(rule) + ") in " + entry.archive_path);
+    }
+  }
 }
 
 std::vector<fs::path> CollectExcludedWorkspaceRoots(const pafio::PackageSelection &selection)
@@ -164,13 +253,19 @@ std::vector<PackEntry> CollectPackEntries(const pafio::PackageSelection &selecti
     {
       continue;
     }
-    if (IsExcludedGeneratedTopLevel(relative_entry) || IsExcludedWorkspaceSubtree(relative_entry, excluded_workspace_roots))
+    if (IsExcludedGeneratedTopLevel(relative_entry) || IsExcludedWorkspaceSubtree(relative_entry, excluded_workspace_roots)
+        || IsHiddenEntry(relative_entry))
     {
       if (entry.is_directory())
       {
         it.disable_recursion_pending();
       }
       continue;
+    }
+    if (IsSecretNamedFile(relative_entry))
+    {
+      throw pafio::PackError(
+          "pack refuses to archive a credential or local-state file: " + relative_entry.generic_string());
     }
 
     const fs::file_status status = entry.symlink_status();
@@ -200,6 +295,10 @@ std::vector<PackEntry> CollectPackEntries(const pafio::PackageSelection &selecti
       [](const PackEntry &left, const PackEntry &right) {
         return left.archive_path < right.archive_path;
       });
+  for (const PackEntry &entry : entries)
+  {
+    RejectSecretContents(entry);
+  }
   return entries;
 }
 

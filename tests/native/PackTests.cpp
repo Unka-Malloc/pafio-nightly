@@ -227,6 +227,91 @@ TEST(PackTests, WorkspaceOnlyPackRequiresExplicitPackageSelectionWhenAmbiguous)
   EXPECT_TRUE(fs::exists(payload.at("archive_path").get<std::string>()));
 }
 
+TEST(PackTests, SkipsHiddenLocalStateInIncludedTree)
+{
+  const fs::path root = MakeTempDir("hidden-local-state");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / ".env", "TOKEN=local-only\n");
+  WriteFile(root / ".hidden/nested.env", "TOKEN=local-only\n");
+
+  const pafio::PackResult result = pafio::WriteSourcePackage({
+      .manifest_path = root / "pafio.toml",
+  });
+
+  const std::vector<std::string> entries = ListTarEntries(result.archive_path);
+  EXPECT_EQ(
+      entries,
+      std::vector<std::string>({
+          "app-0.1.0/pafio.toml",
+          "app-0.1.0/src/main.styio",
+      }));
+}
+
+TEST(PackTests, RejectsCredentialNamedFileInIncludedTree)
+{
+  const fs::path root = MakeTempDir("credential-name-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "certs/server.pem", "placeholder\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
+TEST(PackTests, RejectsCredentialShapedFileContents)
+{
+  const fs::path root = MakeTempDir("credential-content-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "notes.txt", std::string("-----BEGIN TEST ") + "PRIVATE KEY-----\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
 TEST(PackTests, RejectsSymlinkInsideIncludedTree)
 {
   const fs::path root = MakeTempDir("symlink-rejected");
