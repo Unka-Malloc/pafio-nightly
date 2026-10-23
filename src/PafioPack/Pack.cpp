@@ -24,11 +24,6 @@
 #include <utility>
 #include <vector>
 
-#if !defined(_WIN32)
-#include <cerrno>
-#include <unistd.h>
-#endif
-
 namespace fs = std::filesystem;
 
 namespace
@@ -380,7 +375,11 @@ void SplitArchivePathForUstar(const std::string &path, std::string &name, std::s
   throw pafio::PackError("archive entry exceeds ustar path limits: " + path);
 }
 
-void WriteTarEntry(std::ostream &out, const std::string &archive_path, const std::string &contents)
+// `write` receives (data, size) and must consume all bytes or throw; header,
+// payload, and padding go straight to it so peak memory stays at one entry's
+// contents instead of a second serialized copy per entry.
+template <typename Write>
+void WriteTarEntry(Write &&write, const std::string &archive_path, const std::string &contents)
 {
   std::array<char, 512> header{};
   std::string name;
@@ -412,13 +411,13 @@ void WriteTarEntry(std::ostream &out, const std::string &archive_path, const std
   }
   WriteChecksumField(header, checksum);
 
-  out.write(header.data(), static_cast<std::streamsize>(header.size()));
-  out.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+  write(header.data(), header.size());
+  write(contents.data(), contents.size());
   const size_t remainder = contents.size() % 512U;
   if (remainder != 0U)
   {
     const std::array<char, 512> padding{};
-    out.write(padding.data(), static_cast<std::streamsize>(512U - remainder));
+    write(padding.data(), 512U - remainder);
   }
 }
 
@@ -445,12 +444,12 @@ void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &arch
     {
       const std::string archive_member = std::string(archive_prefix) + "/" + entry.archive_path;
       const std::string contents = entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
-      std::ostringstream chunk;
-      WriteTarEntry(chunk, archive_member, contents);
-      const std::string bytes = chunk.str();
       try
       {
-        pafio::WriteTemporaryFileFully(temp, bytes.data(), bytes.size());
+        WriteTarEntry(
+            [&temp](const char *data, size_t size) { pafio::WriteTemporaryFileFully(temp, data, size); },
+            archive_member,
+            contents);
       }
       catch (const std::system_error &error)
       {
@@ -464,19 +463,19 @@ void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &arch
     {
       pafio::WriteTemporaryFileFully(temp, trailer.data(), trailer.size());
       pafio::FlushTemporaryFile(temp);
+      pafio::CloseTemporaryFile(temp);
     }
     catch (const std::system_error &error)
     {
       throw pafio::PackError(
-          "failed to flush package archive: " + temp_path.string() + ": " + error.what());
+          "failed to finish package archive: " + temp_path.string() + ": " + error.what());
     }
-    pafio::CloseTemporaryFile(temp);
 
     fs::rename(temp_path, archive_path);
   }
   catch (...)
   {
-    pafio::CloseTemporaryFile(temp);
+    pafio::DiscardTemporaryFile(temp);
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     throw;

@@ -24,9 +24,17 @@ struct ExclusiveTempFile
 // primitive, retrying collisions with a fresh suffix. Throws
 // std::system_error on failure.
 ExclusiveTempFile OpenExclusiveTemporaryFile(const std::filesystem::path &target);
+// Creates `candidate` only if it does not already exist; returns false when
+// the name is taken. The testable exclusive-create primitive behind
+// OpenExclusiveTemporaryFile.
+bool TryCreateExclusiveFile(const std::filesystem::path &candidate, ExclusiveTempFile &temp);
 void WriteTemporaryFileFully(ExclusiveTempFile &temp, const char *data, size_t size);
 void FlushTemporaryFile(ExclusiveTempFile &temp);
-void CloseTemporaryFile(ExclusiveTempFile &temp) noexcept;
+// Checked close for the success path — a close-time I/O error must not be
+// reported as a finalized write. Throws std::system_error on failure.
+void CloseTemporaryFile(ExclusiveTempFile &temp);
+// Best-effort close for exception cleanup.
+void DiscardTemporaryFile(ExclusiveTempFile &temp) noexcept;
 
 // Same-directory temp + fsync + rename for mutable state files.
 void AtomicWriteFile(const std::filesystem::path &path, std::string_view content);

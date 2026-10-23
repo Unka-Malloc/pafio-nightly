@@ -13,6 +13,8 @@
 #include "PafioCore/Errors.hpp"
 
 #if defined(_WIN32)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
 #include <fcntl.h>
@@ -69,25 +71,17 @@ SynchronizeParentDirectory(const fs::path &path) {
 namespace pafio
 {
 
-// Collisions only mean the nonce landed on an existing name, so retry with a
-// fresh suffix; the bound matches mkstemp's "give up after implausible
-// contention" semantics rather than an attacker-driven infinite loop.
+// Collisions only mean the generated name landed on an existing entry, so
+// retry with a fresh candidate; the bound matches mkstemp's "give up after
+// implausible contention" semantics rather than an attacker-driven loop.
 ExclusiveTempFile
 OpenExclusiveTemporaryFile(const fs::path &target) {
   for (int attempt = 0; attempt < 100; ++attempt) {
-    const fs::path candidate = UniqueTemporaryPath(target);
 #if defined(_WIN32)
-    const HANDLE handle = CreateFileW(
-      candidate.c_str(),
-      GENERIC_WRITE,
-      0,
-      nullptr,
-      CREATE_NEW,
-      FILE_ATTRIBUTE_NORMAL,
-      nullptr
-    );
-    if (handle != INVALID_HANDLE_VALUE) {
-      return ExclusiveTempFile{candidate, handle};
+    const fs::path candidate = UniqueTemporaryPath(target);
+    ExclusiveTempFile temp;
+    if (TryCreateExclusiveFile(candidate, temp)) {
+      return temp;
     }
     if (GetLastError() != ERROR_FILE_EXISTS) {
       throw std::system_error(
@@ -97,23 +91,54 @@ OpenExclusiveTemporaryFile(const fs::path &target) {
       );
     }
 #else
-    std::string pattern_string = (candidate).string();
-    std::vector<char> pattern(pattern_string.begin(), pattern_string.end());
-    pattern.push_back('\0');
-    const int fd = ::mkstemp(pattern.data());
+    // mkstemp needs the XXXXXX template tail and replaces it with the real
+    // name; it already retries alternate names internally, so the outer loop
+    // only matters for an exhausted namespace.
+    std::string pattern =
+        (target.parent_path() / (target.filename().string() + ".tmp.XXXXXX")).string();
+    std::vector<char> buffer(pattern.begin(), pattern.end());
+    buffer.push_back('\0');
+    const int fd = ::mkstemp(buffer.data());
     if (fd >= 0) {
-      return ExclusiveTempFile{fs::path(pattern.data()), fd};
+      return ExclusiveTempFile{fs::path(buffer.data()), fd};
     }
     if (errno != EEXIST) {
       throw std::system_error(
         errno,
         std::system_category(),
-        "create exclusive temporary file " + candidate.string()
+        "create exclusive temporary file " + target.string()
       );
     }
 #endif
   }
   throw std::system_error(std::make_error_code(std::errc::file_exists));
+}
+
+bool
+TryCreateExclusiveFile(const fs::path &candidate, ExclusiveTempFile &temp) {
+#if defined(_WIN32)
+  const HANDLE handle = CreateFileW(
+    candidate.c_str(),
+    GENERIC_WRITE,
+    0,
+    nullptr,
+    CREATE_NEW,
+    FILE_ATTRIBUTE_NORMAL,
+    nullptr
+  );
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  temp = ExclusiveTempFile{candidate, handle};
+  return true;
+#else
+  const int fd = ::open(candidate.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
+  if (fd < 0) {
+    return false;
+  }
+  temp = ExclusiveTempFile{candidate, fd};
+  return true;
+#endif
 }
 
 void
@@ -169,7 +194,28 @@ FlushTemporaryFile(ExclusiveTempFile &temp) {
 }
 
 void
-CloseTemporaryFile(ExclusiveTempFile &temp) noexcept {
+CloseTemporaryFile(ExclusiveTempFile &temp) {
+#if defined(_WIN32)
+  HANDLE handle = static_cast<HANDLE>(temp.handle);
+  temp.handle = nullptr;
+  if (handle != nullptr && CloseHandle(handle) == 0) {
+    throw std::system_error(
+      static_cast<int>(GetLastError()),
+      std::system_category(),
+      "close temporary file " + temp.path.string()
+    );
+  }
+#else
+  const int fd = temp.fd;
+  temp.fd = -1;
+  if (fd >= 0 && ::close(fd) != 0) {
+    throw std::system_error(errno, std::system_category(), "close temporary file " + temp.path.string());
+  }
+#endif
+}
+
+void
+DiscardTemporaryFile(ExclusiveTempFile &temp) noexcept {
 #if defined(_WIN32)
   if (temp.handle != nullptr) {
     CloseHandle(temp.handle);
@@ -213,12 +259,12 @@ AtomicWriteFile(const fs::path &path, std::string_view content) {
     }
   }
   catch (const std::system_error &error) {
-    CloseTemporaryFile(temp);
+    DiscardTemporaryFile(temp);
     RemoveTemporaryFile(temp_path);
     throw CacheError("failed to write temporary file for atomic write: " + std::string(error.what()));
   }
   catch (...) {
-    CloseTemporaryFile(temp);
+    DiscardTemporaryFile(temp);
     RemoveTemporaryFile(temp_path);
     throw;
   }
