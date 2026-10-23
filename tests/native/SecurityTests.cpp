@@ -117,6 +117,16 @@ TEST(SecurityTests, DefaultWriteSecurityRequiresOptInForPlaintextHttp)
       pafio::ResolveDefaultRegistryWriteSecurity(
           {.registry_root = "http://upload.example.test", .allow_plaintext_http = true}),
       pafio::PublishError);
+
+  // A registered name that only shares the 127. prefix resolves remotely.
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://127.attacker.example", .allow_plaintext_http = true}),
+      pafio::PublishError);
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://127.0.0.1.evil.test", .allow_plaintext_http = true}),
+      pafio::PublishError);
 }
 
 TEST(SecurityTests, DefaultSecurityRejectsUrlUserinfo)

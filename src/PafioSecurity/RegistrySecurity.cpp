@@ -1,5 +1,6 @@
 #include "PafioSecurity/RegistrySecurity.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cctype>
@@ -48,11 +49,42 @@ IsLoopbackHttpRegistryRoot(const std::string &value) {
   if (host.starts_with("[")) {
     const std::size_t close = host.find(']');
     host = close == std::string::npos ? "" : host.substr(1, close - 1);
-  } else if (const std::size_t colon = host.rfind(':');
-             colon != std::string::npos) {
+    return host == "::1";
+  }
+  if (const std::size_t colon = host.rfind(':');
+      colon != std::string::npos) {
     host = host.substr(0, colon);
   }
-  return host == "localhost" || host == "::1" || host.starts_with("127.");
+  for (char &ch : host) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (host == "localhost" || host == "localhost.") {
+    return true;
+  }
+  // Only a strict dotted IPv4 literal may claim loopback: a registered
+  // name that merely shares the 127. prefix resolves through DNS to a
+  // remote host. Shorthand or non-decimal inet_aton forms are rejected
+  // rather than reinterpreted.
+  if (std::count(host.begin(), host.end(), '.') != 3) {
+    return false;
+  }
+  std::stringstream stream(host);
+  std::string segment;
+  int octets = 0;
+  while (std::getline(stream, segment, '.')) {
+    if (octets >= 4 || segment.empty() || segment.size() > 3 ||
+        !std::all_of(segment.begin(), segment.end(), [](unsigned char ch) {
+          return std::isdigit(ch) != 0;
+        }) ||
+        std::stoi(segment) > 255) {
+      return false;
+    }
+    if (octets == 0 && std::stoi(segment) != 127) {
+      return false;
+    }
+    ++octets;
+  }
+  return octets == 4;
 }
 
 std::vector<std::string>
