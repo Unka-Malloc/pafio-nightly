@@ -78,8 +78,18 @@ json RunRegistryV2ControlPlanePublish(
   const std::string control_plane_base = RegistryControlPlaneBaseUrl(registry_root);
   const std::string request_body = pafio::BuildRemotePublishRequestJson(candidate);
 
+  // Pin the transfer to the scheme the security decision already validated
+  // and bound both the connect and the total transfer time; no redirects are
+  // followed (no -L), so a server cannot steer the request elsewhere.
+  const std::string scheme = registry_root.substr(0, registry_root.find("://"));
   std::vector<std::string> args = {
       "-fsS",
+      "--connect-timeout",
+      "10",
+      "--max-time",
+      "600",
+      "--proto",
+      "=" + scheme,
       "-X",
       "POST",
       control_plane_base + "/publish",
@@ -98,7 +108,7 @@ json RunRegistryV2ControlPlanePublish(
       .program = pafio::ResolvedCurlPath(),
       .args = args,
       .search_path = false,
-      .timeout = std::nullopt,
+      .timeout = pafio::kExternalProcessStepTimeout,
       .stdin_text = request_body,
       .error_context = "registry control-plane publish request",
   });
@@ -830,6 +840,7 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
   PublishRequest request;
   std::optional<std::string> registry_root;
   bool dry_run = false;
+  bool allow_plaintext_http = false;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -868,6 +879,10 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
     {
       dry_run = true;
     }
+    else if (args[index] == "--allow-plaintext-http")
+    {
+      allow_plaintext_http = true;
+    }
     else
     {
       return EmitError({"UsageError", kExitUsage, "unexpected argument for publish: " + args[index], "publish"}, as_json);
@@ -899,6 +914,7 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
       const PublishResult candidate = PreparePublishCandidate(request);
       const RegistryWriteSecurityDecision security = ResolveRegistryWriteSecurity({
           .registry_root = *registry_root,
+          .allow_plaintext_http = allow_plaintext_http,
       });
       return EmitSuccess(
           BuildHttpPublishPayload(

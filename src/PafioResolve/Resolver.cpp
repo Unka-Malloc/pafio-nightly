@@ -182,7 +182,7 @@ public:
 
   SourceOrigin Materialize(const std::string &normalized_source, const std::string &rev)
   {
-    pafio::RequireGitRevisionToken(rev, "git dependency '" + normalized_source + "' rev");
+    pafio::RequireGitCommitId(rev, "git dependency '" + normalized_source + "' rev");
     const std::string repo_hash = pafio::Hex64(pafio::Fnv1a64(normalized_source));
     if (const std::optional<fs::path> vendored_snapshot = FindVendoredSnapshot(repo_hash, rev); vendored_snapshot.has_value())
     {
@@ -277,9 +277,12 @@ private:
 
   bool HasRevision(const fs::path &repo_dir, const std::string &rev) const
   {
+    // The rev must name a commit object itself, not merely peel to one: an
+    // annotated tag object id would satisfy rev^{commit} while recording a
+    // rev that differs from the materialized code.
     const pafio::ProcessResult result = pafio::RunProcess<pafio::CacheError>({
         .program = pafio::ResolvedGitPath(),
-        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "cat-file", "-e", rev + "^{commit}"},
+        .args = {"--git-dir", pafio::ProcessPathString(repo_dir), "cat-file", "-t", rev},
         .search_path = false,
         .timeout = pafio::kExternalProcessProbeTimeout,
         .error_context = "resolver process",
@@ -288,7 +291,7 @@ private:
     {
       throw pafio::FetchError("failed to check git rev '" + rev + "': " + pafio::DescribeProcessFailure(result));
     }
-    return result.exit_code == 0;
+    return result.exit_code == 0 && result.stdout_text == "commit\n";
   }
 
   void FetchOrigin(const fs::path &repo_dir) const

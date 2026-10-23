@@ -146,7 +146,7 @@ TEST(ManifestTests, RejectsGitDependencyWithUrlUserinfo) {
     "name = \"app\"\n"
     "path = \"src/main.styio\"\n\n"
     "[dependencies]\n"
-    "core = { package = \"acme/core\", git = \"https://user:token@example.test/core.git\", rev = \"123abc\" }\n",
+    "core = { package = \"acme/core\", git = \"https://user:token@example.test/core.git\", rev = \"0123456789abcdef0123456789abcdef01234567\" }\n",
     "git-userinfo-dependency.toml"
   );
 
@@ -172,6 +172,30 @@ TEST(ManifestTests, RejectsRegistryDependencyWithUrlUserinfo) {
   );
 
   EXPECT_THROW(pafio::LoadManifest(manifest_path), pafio::ValidationError);
+}
+
+TEST(ManifestTests, RejectsMovableGitRevisions) {
+  for (const char *rev : {"main", "v1.0.0", "HEAD", "4f2c9b1"}) {
+    const fs::path manifest_path = WriteTempToml(
+        "[pafio]\n"
+        "manifest-version = 1\n\n"
+        "[package]\n"
+        "name = \"acme/app\"\n"
+        "version = \"0.1.0\"\n"
+        "edition = \"2026\"\n\n"
+        "[build]\n"
+        "implicit-std = true\n\n"
+        "[[bin]]\n"
+        "name = \"app\"\n"
+        "path = \"src/main.styio\"\n\n"
+        "[dependencies]\n"
+        "core = { package = \"acme/core\", git = \"https://example.com/core.git\", rev = \"" +
+            std::string(rev) + "\" }\n",
+        std::string("git-movable-rev-") + rev + ".toml"
+    );
+
+    EXPECT_THROW(pafio::LoadManifest(manifest_path), pafio::ValidationError) << "rev: " << rev;
+  }
 }
 
 TEST(ManifestTests, SerializesSinglePackageFixtureCanonically) {
@@ -213,7 +237,7 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
     "path = \"src/alpha.styio\"\n\n"
     "[dependencies]\n"
     "z_dep = { package = \"acme/z\", path = \"../z\" }\n"
-    "a_dep = { package = \"acme/a\", git = \"https://example.com/a.git\", rev = \"123abc\" }\n",
+    "a_dep = { package = \"acme/a\", git = \"https://example.com/a.git\", rev = \"0123456789abcdef0123456789abcdef01234567\" }\n",
     "unsorted-manifest.toml"
   );
 
@@ -237,7 +261,7 @@ TEST(ManifestTests, CanonicalSerializerSortsBinsAndDependencyAliases) {
       "name = \"zeta\"\n"
       "path = \"src/zeta.styio\"\n\n"
       "[dependencies]\n"
-      "a_dep = { package = \"acme/a\", git = \"https://example.com/a.git\", rev = \"123abc\" }\n"
+      "a_dep = { package = \"acme/a\", git = \"https://example.com/a.git\", rev = \"0123456789abcdef0123456789abcdef01234567\" }\n"
       "z_dep = { package = \"acme/z\", path = \"../z\" }\n"
     )
   );
@@ -404,8 +428,8 @@ TEST(LockfileTests, CanonicalSerializerEscapesTomlControlCharacters) {
         .name = "acme/a",
         .version = "0.1.0",
         .source_kind = "git",
-        .git = "https://example.test/a.git",
-        .rev = "line1\nline2",
+        .git = "https://example.test/a\nline2.git",
+        .rev = "0123456789abcdef0123456789abcdef01234567",
         .dependencies = {},
       },
     },
@@ -413,7 +437,7 @@ TEST(LockfileTests, CanonicalSerializerEscapesTomlControlCharacters) {
 
   const std::string serialized = pafio::SerializeLockfileCanonical(lockfile);
   EXPECT_NE(serialized.find("generated-by = \"pafio\\tdev\""), std::string::npos);
-  EXPECT_NE(serialized.find("rev = \"line1\\nline2\""), std::string::npos);
+  EXPECT_NE(serialized.find("git = \"https://example.test/a\\nline2.git\""), std::string::npos);
 
   const fs::path path = WriteTempToml(serialized, "escaped-lockfile.toml");
   const pafio::LockfileDocument reparsed = pafio::LoadLockfile(path);

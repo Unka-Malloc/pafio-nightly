@@ -29,8 +29,8 @@ Sha256DigestPattern() {
 }
 
 const std::regex &
-GitRevisionPattern() {
-  static const std::regex pattern("^[A-Za-z0-9_][A-Za-z0-9._~^/-]*$");
+GitCommitIdPattern() {
+  static const std::regex pattern("^[0-9a-f]{40}$");
   return pattern;
 }
 
@@ -52,9 +52,23 @@ IsSha256Digest(const std::string &digest) {
 }
 
 bool
-IsGitRevisionToken(const std::string &rev) {
-  return std::regex_match(rev, GitRevisionPattern()) && rev.find("..") == std::string::npos &&
-         rev.find("//") == std::string::npos && !rev.ends_with('/');
+IsGitCommitId(const std::string &rev) {
+  return std::regex_match(rev, GitCommitIdPattern());
+}
+
+bool
+UrlHasUserinfo(const std::string &value) {
+  const std::size_t scheme = value.find("://");
+  if (scheme == std::string::npos) {
+    return false;
+  }
+  const std::size_t authority_start = scheme + 3;
+  const std::size_t authority_end = value.find('/', authority_start);
+  const std::string_view authority =
+      authority_end == std::string::npos
+          ? std::string_view(value).substr(authority_start)
+          : std::string_view(value).substr(authority_start, authority_end - authority_start);
+  return authority.find('@') != std::string_view::npos;
 }
 
 std::string
@@ -96,9 +110,11 @@ RequireSha256Digest(const std::string &digest, std::string_view context) {
 }
 
 void
-RequireGitRevisionToken(const std::string &rev, std::string_view context) {
-  if (!IsGitRevisionToken(rev)) {
-    throw ValidationError(std::string(context) + " must be a safe git revision token");
+RequireGitCommitId(const std::string &rev, std::string_view context) {
+  if (!IsGitCommitId(rev)) {
+    throw ValidationError(
+        std::string(context) + " must be a full immutable git commit id (40 lowercase hex); "
+        "branch names and tags are not accepted");
   }
 }
 

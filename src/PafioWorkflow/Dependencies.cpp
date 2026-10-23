@@ -226,6 +226,11 @@ DependencyCommandResult AddDependencyAndRefreshLock(const AddDependencyRequest &
     {
       throw ValidationError("git dependencies require --rev <rev>");
     }
+    pafio::RequireGitCommitId(*request.rev, "dependency rev");
+    if (pafio::UrlHasUserinfo(request.source))
+    {
+      throw ValidationError("git dependency source must not embed credentials in the URL userinfo");
+    }
     if (request.version.has_value())
     {
       throw ValidationError("--version is only valid with --registry");

@@ -892,6 +892,8 @@ MaterializeRegistryPackage(
   const auto [package_namespace, _short_name] = SplitPackageName(package_name);
 
   std::optional<std::string> trusted_root_sha256;
+  int timestamp_floor = 0;
+  int snapshot_floor = 0;
   if (IsHttpRegistry(security.registry_root)) {
     const std::optional<RegistryTrustPin> trust_pin = ResolveRegistryTrustPin(pafio_home, security.registry_root);
     if (!trust_pin.has_value()) {
@@ -900,6 +902,8 @@ MaterializeRegistryPackage(
       );
     }
     trusted_root_sha256 = trust_pin->root_sha256;
+    timestamp_floor = trust_pin->timestamp_floor;
+    snapshot_floor = trust_pin->snapshot_floor;
   }
 
   if (locked_sha256.has_value()) {
@@ -981,11 +985,24 @@ MaterializeRegistryPackage(
     package_name,
     package_namespace,
     trusted_root_sha256,
-    targets_relative
+    targets_relative,
+    timestamp_floor,
+    snapshot_floor
   );
   if (!tuf.ok) {
     throw FetchError(
       std::string("registry v2 TUF verification failed") + (tuf.error_code.empty() ? "" : " (" + tuf.error_code + ")") + ": " + tuf.error
+    );
+  }
+  if (trusted_root_sha256.has_value()) {
+    // Persist the accepted metadata versions as the new replay floors before
+    // any later stage can fail: the metadata itself was authenticated, so the
+    // floor is safe to keep even if package materialization aborts.
+    RaiseRegistryTrustFloors(
+      pafio_home,
+      security.registry_root,
+      tuf.timestamp_version,
+      tuf.snapshot_version
     );
   }
 

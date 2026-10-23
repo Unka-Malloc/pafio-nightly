@@ -251,6 +251,41 @@ TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
   }
 }
 
+TEST(TufVerifierTests, RejectsReplayedMetadataBelowPersistedFloors)
+{
+  const fs::path work_dir = MakeTempDir("tuf-replay-floor");
+  const auto objects = BuildFixtureObjects(work_dir);
+  const pafio::TufVerifyResult ok = pafio::VerifyTufChainForPackage(
+      objects, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
+  ASSERT_TRUE(ok.ok) << ok.error_code << ": " << ok.error;
+  ASSERT_GT(ok.timestamp_version, 0);
+  ASSERT_GT(ok.snapshot_version, 0);
+
+  // The same still-valid metadata verifies again at the recorded floor.
+  EXPECT_TRUE(pafio::VerifyTufChainForPackage(
+                  objects,
+                  "acme/util",
+                  "acme",
+                  std::nullopt,
+                  "trust/targets/acme.json",
+                  ok.timestamp_version,
+                  ok.snapshot_version)
+                  .ok);
+
+  // Once a newer chain was accepted, replaying these older but still
+  // unexpired signed versions is refused as a regression.
+  const pafio::TufVerifyResult replayed = pafio::VerifyTufChainForPackage(
+      objects,
+      "acme/util",
+      "acme",
+      std::nullopt,
+      "trust/targets/acme.json",
+      ok.timestamp_version + 1,
+      ok.snapshot_version);
+  EXPECT_FALSE(replayed.ok);
+  EXPECT_EQ(replayed.error_code, "tuf.version_regression");
+}
+
 TEST(TufVerifierTests, MaterializeFailsClosedOnTamperedRootWithoutCacheWrite)
 {
   const fs::path work_dir = MakeTempDir("tuf-materialize");

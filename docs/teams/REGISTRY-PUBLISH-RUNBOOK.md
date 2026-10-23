@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio registry reads, trust, packaging, and publish-client behavior.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-10-23
 
 ## Mission
 

@@ -104,6 +104,10 @@ ValidateReadRegistryRootScheme(
   if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root)) {
     throw pafio::FetchError("registry root must use file://, http://, or https://: " + request.registry_root);
   }
+  if (pafio::UrlHasUserinfo(decision.registry_root)) {
+    throw pafio::FetchError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
   return SecurityHandlerResult::kContinue;
 }
 
@@ -133,7 +137,18 @@ ValidateWriteRegistryRootScheme(
   pafio::RegistryWriteSecurityDecision &decision
 ) {
   if (!IsHttpRegistryRoot(decision.registry_root)) {
-    throw pafio::PublishError("remote registry publish requires an http:// or https:// registry root: " + request.registry_root);
+    throw pafio::PublishError("remote registry publish requires an https:// registry root: " + request.registry_root);
+  }
+  if (pafio::UrlHasUserinfo(decision.registry_root)) {
+    throw pafio::PublishError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
+  // Plaintext publish exposes unpublished package contents and headers to
+  // network observers; it is allowed only behind an explicit local-
+  // development opt-in.
+  if (decision.registry_root.starts_with("http://") && !request.allow_plaintext_http) {
+    throw pafio::PublishError(
+        "remote registry publish requires https://; use --allow-plaintext-http only for local development registries");
   }
   return SecurityHandlerResult::kContinue;
 }

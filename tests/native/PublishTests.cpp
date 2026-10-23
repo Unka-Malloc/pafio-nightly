@@ -381,6 +381,36 @@ TEST(PublishCliTests, RejectsFilesystemRegistryPath)
       pafio::kExitUsage);
 }
 
+TEST(PublishCliTests, RejectsPlaintextHttpRegistryWithoutOptIn)
+{
+  const fs::path root = MakeTempDir("publish-plaintext-http");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "pafio.toml").string(),
+          "--registry",
+          "http://upload.example.test",
+      }),
+      pafio::kExitPublish);
+}
+
 TEST(PublishCliTests, RejectsFilesystemRegistryFileUrl)
 {
   const fs::path root = MakeTempDir("publish-filesystem-registry-file-url");

@@ -134,6 +134,7 @@ LoadLockfile(const fs::path &lockfile_path) {
       if (!parsed.rev.has_value() || parsed.rev->empty()) {
         throw ValidationError("[[package]].rev must be a non-empty string when source-kind = \"git\"");
       }
+      pafio::RequireGitCommitId(*parsed.rev, "[[package]].rev");
       if (parsed.registry.has_value() || parsed.sha256.has_value()) {
         throw ValidationError("[[package]].registry and [[package]].sha256 are only valid when source-kind = \"registry\"");
       }

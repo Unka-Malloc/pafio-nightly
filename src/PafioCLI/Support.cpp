@@ -93,7 +93,7 @@ constexpr std::array kUsageCommands = {
     },
     UsageCommandEntry{
         "publish",
-        "usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]\n",
+        "usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run] [--allow-plaintext-http]\n",
     },
     UsageCommandEntry{
         "registry",
@@ -253,7 +253,7 @@ int PrintGlobalHelp()
       << "  run [--manifest-path <path>] [--package <package-name>] [--bin <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
       << "  test [--manifest-path <path>] [--package <package-name>] [--test <name>] [--profile <dev|release>] [--dry-run] [--styio-bin <path>] [--locked|--offline|--frozen] [--emit-observable-static-snapshot[=<schema-version>]] [--observable-capability <name>] [--observable-parent-snapshot <path>] [--emit-runtime-observation[=<version>]] [--runtime-observation-mode <disabled|aggregate|sampled|detailed>] [--runtime-observation-capability <name>] [--runtime-observation-lane-capacity <n>] [--runtime-observation-sampling <numerator>/<denominator>[@<seed>]]\n"
       << "  pack [--manifest-path <path>] [--package <package-name>] [--output <path>]\n"
-      << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]\n"
+      << "  publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run] [--allow-plaintext-http]\n"
       << "  registry trust import <descriptor-url|descriptor-file>\n"
       << "  registry trust status --json\n";
   return kExitSuccess;

@@ -400,7 +400,9 @@ VerifyPackageChain(
   const std::string &package_namespace,
   const std::optional<std::string> &trusted_root_sha256,
   const std::string &targets_relative_path,
-  const bool verify_full_registry
+  const bool verify_full_registry,
+  const int timestamp_floor,
+  const int snapshot_floor
 ) {
   pafio::TufVerifyResult result;
   try {
@@ -416,7 +418,7 @@ VerifyPackageChain(
       trusted.key_lookup,
       result
     );
-    EnforceVersionMonotonic(timestamp_signed, "registry v2 timestamp metadata", 0, result);
+    EnforceVersionMonotonic(timestamp_signed, "registry v2 timestamp metadata", timestamp_floor, result);
     result.timestamp_version = RequireIntField(timestamp_signed, "version", "registry v2 timestamp metadata", result);
 
     const json timestamp_meta = RequireObjectField(timestamp_signed, "meta", "registry v2 timestamp meta", result);
@@ -431,7 +433,7 @@ VerifyPackageChain(
       trusted.key_lookup,
       result
     );
-    EnforceVersionMonotonic(snapshot_signed, "registry v2 snapshot metadata", 0, result);
+    EnforceVersionMonotonic(snapshot_signed, "registry v2 snapshot metadata", snapshot_floor, result);
     result.snapshot_version = RequireIntField(snapshot_signed, "version", "registry v2 snapshot metadata", result);
 
     const json snapshot_meta_entries = RequireObjectField(snapshot_signed, "meta", "registry v2 snapshot meta", result);
@@ -574,7 +576,9 @@ VerifyTufChainForPackage(
   const std::string &package_name,
   const std::string &package_namespace,
   const std::optional<std::string> &trusted_root_sha256,
-  const std::string &targets_relative_path
+  const std::string &targets_relative_path,
+  const int timestamp_floor,
+  const int snapshot_floor
 ) {
   return VerifyPackageChain(
     objects_by_relative_path,
@@ -582,7 +586,9 @@ VerifyTufChainForPackage(
     package_namespace,
     trusted_root_sha256,
     targets_relative_path,
-    false
+    false,
+    timestamp_floor,
+    snapshot_floor
   );
 }
 
@@ -692,7 +698,9 @@ VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relat
       first_namespace,
       std::nullopt,
       first_targets_relative,
-      true
+      true,
+      0,
+      0
     );
   }
   catch (const std::runtime_error &) {

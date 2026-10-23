@@ -45,24 +45,9 @@ IsRegistryRootUrl(const std::string &value) {
 // the source string; they would end up serialized into pafio.toml/pafio.lock,
 // publish metadata, logs, or diagnostics. Authentication must come from a
 // credential provider, never from the manifest text.
-bool
-UrlHasUserinfo(const std::string &value) {
-  const std::size_t scheme = value.find("://");
-  if (scheme == std::string::npos) {
-    return false;
-  }
-  const std::size_t authority_start = scheme + 3;
-  const std::size_t authority_end = value.find('/', authority_start);
-  const std::string_view authority =
-      authority_end == std::string::npos
-          ? std::string_view(value).substr(authority_start)
-          : std::string_view(value).substr(authority_start, authority_end - authority_start);
-  return authority.find('@') != std::string_view::npos;
-}
-
 void
 RequireNoUrlUserinfo(const std::string &value, std::string_view context) {
-  if (UrlHasUserinfo(value)) {
+  if (pafio::UrlHasUserinfo(value)) {
     throw pafio::ValidationError(
         std::string(context) + " must not embed credentials in the URL userinfo; configure authentication separately");
   }
@@ -188,9 +173,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
       }
       RequireNoUrlUserinfo(dependency.source, "dependency '" + alias + "' git");
       dependency.rev = RequireValue<std::string>(*dep, "rev", "dependency '" + alias + "'");
-      if (dependency.rev->empty()) {
-        throw pafio::ValidationError("dependency '" + alias + "' rev must be a non-empty string");
-      }
+      pafio::RequireGitCommitId(*dependency.rev, "dependency '" + alias + "' rev");
     }
     else {
       if (!dependency.package.has_value()) {

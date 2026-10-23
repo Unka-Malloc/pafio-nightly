@@ -312,6 +312,37 @@ TEST(PackTests, RejectsCredentialShapedFileContents)
       pafio::PackError);
 }
 
+TEST(PackTests, RejectsJwtShapedFileContents)
+{
+  const fs::path root = MakeTempDir("jwt-content-rejected");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  // The JWT is assembled at test runtime so the credential-shaped literal
+  // never exists in the source tree while still exercising the detector.
+  const std::string jwt =
+      std::string("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9") + "." +
+      "eyJzdWIiOiIxMjM0NTY3ODkwIn0" + "." + "c2lnbmF0dXJlcGF5bG9hZA";
+  WriteFile(root / "notes.txt", "token: " + jwt + "\n");
+
+  EXPECT_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+      }),
+      pafio::PackError);
+}
+
 TEST(PackTests, RejectsSymlinkInsideIncludedTree)
 {
   const fs::path root = MakeTempDir("symlink-rejected");
