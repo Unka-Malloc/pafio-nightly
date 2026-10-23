@@ -47,28 +47,17 @@ back independently to each sibling repository's `nightly` branch when that
 branch does not exist there. A Pafio-only change therefore does not require
 creating empty matching branches in Styio or Vityo.
 
-Cross-repository contract or product changes must replay the immutable owner
-matrix and the matching executable product gate:
+Cross-repository documentation changes run the ecosystem CLI docs gate:
 
 ```bash
 cd <pafio-workspace>
 python3 scripts/ecosystem-cli-doc-gate.py --require-workspace --workspace-root <workspace-root>
-
-python3 scripts/verify-ecosystem-contracts.py --focused --repositories-root <owner-repositories>
-python3 scripts/verify-ecosystem-contracts.py --full --repositories-root <owner-repositories> --pafio-bin <pafio> --styio-bin <styio> --vityo-root <vityo-workspace>
 ```
 
 The docs gate validates the Pafio-owned surface locally by default. Its explicit
 workspace form checks fixed Pafio, Styio, Styio Platform, and Vityo
 documentation; it never discovers or delegates to a mutable sibling checkout.
-The focused replay reads only the commits pinned by
-`contracts/ecosystem/owner-matrix.json`; dirty or newer sibling worktrees do not
-change its result. The full gate additionally proves public `pafio new`, cold
-automatic sync/build, stable frozen build state, metadata v1, system Styio
-compile-plan consumption, and the Vityo owner adapters. The commit message body
-should record the checks that were actually run.
-
-Use the focused owner replay during implementation. Schedule the full product matrix as final regression when required by the authorized delivery, rather than replaying both modes at every handoff.
+The commit message body should record the checks that were actually run.
 
 ## Final Regression
 
@@ -98,21 +87,20 @@ If `gh` is unavailable or unauthenticated, the agent must state that GitHub Acti
 
 ## Cross-Repository Work
 
-When one delivery touches `styio-nightly`, `pafio-nightly`,
-`styio-cloud-nightly`, and `vityo-nightly`, post-push verification applies to
-every pushed repository. The agent should check each repository's GitHub
+When one delivery spans several sibling repositories, post-push verification
+applies to every pushed repository. The agent should check each repository's GitHub
 Actions status, not only the repository that received the last commit.
 
 Cross-repository gates must use the same workspace checkout set that will be visible to CI. If a gate consumes another repository's branch, perform an already-authorized dependency push first; otherwise prepare the required handoff and report the revision mismatch. A gate dependency does not grant permission to publish another repository.
 
 ## Delivery Ruleset Governance
 
-Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `audit` and the blocking Linux `local-ci-gate` job as the stable repository-local status-check surface, with `styio-audit` kept as the policy workflow check where the upstream ruleset expects it. macOS results apply only to macOS adaptation. Windows is a separately dispatched release lane and must not become a shared-source merge requirement or inherit another platform's acceptance evidence.
+Required GitHub merge gates are maintained through GitHub Rulesets, not legacy classic branch protection. Protected downstream branches should require `secret-scan` and the blocking Linux `local-ci-gate` job as the stable repository-local status-check surface. macOS results apply only to macOS adaptation. Windows is a separately dispatched release lane and must not become a shared-source merge requirement or inherit another platform's acceptance evidence.
 
 Gate audits must inspect effective branch rules, for example:
 
 ```bash
-gh api repos/Unka-Malloc/pafio-nightly/rules/branches/ai-dev
+gh api repos/<owner>/<repo>/rules/branches/ai-dev
 ```
 
 Do not use `branches/ai-dev/protection/required_status_checks` as the authority for this repository. That legacy classic endpoint can return 404 even when the Ruleset gate is active.

@@ -164,6 +164,35 @@ TEST(AtomicFileTests, SupportsAFileNameWithoutAParentDirectory) {
   std::filesystem::remove(path, ignored);
 }
 
+TEST(AtomicFileTests, ExclusiveCreateRefusesAnExistingNameWithoutTruncating) {
+  const std::filesystem::path directory =
+    std::filesystem::temp_directory_path()
+    / ("pafio-exclusive-" + std::to_string(static_cast<long long>(getpid())));
+  std::filesystem::create_directories(directory);
+  const std::filesystem::path candidate = directory / "candidate.tmp";
+
+  pafio::ExclusiveTempFile first;
+  ASSERT_TRUE(pafio::TryCreateExclusiveFile(candidate, first));
+  ASSERT_NO_THROW(pafio::WriteTemporaryFileFully(first, "keep", 4));
+  ASSERT_NO_THROW(pafio::CloseTemporaryFile(first));
+
+  // A second exclusive create at the same name must report the collision and
+  // leave the existing bytes alone — not truncate through a pre-planted entry.
+  pafio::ExclusiveTempFile second;
+  EXPECT_FALSE(pafio::TryCreateExclusiveFile(candidate, second));
+  pafio::DiscardTemporaryFile(second);
+
+  std::ifstream input(candidate, std::ios::binary);
+  ASSERT_TRUE(input);
+  EXPECT_EQ(
+    std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()),
+    "keep"
+  );
+
+  std::error_code ignored;
+  std::filesystem::remove_all(directory, ignored);
+}
+
 TEST(FileLockTests, MoveAssignmentReleasesThePreviouslyOwnedLock) {
   const std::filesystem::path root =
     std::filesystem::temp_directory_path() / ("pafio-file-lock-move-" + std::to_string(static_cast<long long>(getpid())));

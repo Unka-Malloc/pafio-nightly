@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioManifest/TomlString.hpp"
 
@@ -18,18 +19,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-
-const std::regex &
-NameRegex() {
-  static const std::regex pattern("^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$");
-  return pattern;
-}
-
-const std::regex &
-SemverRegex() {
-  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
-  return pattern;
-}
 
 const std::regex &
 BareKeyRegex() {
@@ -47,9 +36,44 @@ IsNonEmptyRelativePath(const std::string &value) {
   return !path.is_absolute();
 }
 
+// Build target paths (lib/bin/test) must stay inside the package snapshot;
+// `..` components would let a manifest point the compiler outside it. Path
+// dependencies and workspace member lists deliberately keep `..` segments.
+// Rejecting a root path (not only `is_absolute()`) also covers drive-relative
+// Windows targets like `D:src\main.styio`, which carry a root name but no
+// root directory and would escape the package root.
+bool
+IsContainedRelativePath(const std::string &value) {
+  if (value.empty()) {
+    return false;
+  }
+  const fs::path path(value);
+  if (path.has_root_path()) {
+    return false;
+  }
+  for (const fs::path &component : path) {
+    if (component == "..") {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool
 IsRegistryRootUrl(const std::string &value) {
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
+}
+
+// A URL carrying userinfo (scheme://user[:pass]@host) embeds credentials in
+// the source string; they would end up serialized into pafio.toml/pafio.lock,
+// publish metadata, logs, or diagnostics. Authentication must come from a
+// credential provider, never from the manifest text.
+void
+RequireNoUrlUserinfo(const std::string &value, std::string_view context) {
+  if (pafio::UrlHasUserinfo(value)) {
+    throw pafio::ValidationError(
+        std::string(context) + " must not embed credentials in the URL userinfo; configure authentication separately");
+  }
 }
 
 const toml::table &
@@ -112,25 +136,16 @@ RequireStringArray(const toml::table &table, std::string_view key, std::string_v
 }
 
 void
-ValidatePackageName(const std::string &name, std::string_view context) {
-  if (!std::regex_match(name, NameRegex())) {
-    throw pafio::ValidationError(std::string(context) + " must match namespace/name");
-  }
-}
-
-void
-ValidateSemver(const std::string &version, std::string_view context) {
-  if (!std::regex_match(version, SemverRegex())) {
-    throw pafio::ValidationError(
-      std::string(context) + " must be exact semver x.y.z (ranges, prerelease, and prefixes are not supported in single-version-v1)"
-    );
-  }
-}
-
-void
 ValidateRelativePath(const std::string &path_value, std::string_view context) {
   if (!IsNonEmptyRelativePath(path_value)) {
     throw pafio::ValidationError(std::string(context) + " must be an explicit relative path");
+  }
+}
+
+void
+ValidateContainedRelativePath(const std::string &path_value, std::string_view context) {
+  if (!IsContainedRelativePath(path_value)) {
+    throw pafio::ValidationError(std::string(context) + " must be an explicit relative path inside the package");
   }
 }
 
@@ -139,6 +154,7 @@ ValidateRegistryRoot(const std::string &registry_root, std::string_view context)
   if (!IsRegistryRootUrl(registry_root)) {
     throw pafio::ValidationError(std::string(context) + " must use file://, http://, or https://");
   }
+  RequireNoUrlUserinfo(registry_root, context);
 }
 
 std::vector<pafio::Dependency>
@@ -171,7 +187,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
     dependency.alias = alias;
     dependency.package = OptionalString(*dep, "package");
     if (dependency.package.has_value()) {
-      ValidatePackageName(*dependency.package, "dependency '" + alias + "' package");
+      pafio::RequirePackageName(*dependency.package, "dependency '" + alias + "' package");
     }
 
     if (has_path) {
@@ -185,10 +201,9 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
       if (dependency.source.empty()) {
         throw pafio::ValidationError("dependency '" + alias + "' git must be a non-empty string");
       }
+      RequireNoUrlUserinfo(dependency.source, "dependency '" + alias + "' git");
       dependency.rev = RequireValue<std::string>(*dep, "rev", "dependency '" + alias + "'");
-      if (dependency.rev->empty()) {
-        throw pafio::ValidationError("dependency '" + alias + "' rev must be a non-empty string");
-      }
+      pafio::RequireGitCommitId(*dependency.rev, "dependency '" + alias + "' rev");
     }
     else {
       if (!dependency.package.has_value()) {
@@ -196,7 +211,7 @@ ParseDependencies(const toml::table &doc, std::string_view table_name) {
       }
       dependency.source_kind = pafio::DependencySourceKind::kRegistry;
       dependency.version = RequireValue<std::string>(*dep, "version", "dependency '" + alias + "'");
-      ValidateSemver(*dependency.version, "dependency '" + alias + "' version");
+      pafio::RequireExactSemver(*dependency.version, "dependency '" + alias + "' version");
       dependency.source = RequireValue<std::string>(*dep, "registry", "dependency '" + alias + "'");
       ValidateRegistryRoot(dependency.source, "dependency '" + alias + "' registry");
     }
@@ -229,7 +244,7 @@ ParseLib(const toml::table &doc) {
 
   pafio::LibTarget target;
   target.path = RequireValue<std::string>(*lib_table, "path", "[lib]");
-  ValidateRelativePath(target.path, "[lib].path");
+  ValidateContainedRelativePath(target.path, "[lib].path");
   return target;
 }
 
@@ -255,7 +270,7 @@ ParseBins(const toml::table &doc) {
     if (target.name.empty()) {
       throw pafio::ValidationError("[[bin]].name must be a non-empty string");
     }
-    ValidateRelativePath(target.path, "[[bin]].path");
+    ValidateContainedRelativePath(target.path, "[[bin]].path");
     if (!seen_names.insert(target.name).second) {
       throw pafio::ValidationError("duplicate [[bin]].name in package manifest: " + target.name);
     }
@@ -288,7 +303,7 @@ ParseTests(const toml::table &doc) {
     if (target.name.empty()) {
       throw pafio::ValidationError("[[test]].name must be a non-empty string");
     }
-    ValidateRelativePath(target.path, "[[test]].path");
+    ValidateContainedRelativePath(target.path, "[[test]].path");
     if (!seen_names.insert(target.name).second) {
       throw pafio::ValidationError("duplicate [[test]].name in package manifest: " + target.name);
     }
@@ -315,8 +330,8 @@ ParsePackage(const toml::table &doc) {
   package.dependencies = ParseDependencies(doc, "dependencies");
   package.dev_dependencies = ParseDependencies(doc, "dev-dependencies");
 
-  ValidatePackageName(package.name, "package.name");
-  ValidateSemver(package.version, "package.version");
+  pafio::RequirePackageName(package.name, "package.name");
+  pafio::RequireExactSemver(package.version, "package.version");
   if (package.edition.empty()) {
     throw pafio::ValidationError("package.edition must be an explicit string");
   }
@@ -347,15 +362,6 @@ ParseWorkspace(const toml::table &doc) {
   }
 
   return workspace;
-}
-
-std::string
-PackageShortName(const std::string &package_name) {
-  const auto slash = package_name.find('/');
-  if (slash == std::string::npos || slash + 1 >= package_name.size()) {
-    throw pafio::ValidationError("package.name must match namespace/name");
-  }
-  return package_name.substr(slash + 1);
 }
 
 std::string
@@ -430,7 +436,7 @@ EmitDependencySection(std::ostringstream &out, const std::string &section_name, 
 
 pafio::ManifestDocument
 BuildScaffoldManifest(const std::string &package_name, const std::string &kind) {
-  ValidatePackageName(package_name, "package.name");
+  pafio::RequirePackageName(package_name, "package.name");
 
   pafio::PackageConfig package;
   package.name = package_name;
@@ -446,7 +452,7 @@ BuildScaffoldManifest(const std::string &package_name, const std::string &kind) 
   }
   else {
     package.bins.push_back(pafio::BinTarget{
-      .name = PackageShortName(package_name),
+      .name = pafio::PackageShortName(package_name),
       .path = "src/main.styio",
     });
   }

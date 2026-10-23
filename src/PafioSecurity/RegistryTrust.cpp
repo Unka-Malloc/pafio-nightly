@@ -1,5 +1,6 @@
 #include "PafioSecurity/RegistryTrust.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
@@ -12,6 +13,7 @@
 #include <unordered_map>
 
 #include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/FileLock.hpp"
 #include "PafioCore/Paths.hpp"
@@ -52,6 +54,11 @@ ReadFileText(const fs::path &path) {
 std::string
 LoadDescriptorText(const std::string &source) {
   if (IsHttpSource(source)) {
+    if (pafio::UrlHasUserinfo(source)) {
+      throw pafio::FetchError(
+          "registry trust descriptor URL must not embed credentials in the URL userinfo; "
+          "configure authentication separately");
+    }
     const pafio::ProcessResult result = pafio::RunProcess<pafio::FetchError>({
       .program = pafio::ResolvedCurlPath(),
       .args = {"-fsSL", "--connect-timeout", "10", "--max-time", "30", source},
@@ -100,7 +107,7 @@ WriteTrustStore(const fs::path &pafio_home, const json &payload) {
 
 pafio::RegistryTrustPin
 PinFromJson(const json &payload) {
-  return {
+  pafio::RegistryTrustPin pin = {
     .registry_root = pafio::NormalizeRegistryTrustRoot(RequiredString(payload, "registry_root")),
     .registry_name = payload.value("registry_name", ""),
     .root_sha256 = RequiredString(payload, "root_sha256"),
@@ -109,7 +116,18 @@ PinFromJson(const json &payload) {
     .control_plane_base_url = payload.value("control_plane_base_url", ""),
     .issued_at = payload.value("issued_at", ""),
     .expires = payload.value("expires", ""),
+    .timestamp_floor = payload.value("timestamp_floor", 0),
+    .snapshot_floor = payload.value("snapshot_floor", 0),
   };
+  // These URLs persist into the trust store and surface in status output;
+  // embedded userinfo would leak credentials at every read.
+  if (pafio::UrlHasUserinfo(pin.registry_root)) {
+    throw pafio::FetchError("registry trust descriptor registry_root must not embed credentials in the URL userinfo");
+  }
+  if (pafio::UrlHasUserinfo(pin.control_plane_base_url)) {
+    throw pafio::FetchError("registry trust descriptor control_plane_base_url must not embed credentials in the URL userinfo");
+  }
+  return pin;
 }
 
 std::optional<std::chrono::system_clock::time_point>
@@ -272,6 +290,8 @@ SerializeRegistryTrustPin(const RegistryTrustPin &pin) {
     {"control_plane_base_url", pin.control_plane_base_url},
     {"issued_at", pin.issued_at},
     {"expires", pin.expires},
+    {"timestamp_floor", pin.timestamp_floor},
+    {"snapshot_floor", pin.snapshot_floor},
   };
 }
 
@@ -364,6 +384,12 @@ ImportRegistryTrustDescriptor(
   bool replaced = false;
   for (json &entry : pins) {
     if (entry.is_object() && NormalizeRegistryTrustRoot(entry.value("registry_root", "")) == pin.registry_root) {
+      // Reimporting the same trust root keeps the learned replay floors;
+      // a different root_sha256 is a new trust anchor and starts at zero.
+      if (entry.value("root_sha256", "") == pin.root_sha256) {
+        pin.timestamp_floor = entry.value("timestamp_floor", 0);
+        pin.snapshot_floor = entry.value("snapshot_floor", 0);
+      }
       entry = SerializeRegistryTrustPin(pin);
       replaced = true;
       break;
@@ -375,6 +401,41 @@ ImportRegistryTrustDescriptor(
   store["schema_version"] = 1;
   WriteTrustStore(pafio_home, store);
   return pin;
+}
+
+void
+RaiseRegistryTrustFloors(
+  const fs::path &pafio_home,
+  const std::string &registry_root,
+  const int timestamp_version,
+  const int snapshot_version
+) {
+  const FileLockGuard trust_lock =
+    AcquireFileLock(RegistryTrustRoot(pafio_home), FileLockScope::kTrust);
+  json store = LoadTrustStore(pafio_home);
+  if (!store.contains("pins") || !store["pins"].is_array()) {
+    return;
+  }
+  const std::string normalized = NormalizeRegistryTrustRoot(registry_root);
+  bool changed = false;
+  for (json &entry : store["pins"]) {
+    if (!entry.is_object() || NormalizeRegistryTrustRoot(entry.value("registry_root", "")) != normalized) {
+      continue;
+    }
+    const int timestamp_floor = entry.value("timestamp_floor", 0);
+    const int snapshot_floor = entry.value("snapshot_floor", 0);
+    const int raised_timestamp = std::max(timestamp_floor, timestamp_version);
+    const int raised_snapshot = std::max(snapshot_floor, snapshot_version);
+    if (raised_timestamp != timestamp_floor || raised_snapshot != snapshot_floor) {
+      entry["timestamp_floor"] = raised_timestamp;
+      entry["snapshot_floor"] = raised_snapshot;
+      changed = true;
+    }
+    break;
+  }
+  if (changed) {
+    WriteTrustStore(pafio_home, store);
+  }
 }
 
 }  // namespace pafio

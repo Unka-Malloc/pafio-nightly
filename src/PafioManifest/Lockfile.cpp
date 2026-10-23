@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioManifest/TomlString.hpp"
 
@@ -16,24 +17,6 @@ namespace fs = std::filesystem;
 
 namespace
 {
-
-const std::regex &
-NameRegex() {
-  static const std::regex pattern("^[a-z0-9][a-z0-9_-]*/[a-z0-9][a-z0-9_-]*$");
-  return pattern;
-}
-
-const std::regex &
-SemverRegex() {
-  static const std::regex pattern("^\\d+\\.\\d+\\.\\d+$");
-  return pattern;
-}
-
-const std::regex &
-Sha256Regex() {
-  static const std::regex pattern("^[0-9a-f]{64}$");
-  return pattern;
-}
 
 template <typename T>
 T
@@ -73,31 +56,10 @@ OptionalString(const toml::table &table, std::string_view key) {
 }
 
 void
-ValidatePackageName(const std::string &name, std::string_view context) {
-  if (!std::regex_match(name, NameRegex())) {
-    throw pafio::ValidationError(std::string(context) + " must match namespace/name");
-  }
-}
-
-void
-ValidateSemver(const std::string &version, std::string_view context) {
-  if (!std::regex_match(version, SemverRegex())) {
-    throw pafio::ValidationError(std::string(context) + " must be strict semver x.y.z");
-  }
-}
-
-void
 ValidateSourceKind(const std::string &source_kind) {
   static const std::set<std::string> allowed = {"workspace", "path", "git", "registry"};
   if (!allowed.contains(source_kind)) {
     throw pafio::ValidationError("lockfile package source-kind must be one of workspace, path, git, or registry");
-  }
-}
-
-void
-ValidateSha256(const std::string &sha256, std::string_view context) {
-  if (!std::regex_match(sha256, Sha256Regex())) {
-    throw pafio::ValidationError(std::string(context) + " must be a lowercase sha256 hex digest");
   }
 }
 
@@ -162,8 +124,8 @@ LoadLockfile(const fs::path &lockfile_path) {
     if (parsed.id.empty()) {
       throw ValidationError("[[package]].id must be a non-empty string");
     }
-    ValidatePackageName(parsed.name, "lockfile package name");
-    ValidateSemver(parsed.version, "lockfile package version");
+    pafio::RequirePackageName(parsed.name, "lockfile package name");
+    pafio::RequireExactSemver(parsed.version, "lockfile package version");
     ValidateSourceKind(parsed.source_kind);
     if (parsed.source_kind == "git") {
       if (!parsed.git.has_value() || parsed.git->empty()) {
@@ -172,6 +134,7 @@ LoadLockfile(const fs::path &lockfile_path) {
       if (!parsed.rev.has_value() || parsed.rev->empty()) {
         throw ValidationError("[[package]].rev must be a non-empty string when source-kind = \"git\"");
       }
+      pafio::RequireGitCommitId(*parsed.rev, "[[package]].rev");
       if (parsed.registry.has_value() || parsed.sha256.has_value()) {
         throw ValidationError("[[package]].registry and [[package]].sha256 are only valid when source-kind = \"registry\"");
       }
@@ -183,7 +146,7 @@ LoadLockfile(const fs::path &lockfile_path) {
       if (!parsed.sha256.has_value()) {
         throw ValidationError("[[package]].sha256 must be present when source-kind = \"registry\"");
       }
-      ValidateSha256(*parsed.sha256, "[[package]].sha256");
+      pafio::RequireSha256Digest(*parsed.sha256, "[[package]].sha256");
       if (parsed.git.has_value() || parsed.rev.has_value()) {
         throw ValidationError("[[package]].git and [[package]].rev are only valid when source-kind = \"git\"");
       }

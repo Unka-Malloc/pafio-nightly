@@ -1,9 +1,11 @@
 #include "PafioPublish/Publish.hpp"
 
 #include "PafioCore/Errors.hpp"
+#include "PafioCore/Paths.hpp"
 #include "PafioCore/Sha256.hpp"
 #include "PafioManifest/Manifest.hpp"
 #include "PafioPack/Pack.hpp"
+#include "PafioPack/PackageSelection.hpp"
 
 #include <algorithm>
 #include <array>
@@ -28,102 +30,7 @@ constexpr size_t kMaxRemotePublishAliasBytes = 128U;
 constexpr size_t kMaxRemotePublishRegistryBytes = 2048U;
 constexpr size_t kMaxRemotePublishArchiveNameBytes = 255U;
 
-struct PackageSelection
-{
-  fs::path manifest_path;
-  fs::path package_root;
-  pafio::ManifestDocument manifest;
-};
-
-fs::path CanonicalAbsolutePath(const fs::path &path)
-{
-  return fs::absolute(path).lexically_normal();
-}
-
-std::vector<PackageSelection> CollectPackageCandidates(const fs::path &root_manifest_path)
-{
-  const fs::path normalized_root_manifest = CanonicalAbsolutePath(root_manifest_path);
-  const fs::path root_dir = normalized_root_manifest.parent_path();
-  const pafio::ManifestDocument root_manifest = pafio::LoadManifest(normalized_root_manifest);
-
-  std::vector<PackageSelection> candidates;
-  if (root_manifest.package.has_value())
-  {
-    candidates.push_back({
-        .manifest_path = normalized_root_manifest,
-        .package_root = root_dir,
-        .manifest = root_manifest,
-    });
-  }
-
-  if (root_manifest.workspace.has_value())
-  {
-    for (const std::string &member : root_manifest.workspace->members)
-    {
-      const fs::path member_manifest_path = CanonicalAbsolutePath(root_dir / member / "pafio.toml");
-      const pafio::ManifestDocument member_manifest = pafio::LoadManifest(member_manifest_path);
-      if (!member_manifest.package.has_value())
-      {
-        throw pafio::WorkspaceError("workspace member manifest must define [package]: " + member_manifest_path.string());
-      }
-      candidates.push_back({
-          .manifest_path = member_manifest_path,
-          .package_root = member_manifest_path.parent_path(),
-          .manifest = member_manifest,
-      });
-    }
-  }
-
-  return candidates;
-}
-
-PackageSelection SelectPackageForPublish(const pafio::PublishRequest &request)
-{
-  const fs::path root_manifest_path = CanonicalAbsolutePath(request.manifest_path);
-  const std::vector<PackageSelection> candidates = CollectPackageCandidates(root_manifest_path);
-  if (candidates.empty())
-  {
-    throw pafio::PublishError("publish requires a manifest with a local [package] target");
-  }
-
-  if (request.package_name.has_value())
-  {
-    std::vector<const PackageSelection *> matches;
-    for (const PackageSelection &candidate : candidates)
-    {
-      if (candidate.manifest.package->name == *request.package_name)
-      {
-        matches.push_back(&candidate);
-      }
-    }
-    if (matches.empty())
-    {
-      throw pafio::PublishError("selected package was not found under the active manifest: " + *request.package_name);
-    }
-    if (matches.size() > 1U)
-    {
-      throw pafio::PublishError("selected package is ambiguous under the active manifest: " + *request.package_name);
-    }
-    return *matches.front();
-  }
-
-  for (const PackageSelection &candidate : candidates)
-  {
-    if (candidate.manifest_path == root_manifest_path && candidate.manifest.package.has_value())
-    {
-      return candidate;
-    }
-  }
-
-  if (candidates.size() == 1U)
-  {
-    return candidates.front();
-  }
-
-  throw pafio::PublishError("workspace publish is ambiguous; select a root package with --package <namespace/name>");
-}
-
-void ValidatePublishCandidate(const PackageSelection &selection)
+void ValidatePublishCandidate(const pafio::PackageSelection &selection)
 {
   const pafio::PackageConfig &package = *selection.manifest.package;
   if (!package.publish)
@@ -283,7 +190,8 @@ namespace pafio
 
 PublishResult PreparePublishCandidate(const PublishRequest &request)
 {
-  const PackageSelection selection = SelectPackageForPublish(request);
+  const pafio::PackageSelection selection =
+      pafio::SelectWorkspacePackage<pafio::PublishError>(request.manifest_path, request.package_name, "publish");
   ValidatePublishCandidate(selection);
 
   const PackResult package_archive = WriteSourcePackage({

@@ -23,6 +23,9 @@ struct RegistryReadSecurityDecision
 struct RegistryWriteSecurityRequest
 {
   std::string registry_root;
+  // Explicit local-development opt-in: remote publish requires https://
+  // unless the caller deliberately allows plaintext http://.
+  bool allow_plaintext_http = false;
 };
 
 struct RegistryWriteSecurityDecision

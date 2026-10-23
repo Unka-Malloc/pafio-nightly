@@ -30,38 +30,12 @@ using json = nlohmann::json;
 namespace
 {
 
-constexpr std::string_view kEmbeddedStyioSupportToml = R"toml(
-schema = 1
-pafio_version = "0.1.0-dev"
-
-[[supported_styio]]
-min = "0.0.1"
-max_exclusive = "0.1.0"
-channel = "stable"
-edition_max = "2026"
-required_capabilities = [
-  "machine_info_json",
-  "single_file_entry",
-  "jsonl_diagnostics"
-]
-supported_compile_plan_versions = [1]
-integration_phase = "compile-plan-live"
-notes = "Current compatibility requires a styio compiler that advertises compile-plan v1 and accepts styio --compile-plan for build/run/test orchestration."
-
-[[supported_styio]]
-min = "0.0.1"
-max_exclusive = "0.1.0"
-channel = "nightly"
-edition_max = "2026"
-required_capabilities = [
-  "machine_info_json",
-  "single_file_entry",
-  "jsonl_diagnostics"
-]
-supported_compile_plan_versions = [1]
-integration_phase = "compile-plan-live"
-notes = "The coordinated nightly lane consumes the same compile-plan v1 contract as the stable lane."
-)toml";
+// The contract file contracts/compat/styio-support.toml is the single
+// authority; CMake bakes its contents into this literal at configure time so
+// dev-tree and installed binaries always evaluate the same matrix.
+constexpr std::string_view kEmbeddedStyioSupportToml =
+#include "EmbeddedStyioSupportToml.inc"
+;
 
 std::tuple<int, int, int> ParseSemver(const std::string &version)
 {
@@ -95,20 +69,6 @@ int ParseEdition(const std::string &edition)
 
 toml::table LoadCompatMatrix()
 {
-  const fs::path compat_matrix_path = pafio::ProjectRoot() / "contracts" / "compat" / "styio-support.toml";
-  if (fs::exists(compat_matrix_path))
-  {
-    try
-    {
-      return toml::parse_file(compat_matrix_path.string());
-    }
-    catch (const toml::parse_error &err)
-    {
-      throw pafio::CompatibilityError(
-          "failed to parse compatibility matrix '" + compat_matrix_path.string() + "': " + std::string(err.description()));
-    }
-  }
-
   try
   {
     return toml::parse(kEmbeddedStyioSupportToml, std::string_view{"embedded styio-support.toml"});
@@ -148,7 +108,11 @@ json ProbeMachineInfo(const fs::path &binary)
       "tool",
       "compiler_version",
       "channel",
+      "active_integration_phase",
       "supported_contracts",
+      "supported_contract_versions",
+      "supported_adapter_modes",
+      "feature_flags",
       "capabilities",
       "edition_max",
   };
@@ -166,6 +130,22 @@ json ProbeMachineInfo(const fs::path &binary)
   if (!payload["capabilities"].is_array())
   {
     throw pafio::CompatibilityError("compiler handshake field 'capabilities' must be an array");
+  }
+  if (!payload["active_integration_phase"].is_string() || payload["active_integration_phase"].get<std::string>().empty())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'active_integration_phase' must be a non-empty string");
+  }
+  if (!payload["supported_contract_versions"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_contract_versions' must be an object");
+  }
+  if (!payload["supported_adapter_modes"].is_array())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'supported_adapter_modes' must be an array");
+  }
+  if (!payload["feature_flags"].is_object())
+  {
+    throw pafio::CompatibilityError("compiler handshake field 'feature_flags' must be an object");
   }
   if (payload["tool"] != "styio")
   {
@@ -366,7 +346,18 @@ CompatibilityReport CheckCompilerCompatibility(const fs::path &binary)
   report.compiler_version = machine_info["compiler_version"].get<std::string>();
   report.compiler_channel = machine_info["channel"].get<std::string>();
   report.compiler_edition_max = machine_info["edition_max"].get<std::string>();
-  report.integration_phase = entry["integration_phase"].value<std::string>().value_or("unspecified");
+  // The phase reported to consumers is the compiler's advertised
+  // active_integration_phase; the matrix entry's phase is the requirement it
+  // must satisfy, not a value to echo back.
+  const std::string compiler_phase = machine_info["active_integration_phase"].get<std::string>();
+  const std::string required_phase = entry["integration_phase"].value<std::string>().value_or("");
+  if (!required_phase.empty() && compiler_phase != required_phase)
+  {
+    throw CompatibilityError(
+        "compiler active_integration_phase '" + compiler_phase +
+        "' does not match the phase required by this pafio phase: " + required_phase);
+  }
+  report.integration_phase = compiler_phase;
   report.supported_compile_plan_versions = expected_compile_plan_versions;
   report.capabilities = std::move(capabilities);
   return report;

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "PafioCore/AtomicFile.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 #include "PafioCore/FileLock.hpp"
 #include "PafioCore/Paths.hpp"
@@ -68,14 +69,6 @@ UniqueTemporaryPath(const fs::path &path, const std::string_view label) {
     (path.filename().string() + ".tmp." + std::string(label) + "." +
      std::to_string(ProcessId()) + "." + std::to_string(nonce) + "." +
      std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
-}
-
-std::string
-NormalizeRegistryRoot(std::string value) {
-  while (!value.empty() && value.back() == '/') {
-    value.pop_back();
-  }
-  return value;
 }
 
 bool
@@ -303,12 +296,10 @@ IsAllowedRegistryMediaType(const std::string &media_type, const RegistryRemoteOb
 }
 
 std::vector<std::string>
-CurlReadPolicyArgs(const size_t max_bytes) {
-  return {
+CurlReadPolicyArgs(const size_t max_bytes, const RegistryRemoteObjectKind object_kind) {
+  std::vector<std::string> args{
     "--connect-timeout",
     "10",
-    "--max-time",
-    "30",
     "--speed-time",
     "10",
     "--speed-limit",
@@ -316,6 +307,11 @@ CurlReadPolicyArgs(const size_t max_bytes) {
     "--max-filesize",
     std::to_string(max_bytes),
   };
+  if (object_kind != RegistryRemoteObjectKind::kArtifact) {
+    args.push_back("--max-time");
+    args.push_back("30");
+  }
+  return args;
 }
 
 void
@@ -335,8 +331,16 @@ FetchUrlToFile(
     fs::remove(headers_path, ignored);
   };
   try {
-    std::vector<std::string> args{"-fsSL", "-D", pafio::ProcessPathString(headers_path)};
-    const std::vector<std::string> policy_args = CurlReadPolicyArgs(static_cast<size_t>(max_bytes));
+    // -q isolates the invocation from the ambient curl configuration. Redirect
+    // following is only allowed when no provider headers are attached: curl
+    // forwards custom -H values to redirect targets, so an authenticated
+    // request must not leave the original origin.
+    std::vector<std::string> args{"-q", "-fsS", "-D", pafio::ProcessPathString(headers_path)};
+    if (request_headers.empty()) {
+      args.push_back("-L");
+    }
+    const std::vector<std::string> policy_args =
+      CurlReadPolicyArgs(static_cast<size_t>(max_bytes), object_kind);
     args.insert(args.end(), policy_args.begin(), policy_args.end());
     for (const std::string &header : request_headers) {
       args.push_back("-H");
@@ -349,7 +353,9 @@ FetchUrlToFile(
       .program = pafio::ResolvedCurlPath(),
       .args = args,
       .search_path = false,
-      .timeout = pafio::kExternalProcessStepTimeout,
+      .timeout = object_kind == RegistryRemoteObjectKind::kArtifact
+        ? std::nullopt
+        : std::optional<std::chrono::milliseconds>{pafio::kExternalProcessStepTimeout},
       .error_context = "registry process",
     });
     if (result.exit_code != 0) {
@@ -385,7 +391,7 @@ FetchUrlToFile(
 
 std::string
 JoinUrl(const std::string &root, const std::string &relative_path) {
-  return NormalizeRegistryRoot(root) + "/" + NormalizeRelativeRegistryPath(relative_path, "registry object path").generic_string();
+  return pafio::NormalizeRegistryRoot(root) + "/" + NormalizeRelativeRegistryPath(relative_path, "registry object path").generic_string();
 }
 
 fs::path
@@ -411,32 +417,54 @@ LoadRegistryObjectText(
   const std::vector<std::string> &request_headers,
   const std::string &relative_path,
   const std::string &context,
-  const bool offline
+  const bool offline,
+  std::map<std::string, std::string> &session_objects
 ) {
   const fs::path normalized_relative = NormalizeRelativeRegistryPath(relative_path, context);
+  const std::string session_key = normalized_relative.generic_string();
+  if (const auto cached = session_objects.find(session_key); cached != session_objects.end()) {
+    return cached->second;
+  }
+
+  std::string text;
   if (IsFileRegistry(registry_root)) {
-    return ReadTextFile(FileUrlToPath(registry_root) / normalized_relative, context);
+    text = ReadTextFile(FileUrlToPath(registry_root) / normalized_relative, context);
   }
-  if (!IsHttpRegistry(registry_root)) {
-    throw pafio::FetchError("registry root must use file://, http://, or https://: " + registry_root);
-  }
-
-  const fs::path cache_path = RegistryObjectCachePath(pafio_home, registry_root, normalized_relative.generic_string());
-  if (offline) {
-    if (!fs::exists(cache_path)) {
-      throw pafio::FetchError("offline mode is missing cached " + context + " for " + registry_root);
+  else {
+    if (!IsHttpRegistry(registry_root)) {
+      throw pafio::FetchError("registry root must use file://, http://, or https://: " + registry_root);
     }
-    return ReadTextFile(cache_path, "cached " + context);
+    // Online objects are immutable within one CLI run; dedupe across package
+    // materializations so each metadata object costs one GET per process.
+    static std::map<std::string, std::string> online_object_cache;
+    const std::string online_key = registry_root + '\x1f' + session_key;
+    if (!offline) {
+      if (const auto hit = online_object_cache.find(online_key); hit != online_object_cache.end()) {
+        session_objects.emplace(session_key, hit->second);
+        return hit->second;
+      }
+    }
+    const fs::path cache_path = RegistryObjectCachePath(pafio_home, registry_root, session_key);
+    if (offline) {
+      if (!fs::exists(cache_path)) {
+        throw pafio::FetchError("offline mode is missing cached " + context + " for " + registry_root);
+      }
+      text = ReadTextFile(cache_path, "cached " + context);
+    }
+    else {
+      FetchUrlToFile(
+        JoinUrl(registry_root, session_key),
+        cache_path,
+        request_headers,
+        kRegistryMetadataMaxBytes,
+        RegistryRemoteObjectKind::kMetadata
+      );
+      text = ReadTextFile(cache_path, "cached " + context);
+      online_object_cache.emplace(online_key, text);
+    }
   }
-
-  FetchUrlToFile(
-    JoinUrl(registry_root, normalized_relative.generic_string()),
-    cache_path,
-    request_headers,
-    kRegistryMetadataMaxBytes,
-    RegistryRemoteObjectKind::kMetadata
-  );
-  return ReadTextFile(cache_path, "cached " + context);
+  session_objects.emplace(session_key, text);
+  return text;
 }
 
 RegistryConfig
@@ -444,11 +472,12 @@ LoadConfig(
   const fs::path &pafio_home,
   const std::string &registry_root,
   const std::vector<std::string> &request_headers,
-  const bool offline
+  const bool offline,
+  std::map<std::string, std::string> &session_objects
 ) {
   return ValidateConfig(
     ParseJsonObject(
-      LoadRegistryObjectText(pafio_home, registry_root, request_headers, "config.json", "registry v2 config", offline),
+      LoadRegistryObjectText(pafio_home, registry_root, request_headers, "config.json", "registry v2 config", offline, session_objects),
       "registry v2 config"
     ),
     "registry v2 config"
@@ -463,7 +492,8 @@ LoadPackageMetadata(
   const RegistryConfig &config,
   const std::string &package_name,
   const std::string &version,
-  const bool offline
+  const bool offline,
+  std::map<std::string, std::string> &session_objects
 ) {
   const auto [package_namespace, _short_name] = SplitPackageName(package_name);
   return ValidateTargetsMetadata(
@@ -474,7 +504,8 @@ LoadPackageMetadata(
         request_headers,
         config.targets_prefix + package_namespace + ".json",
         "registry v2 targets metadata",
-        offline
+        offline,
+        session_objects
       ),
       "registry v2 targets metadata"
     ),
@@ -493,7 +524,8 @@ LoadEntry(
   const std::string &package_name,
   const std::string &version,
   const RegistryPackageMetadata &metadata,
-  const bool offline
+  const bool offline,
+  std::map<std::string, std::string> &session_objects
 ) {
   const std::string text = LoadRegistryObjectText(
     pafio_home,
@@ -501,7 +533,8 @@ LoadEntry(
     request_headers,
     metadata.index_path,
     "registry v2 index",
-    offline
+    offline,
+    session_objects
   );
 
   std::istringstream lines(text);
@@ -602,6 +635,31 @@ struct VerifiedCacheHit
   uintmax_t size_bytes = 0;
 };
 
+// Digest of a verified blob is stable within a process while its size and
+// mtime are unchanged; memoize to avoid rehashing up to 512 MiB per lookup.
+std::string
+VerifiedBlobSha256(const fs::path &blob_path, const uintmax_t size_bytes) {
+  struct Entry
+  {
+    uintmax_t size = 0;
+    fs::file_time_type mtime{};
+    std::string sha256;
+  };
+  static std::map<std::string, Entry> memo;
+  const std::string key = blob_path.lexically_normal().generic_string();
+  std::error_code ec;
+  const fs::file_time_type mtime = fs::last_write_time(blob_path, ec);
+  const auto it = memo.find(key);
+  if (!ec && it != memo.end() && it->second.size == size_bytes && it->second.mtime == mtime) {
+    return it->second.sha256;
+  }
+  const std::string digest = pafio::Sha256File(blob_path);
+  if (!ec) {
+    memo[key] = Entry{.size = size_bytes, .mtime = mtime, .sha256 = digest};
+  }
+  return digest;
+}
+
 std::optional<VerifiedCacheHit>
 InspectVerifiedCache(
   const fs::path &pafio_home,
@@ -630,7 +688,7 @@ InspectVerifiedCache(
     return std::nullopt;
   }
   try {
-    if (pafio::Sha256File(blob_path) != sha256) {
+    if (VerifiedBlobSha256(blob_path, actual_size) != sha256) {
       failure = "cached registry artifact sha256 mismatch";
       return std::nullopt;
     }
@@ -841,6 +899,8 @@ MaterializeRegistryPackage(
   const auto [package_namespace, _short_name] = SplitPackageName(package_name);
 
   std::optional<std::string> trusted_root_sha256;
+  int timestamp_floor = 0;
+  int snapshot_floor = 0;
   if (IsHttpRegistry(security.registry_root)) {
     const std::optional<RegistryTrustPin> trust_pin = ResolveRegistryTrustPin(pafio_home, security.registry_root);
     if (!trust_pin.has_value()) {
@@ -849,6 +909,8 @@ MaterializeRegistryPackage(
       );
     }
     trusted_root_sha256 = trust_pin->root_sha256;
+    timestamp_floor = trust_pin->timestamp_floor;
+    snapshot_floor = trust_pin->snapshot_floor;
   }
 
   if (locked_sha256.has_value()) {
@@ -886,10 +948,10 @@ MaterializeRegistryPackage(
     }
   }
 
-  const RegistryConfig config = LoadConfig(pafio_home, security.registry_root, security.request_headers, offline);
+  std::map<std::string, std::string> tuf_objects;
+  const RegistryConfig config = LoadConfig(pafio_home, security.registry_root, security.request_headers, offline, tuf_objects);
   const std::string targets_relative = config.targets_prefix + package_namespace + ".json";
 
-  std::map<std::string, std::string> tuf_objects;
   const auto load_object = [&](const std::string &relative_path, const std::string &context)
   {
     tuf_objects[NormalizeRelativeRegistryPath(relative_path, context).generic_string()] = LoadRegistryObjectText(
@@ -898,7 +960,8 @@ MaterializeRegistryPackage(
       security.request_headers,
       relative_path,
       context,
-      offline
+      offline,
+      tuf_objects
     );
   };
   load_object("config.json", "registry v2 config");
@@ -928,18 +991,32 @@ MaterializeRegistryPackage(
     tuf_objects,
     package_name,
     package_namespace,
-    trusted_root_sha256
+    trusted_root_sha256,
+    targets_relative,
+    timestamp_floor,
+    snapshot_floor
   );
   if (!tuf.ok) {
     throw FetchError(
       std::string("registry v2 TUF verification failed") + (tuf.error_code.empty() ? "" : " (" + tuf.error_code + ")") + ": " + tuf.error
     );
   }
+  if (trusted_root_sha256.has_value()) {
+    // Persist the accepted metadata versions as the new replay floors before
+    // any later stage can fail: the metadata itself was authenticated, so the
+    // floor is safe to keep even if package materialization aborts.
+    RaiseRegistryTrustFloors(
+      pafio_home,
+      security.registry_root,
+      tuf.timestamp_version,
+      tuf.snapshot_version
+    );
+  }
 
   const RegistryPackageMetadata metadata =
-    LoadPackageMetadata(pafio_home, security.registry_root, security.request_headers, config, package_name, version, offline);
+    LoadPackageMetadata(pafio_home, security.registry_root, security.request_headers, config, package_name, version, offline, tuf_objects);
   const RegistryEntry entry =
-    LoadEntry(pafio_home, security.registry_root, security.request_headers, package_name, version, metadata, offline);
+    LoadEntry(pafio_home, security.registry_root, security.request_headers, package_name, version, metadata, offline, tuf_objects);
   if (locked_sha256.has_value() && entry.sha256 != *locked_sha256) {
     throw FetchError(
       "registry content digest changed for locked package " + package_name + "@" +

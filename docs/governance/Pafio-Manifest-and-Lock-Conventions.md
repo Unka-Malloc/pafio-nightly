@@ -29,7 +29,8 @@ No compiler channel, version, pin, installation mode, or cloud policy belongs in
 the manifest.
 
 `[dependencies]` and `[dev-dependencies]` map aliases to exactly one source:
-relative `path`, pinned `git` plus `rev`, or exact `version` plus `registry` and
+relative `path`, pinned `git` plus an immutable full commit id `rev` (branch
+names and tags are not accepted), or exact `version` plus `registry` and
 package name. Workspace members are explicit relative paths and resolver `"1"`.
 
 Canonical serialization orders `[pafio]`, `[package]`, `[build]`, targets,

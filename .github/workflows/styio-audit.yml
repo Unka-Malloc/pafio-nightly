@@ -1,4 +1,4 @@
-name: styio-audit
+name: secret-scan
 
 on:
   pull_request:
@@ -10,18 +10,16 @@ permissions:
   contents: read
 
 jobs:
-  audit:
-    name: styio-audit-debian-trixie
-    # GitHub-hosted Linux runner is only the container host; audit commands run in Debian 13.
+  scan:
+    name: secret-scan
+    # GitHub-hosted Linux runner is only the container host; commands run in Debian 13.
     runs-on: ubuntu-latest
     container:
       image: debian:trixie
     timeout-minutes: 10
-    env:
-      STYIO_PYTHON_VERSION: "3.13.5"
 
     steps:
-      - name: Install Debian audit prerequisites
+      - name: Install Debian checkout prerequisites
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -35,31 +33,8 @@ jobs:
           test "$ID" = debian
           test "$VERSION_ID" = 13
 
-      - name: Checkout pafio-nightly
+      - name: Checkout Pafio
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          path: pafio-nightly
 
-      - name: Checkout released styio-audit policy
-        uses: actions/checkout@v5
-        with:
-          repository: eBioRing/styio-audit
-          ref: stable
-          path: styio-audit
-
-      - name: Verify standardized Python
-        run: python3 --version
-
-      - name: Fetch managed branch evidence
-        working-directory: pafio-nightly
-        run: |
-          for branch in stable nightly ai-dev; do
-            git fetch --no-tags origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" || true
-          done
-
-      - name: Run released styio-audit gate
-        working-directory: pafio-nightly
-        run: |
-          git -C ../styio-audit rev-parse HEAD
-          python3 ../styio-audit/bin/styio-audit gate --repo . --project pafio-nightly
+      - name: Run repository-local secret scan
+        run: python3 scripts/secret-scan.py

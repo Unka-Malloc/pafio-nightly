@@ -1,6 +1,7 @@
 #include "PafioApp/PackageApp.hpp"
 
 #include "PafioCLI/Support.hpp"
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Paths.hpp"
 #include "PafioCore/Process.hpp"
 #include "PafioCore/ToolPaths.hpp"
@@ -30,15 +31,6 @@ using json = nlohmann::json;
 
 namespace
 {
-
-std::string NormalizeRegistryRootValue(std::string value)
-{
-  while (!value.empty() && value.back() == '/')
-  {
-    value.pop_back();
-  }
-  return value;
-}
 
 bool EndsWith(std::string_view value, std::string_view suffix)
 {
@@ -70,7 +62,7 @@ std::string ProcessFailureText(const pafio::ProcessResult &result)
 std::string RegistryControlPlaneBaseUrl(std::string registry_root)
 {
   constexpr std::string_view kControlPlaneBase = "/api/pafio-registry-control/v1";
-  registry_root = NormalizeRegistryRootValue(std::move(registry_root));
+  registry_root = pafio::NormalizeRegistryRoot(std::move(registry_root));
   if (EndsWith(registry_root, kControlPlaneBase))
   {
     return registry_root;
@@ -86,8 +78,27 @@ json RunRegistryV2ControlPlanePublish(
   const std::string control_plane_base = RegistryControlPlaneBaseUrl(registry_root);
   const std::string request_body = pafio::BuildRemotePublishRequestJson(candidate);
 
+  // -q must be the first curl argument: it disables the user's curl
+  // configuration, which could otherwise enable redirects and steer the
+  // request body and provider headers to a different host. --max-redirs 0
+  // keeps redirect following off even if another flag re-enables it.
+  // The transfer bound mirrors the external-process step budget, and the
+  // connect bound keeps a dead endpoint from consuming the whole transfer.
+  constexpr std::string_view kPublishConnectTimeoutSeconds{"10"};
+  const std::string publish_max_time_seconds = std::to_string(
+      std::chrono::duration_cast<std::chrono::seconds>(pafio::kExternalProcessStepTimeout).count());
+  const std::string scheme = registry_root.substr(0, registry_root.find("://"));
   std::vector<std::string> args = {
+      "-q",
       "-fsS",
+      "--connect-timeout",
+      std::string(kPublishConnectTimeoutSeconds),
+      "--max-time",
+      publish_max_time_seconds,
+      "--max-redirs",
+      "0",
+      "--proto",
+      "=" + scheme,
       "-X",
       "POST",
       control_plane_base + "/publish",
@@ -838,6 +849,7 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
   PublishRequest request;
   std::optional<std::string> registry_root;
   bool dry_run = false;
+  bool allow_plaintext_http = false;
   for (size_t index = 0; index < args.size(); ++index)
   {
     if (args[index] == "--manifest-path")
@@ -876,6 +888,10 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
     {
       dry_run = true;
     }
+    else if (args[index] == "--allow-plaintext-http")
+    {
+      allow_plaintext_http = true;
+    }
     else
     {
       return EmitError({"UsageError", kExitUsage, "unexpected argument for publish: " + args[index], "publish"}, as_json);
@@ -907,6 +923,7 @@ int HandlePublish(const std::vector<std::string> &args, bool as_json)
       const PublishResult candidate = PreparePublishCandidate(request);
       const RegistryWriteSecurityDecision security = ResolveRegistryWriteSecurity({
           .registry_root = *registry_root,
+          .allow_plaintext_http = allow_plaintext_http,
       });
       return EmitSuccess(
           BuildHttpPublishPayload(

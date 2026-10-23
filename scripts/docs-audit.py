@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 import re
 import subprocess
 import sys
@@ -58,6 +59,14 @@ def check_metadata() -> list[str]:
 
 def run_check(command: list[str]) -> list[str]:
     proc = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    if log_root := os.environ.get("PAFIO_GATE_LOG_DIR"):
+        log_dir = Path(log_root) / Path(command[1]).stem
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / "stdout.log").write_text(proc.stdout)
+        (log_dir / "stderr.log").write_text(proc.stderr)
+        (log_dir / "process.json").write_text(json.dumps({
+            "command": command, "cwd": str(ROOT), "returncode": proc.returncode,
+        }) + "\n")
     if proc.returncode == 0:
         return []
     detail = proc.stderr.strip() or proc.stdout.strip() or "subprocess failed"
@@ -70,7 +79,9 @@ def main() -> int:
     errors.extend(check_metadata())
     errors.extend(run_check([sys.executable, "scripts/docs-index.py", "--check"]))
     errors.extend(run_check([sys.executable, "scripts/docs-lifecycle.py", "validate"]))
-    if os.environ.get("STYIO_SKIP_TEAM_DOC_GATE") != "1":
+    # The team-docs gate tracks changed files through git, so it only applies
+    # inside a working checkout; an exported delivery tree has no history.
+    if (ROOT / ".git").exists() and os.environ.get("STYIO_SKIP_TEAM_DOC_GATE") != "1":
         errors.extend(run_check([sys.executable, "scripts/team-docs-gate.py"]))
 
     if errors:

@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-23
 
 ## Mission
 
@@ -15,7 +15,6 @@ the Better Plan workspace, and release evidence.
 2. `docs/` collections and generated indexes.
 3. Documentation, lifecycle, audit, hygiene, and delivery gates.
 4. Public handoff documentation after executable owner contracts pass.
-5. Fixed-revision owner-matrix and coordinated release evidence.
 
 ## Daily Workflow
 
@@ -45,6 +44,10 @@ the Better Plan workspace, and release evidence.
     including `rsync` for extractability and exported-tree checks.
 13. Keep documented global help aliases aligned with executable CLI output and
     its short-form regression test.
+14. Route current programme requirements and acceptance through `docs/plans/`;
+    retain independent historical workspaces in `docs/plan/`. Handoffs distinguish
+    commands actually run, valid reused evidence and host check results. An
+    upstream observation failure cannot be waived by ordinary workflow passes.
 
 ## Change Classes
 
@@ -56,7 +59,7 @@ the Better Plan workspace, and release evidence.
 
 ```bash
 python3 scripts/docs-audit.py
-python3 scripts/repo-hygiene-check.py --mode tracked
+python3 scripts/repo-hygiene-gate.py --mode tracked
 git diff --check
 ```
 
@@ -68,6 +71,19 @@ defects, and run the necessary follow-up checks. Request a developer decision
 only when the repair would change the objective, a published contract, or the
 risk boundary. Do not repeat a gate simply because another workflow cites the
 same evidence.
+
+`PAFIO_GATE_LOG_DIR` enables complete ignored submit/delivery child records and
+performance samples, including output omitted from short console summaries.
+The milestone final entrypoint records the dirty candidate and explicit command
+before yielding execution to the host. Use the full retained logs and child exits
+for acceptance; a console tail is only a reference. Keep the CI profile, ordered
+checks, first-failure stop and performance thresholds unchanged. Recovery selects
+only diagnosed affected/remaining checks in the milestone entrypoint.
+
+The export policy excludes root-level `build-*` directories before copying.
+Keep that pattern rooted so similarly named documentation and test assets remain
+in the delivery. Source build directories are preserved; exported trees still
+must pass the existing structural, binary and hygiene checks.
 
 ## Cross-Team Dependencies
 
@@ -115,3 +131,28 @@ input validates the Windows CLI and process contracts before the final complete
 regression within existing adaptation authorization; it does not establish
 Linux, macOS, or release readiness. Preserve
 the request's existing timeout and process-group semantics across platforms.
+
+2026-10-15: Recorded the plan-workspace split from the task-resource delivery
+milestone. ADR-0009 owns the decision: `docs/plans/` is the internal
+coordination workspace holding the active programme, requirements, and
+per-milestone state — it is kept out of the published tree — while
+`docs/plan/` retains completed delivery evidence. ADR-0001's decision text,
+the ADR index conventions, the Docs-Maintenance-Model owner map, and the
+README developer entry now name the new layout.
+
+2026-10-15: Recorded the coordinator join and delivery closure for the
+task-resource milestone. The joined evidence is the expanded integration gate
+on the current candidate (bounded per-invocation retention), the same-candidate
+cross-repo E2E run, and the bounded-retention probe record kept in the ignored
+evidence tree; the milestone delivery state carries the join result and its
+boundaries. The registered close-out review executed as host, and the review
+items invalidated by baseline and repair result changes were resolved against
+the joined evidence.
+
+2026-10-23: Completed the `docs/plans/` internal-workspace split in the gate
+surface: `docs-audit.py` no longer requires the internal collection, the
+delivery export excludes `docs/plans/` via artifact policy, and the delivery
+gate now runs the exported copies of `docs-audit.py` and `native-check.sh`
+from `export_root` so each step validates the published tree rather than the
+source checkout. The public README reading order now links the published
+`docs/plan/` collection instead of the internal workspace path.

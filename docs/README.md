@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintainers to the current Pafio product, contract, planning, and operational sources of truth.
 
-**Last updated:** 2026-07-30
+**Last updated:** 2026-10-11
 
 ## Reading Order
 
@@ -11,14 +11,15 @@
 3. [Manifest and Lock Conventions](./governance/Pafio-Manifest-and-Lock-Conventions.md)
 4. [Local Offline Package Contract](./governance/Pafio-Local-Offline-Package-Contract.md)
 5. [Registry Client Contract](./registry/Pafio-Registry-Client-Contract.md)
-6. [Active Better Plan](./plan/README.md)
+6. [Delivery Workspace](./plan/README.md)
 7. [Build and Development Environment](./BUILD-AND-DEV-ENV.md)
 
 ## Ownership
 
 - `governance/` owns stable Pafio policy and public command contracts.
 - `adr/` owns accepted architecture decisions.
-- `plan/` owns active delivery checkpoints and completed evidence.
+- `plans/` owns current delivery checkpoints and acceptance.
+- `plan/` preserves completed delivery workspaces and independent capability records.
 - `registry/` owns Pafio client behavior only.
 - `external/for-styio/` documents the public compiler handoff.
 - `operations/` owns repository-local artifact and delivery procedures.

@@ -64,5 +64,6 @@ payload = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert payload["ok"] is True, payload
 assert payload["require_compile_plan"] is True, payload
 step_names = [step["name"] for step in payload["steps"]]
-assert "compile_plan_execute" in step_names, payload
+assert "pafio_build_execute" in step_names, payload
+assert "compile_plan_execute" not in step_names, payload
 PY

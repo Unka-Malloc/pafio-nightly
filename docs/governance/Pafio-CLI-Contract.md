@@ -2,7 +2,7 @@
 
 **Purpose:** Freeze Pafio's terminal entry, external Styio discovery, and stable machine contracts.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-11
 
 ## Commands
 
@@ -43,6 +43,23 @@ receipt to `<plan.build_root>/receipt.json` and its artifacts under
 `plan.artifact_dir`; Pafio verifies those paths exist after a successful run but
 does not read or republish them.
 
+Every generated plan owns a newly allocated directory under
+`.pafio/build/<cache_key>/<invocation>/`, including dry-run plans. Directory
+creation claims ownership atomically across processes; plan, diagnostics,
+receipt and artifact paths are never shared with earlier or concurrent calls.
+The invocation directory name is opaque transport data, not a public identity.
+`cache_key` identifies equivalent compilation inputs; it is not a result handle
+or a promise of cached execution. Consumers must follow the paths from their
+own successful envelope and discard their current-success selection on error.
+A failed invocation cannot adopt another invocation's receipt or artifacts.
+Earlier results remain intact for readers and parent snapshots. Dry-run writes
+only its own plan and creates its output directories; it does not execute Styio
+or invalidate earlier results. There is no old-layout fallback. Derived output
+retention is bounded: each cache key keeps the newest 8 invocation directories
+plus the directory owning a caller-referenced parent snapshot, and the current
+invocation's outputs are never removed. Workflow compilation has no internal
+elapsed-time cutoff.
+
 `pafio doctor` is read-only and diagnoses project state, cache, registry trust,
 and external Styio capability.
 
@@ -53,7 +70,8 @@ and external Styio capability.
 `1`) and the repeatable `--observable-capability <name>`. When present, Pafio adds
 `emit.observable_static_snapshot` with `schema_version` and the sorted, unique
 `required_capabilities` to the compile plan and nothing else changes; without the
-flag the compile plan is byte-identical to the ordinary plan. `--observable-capability`
+flag the semantic inputs and cache identity are unchanged; output paths are
+allocated per invocation. `--observable-capability`
 without the emission flag, a non-positive or non-numeric schema version, or an
 empty capability name is a `UsageError`.
 
@@ -74,8 +92,8 @@ requires `--emit-observable-static-snapshot` and adds
 value is a filesystem path to the previous snapshot artifact; Pafio passes it
 through as an absolute, lexically normalized path (a relative value is resolved
 against the plan's `workspace_root`), does not check that it exists, and keeps
-it out of the cache key, so the request lands in the same `plan.build_root` as
-the same request without a parent. The flag without the emission flag, a
+it out of the cache key. The same request without a parent has the same cache
+identity, but each invocation has a separate `plan.build_root`. The flag without the emission flag, a
 missing value, or an empty value is a `UsageError`.
 
 Styio owns the delta: with a readable, matching parent it writes
@@ -105,8 +123,8 @@ a non-positive or non-numeric version, an unknown mode, an empty capability
 name, a non-positive or non-numeric lane capacity, or a sampling value that is
 not two positive decimal integers separated by `/` with an optional
 `@<non-negative seed>` is a `UsageError`. The request enters the cache key, so
-an observed run gets its own `plan.build_root`; without the flag the compile
-plan is byte-identical to the ordinary plan.
+an observed request has distinct cache identity; without the flag the compile
+plan keeps ordinary semantic inputs and cache identity, with independent output paths.
 
 Styio owns the semantics: the supported version, the capability names, the
 default mode (`aggregate`), the power-of-two lane-capacity bounds and default

@@ -31,7 +31,6 @@ struct ParsedPlanInvocation
 
 int EmitError(const CommandError &error, bool as_json);
 int EmitSuccess(const nlohmann::json &payload, bool as_json);
-int EmitBootstrapNotImplemented(std::string_view command, bool as_json);
 int PrintGlobalHelp();
 int PrintCommandUsage(std::string_view command);
 

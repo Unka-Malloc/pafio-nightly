@@ -8,6 +8,7 @@ endif()
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+  URL_HASH SHA256=edd885a1ab32b6999515a880f669efadb80b3f880215f315985fa3f6eca7c4d3
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
 
@@ -49,6 +50,19 @@ target_link_libraries(pafio_native_tests PRIVATE pafio_cli_shell GTest::gtest_ma
 add_dependencies(pafio_native_tests pafio_process_tests)
 
 gtest_discover_tests(pafio_native_tests DISCOVERY_TIMEOUT 30)
+
+set(PAFIO_TEST_STYIO_BIN "" CACHE FILEPATH "Explicit real Styio candidate for workflow integration")
+if(PAFIO_TEST_STYIO_BIN)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(
+    NAME pafio_task_resource_real_workflow
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/scripts/styio-interface-gate.py"
+      --pafio-bin "$<TARGET_FILE:pafio>" --styio-bin "${PAFIO_TEST_STYIO_BIN}"
+      --require-compile-plan --task-resource
+      --work-dir "${CMAKE_BINARY_DIR}/task-resource-ctest" --json
+  )
+  set_tests_properties(pafio_task_resource_real_workflow PROPERTIES LABELS "integration;real-styio")
+endif()
 
 add_test(
   NAME pafio_cli_machine_info_json
@@ -142,5 +156,5 @@ add_test(
 
 add_test(
   NAME pafio_cli_publish_help
-  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" publish --help | grep -Fqx 'usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]'"
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" publish --help | grep -Fqx 'usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run] [--allow-plaintext-http]'"
 )

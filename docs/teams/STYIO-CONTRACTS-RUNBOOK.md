@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-23
 
 ## Mission
 
@@ -17,8 +17,6 @@ Styio.
 3. `docs/governance/Pafio-CLI-Contract.md`
 4. `scripts/styio-interface-gate.py`
 5. `scripts/preflight-readiness-check.py`
-6. `contracts/ecosystem/owner-matrix.json`
-7. `scripts/verify-ecosystem-contracts.py`
 
 ## Daily Workflow
 
@@ -26,10 +24,15 @@ Styio.
 2. Probe `styio --machine-info=json` before workflow delegation.
 3. Keep `generated_by.tool = "pafio"` in compile plans.
 4. Treat diagnostics, receipts, and runtime events as Styio-owned payloads.
-5. Replay semantic checks from immutable owner commits before executing the
-   Pafio, Styio, and Vityo product composition.
-6. Keep the global `-h` and `--help` spellings in the published CLI contract
+5. Keep the global `-h` and `--help` spellings in the published CLI contract
    aligned with Pafio's executable help surface.
+7. Keep cache identity separate from invocation-owned output paths. Consumers
+   follow the returned plan paths and retain prior artifacts for parent snapshots;
+   production Pafio does not parse compiler receipts.
+8. Run `--task-resource` with an explicitly selected real compiler for the
+   permanent Pafio check/build/test/run, task, isolation and observation cases.
+   Snapshot/delta/runtime assertions are mandatory; scripted executors establish
+   harness behavior only. Report consumer defects to their repository owner.
 
 ## Change Classes
 
@@ -81,3 +84,16 @@ pure passthrough for Styio stage S3 runtime-events v2. Pafio applies no defaults
 Styio owns the version, capability, bound, and sampling validation, writes the
 receipt-named runtime-events JSONL artifact, and lists it in its receipt. Pafio
 never reads runtime events.
+
+2026-10-15: Aligned section 6 of the external interface requirement spec with
+the implemented gate: compile-plan execution runs a real build and
+materializes outputs under the invocation's declared roots, and the
+`--task-resource` selection adds real Pafio check/build/test/run workflows
+covering compile-failure/repair transitions, concurrent invocations,
+snapshot/delta, and runtime observation.
+
+2026-10-23: Extended the `compile-plan v1` `absolutePath` definition to accept
+the absolute path forms the toolchain actually emits on every supported
+platform: POSIX root, drive-rooted paths, and UNC shares. Validation remains a
+pattern constraint on the emitted string; no field or producer/consumer
+behavior changed.

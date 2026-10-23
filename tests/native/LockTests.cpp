@@ -26,163 +26,28 @@
 #include "PafioResolve/Resolver.hpp"
 #include "PafioSecurity/RegistrySecurity.hpp"
 
+#include "BuildTestSupport.hpp"
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+using pafio::testsupport::CanonicalAbsolutePath;
+using pafio::testsupport::ChildProcessResult;
+using pafio::testsupport::CreateWorkspaceGitRepo;
+using pafio::testsupport::GitHeadRev;
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
+using pafio::testsupport::RunChildProcess;
+using pafio::testsupport::RunGitOrAssert;
+using pafio::testsupport::ScopedEnvVar;
+using pafio::testsupport::TrimTrailingNewline;
+using pafio::testsupport::WriteFile;
 
 namespace
 {
 
-struct ChildProcessResult
-{
-  int exit_code = 0;
-  std::string stdout_text;
-  std::string stderr_text;
-};
-
-class ScopedEnvVar
-{
-public:
-  ScopedEnvVar(const std::string &name, const std::string &value) :
-      name_(name) {
-    if (const char *existing = std::getenv(name.c_str()); existing != nullptr) {
-      had_previous_ = true;
-      previous_value_ = existing;
-    }
-    setenv(name.c_str(), value.c_str(), 1);
-  }
-
-  ~ScopedEnvVar() {
-    if (had_previous_) {
-      setenv(name_.c_str(), previous_value_.c_str(), 1);
-    }
-    else {
-      unsetenv(name_.c_str());
-    }
-  }
-
-private:
-  std::string name_;
-  bool had_previous_ = false;
-  std::string previous_value_;
-};
-
-ChildProcessResult
-RunChildProcess(const std::string &binary, const std::vector<std::string> &args) {
-  int stdout_pipe[2];
-  int stderr_pipe[2];
-  if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0) {
-    throw std::runtime_error("failed to create test pipes");
-  }
-
-  const pid_t child = fork();
-  if (child < 0) {
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-    throw std::runtime_error("failed to fork test process");
-  }
-
-  if (child == 0) {
-    dup2(stdout_pipe[1], STDOUT_FILENO);
-    dup2(stderr_pipe[1], STDERR_FILENO);
-    close(stdout_pipe[0]);
-    close(stdout_pipe[1]);
-    close(stderr_pipe[0]);
-    close(stderr_pipe[1]);
-
-    std::vector<char *> argv;
-    argv.reserve(args.size() + 2U);
-    argv.push_back(const_cast<char *>(binary.c_str()));
-    for (const std::string &arg : args) {
-      argv.push_back(const_cast<char *>(arg.c_str()));
-    }
-    argv.push_back(nullptr);
-
-    execvp(binary.c_str(), argv.data());
-    _exit(127);
-  }
-
-  close(stdout_pipe[1]);
-  close(stderr_pipe[1]);
-
-  auto read_all = [](int fd)
-  {
-    std::string text;
-    std::array<char, 4096> buffer{};
-    ssize_t read_size = 0;
-    while ((read_size = read(fd, buffer.data(), buffer.size())) > 0) {
-      text.append(buffer.data(), static_cast<size_t>(read_size));
-    }
-    close(fd);
-    return text;
-  };
-
-  ChildProcessResult result;
-  result.stdout_text = read_all(stdout_pipe[0]);
-  result.stderr_text = read_all(stderr_pipe[0]);
-
-  int status = 0;
-  waitpid(child, &status, 0);
-  if (WIFEXITED(status)) {
-    result.exit_code = WEXITSTATUS(status);
-  }
-  else {
-    result.exit_code = 1;
-  }
-
-  return result;
-}
-
-std::string
-TrimTrailingNewline(std::string text) {
-  while (!text.empty() && (text.back() == '\n' || text.back() == '\r')) {
-    text.pop_back();
-  }
-  return text;
-}
-
-fs::path
-CanonicalAbsolutePath(const fs::path &path) {
-  return fs::absolute(path).lexically_normal();
-}
-
-fs::path
-MakeTempDir(const std::string &label) {
-  const fs::path root = fs::temp_directory_path() / "pafio-native-lock-tests" / label;
-  fs::remove_all(root);
-  fs::create_directories(root);
-  return root;
-}
-
-void
-WriteFile(const fs::path &path, const std::string &content) {
-  fs::create_directories(path.parent_path());
-  std::ofstream out(path);
-  ASSERT_TRUE(out.good());
-  out << content;
-  ASSERT_TRUE(out.good());
-}
-
-std::string
-ReadFile(const fs::path &path) {
-  std::ifstream in(path);
-  std::ostringstream buffer;
-  buffer << in.rdbuf();
-  std::string text = buffer.str();
-  text.erase(std::remove(text.begin(), text.end(), '\r'), text.end());
-  return text;
-}
-
 std::string
 FileUrl(const fs::path &path) {
   return "file://" + CanonicalAbsolutePath(path).generic_string();
-}
-
-void
-RunGitOrAssert(const std::vector<std::string> &args) {
-  const ChildProcessResult result = RunChildProcess("git", args);
-  ASSERT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
 }
 
 struct CachedRegistryPackage
@@ -300,67 +165,6 @@ TryResolveLockfileMessage(const fs::path &manifest_path) {
   }
 }
 
-std::string
-GitHeadRev(const fs::path &repo_root) {
-  const ChildProcessResult result = RunChildProcess("git", {"-C", repo_root.string(), "rev-parse", "HEAD"});
-  EXPECT_EQ(result.exit_code, 0) << TrimTrailingNewline(result.stderr_text.empty() ? result.stdout_text : result.stderr_text);
-  return TrimTrailingNewline(result.stdout_text);
-}
-
-std::string
-CreateWorkspaceGitRepo(const fs::path &repo_root, const std::string &util_version) {
-  fs::create_directories(repo_root);
-  RunGitOrAssert({"init", "--initial-branch=main", repo_root.string()});
-
-  WriteFile(
-    repo_root / "pafio.toml",
-    "[pafio]\n"
-    "manifest-version = 1\n\n"
-    "[workspace]\n"
-    "members = [\"packages/feed\", \"packages/util\"]\n"
-    "resolver = \"1\"\n"
-  );
-  WriteFile(
-    repo_root / "packages/feed/pafio.toml",
-    "[pafio]\n"
-    "manifest-version = 1\n\n"
-    "[package]\n"
-    "name = \"acme/feed\"\n"
-    "version = \"1.2.0\"\n"
-    "edition = \"2026\"\n\n"
-    "[build]\n"
-    "implicit-std = true\n\n"
-    "[lib]\n"
-    "path = \"src/lib.styio\"\n\n"
-    "[dependencies]\n"
-    "util = { package = \"acme/util\", path = \"../util\" }\n"
-  );
-  WriteFile(
-    repo_root / "packages/util/pafio.toml",
-    std::string(
-      "[pafio]\n"
-      "manifest-version = 1\n\n"
-      "[package]\n"
-      "name = \"acme/util\"\n"
-      "version = \""
-    ) + util_version
-      +
-      "\"\n"
-      "edition = \"2026\"\n\n"
-      "[build]\n"
-      "implicit-std = true\n\n"
-      "[lib]\n"
-      "path = \"src/lib.styio\"\n"
-  );
-
-  RunGitOrAssert(
-    {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "add", "."}
-  );
-  RunGitOrAssert(
-    {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "commit", "--quiet", "-m", "initial"}
-  );
-  return GitHeadRev(repo_root);
-}
 
 }  // namespace
 

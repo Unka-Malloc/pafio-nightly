@@ -10,30 +10,12 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include "BuildTestSupport.hpp"
+
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-
-namespace
-{
-
-fs::path MakeTempDir(const std::string &label)
-{
-  const fs::path root = fs::temp_directory_path() / "pafio-native-publish-tests" / label;
-  fs::remove_all(root);
-  fs::create_directories(root);
-  return root;
-}
-
-void WriteFile(const fs::path &path, const std::string &content)
-{
-  fs::create_directories(path.parent_path());
-  std::ofstream out(path);
-  ASSERT_TRUE(out.good());
-  out << content;
-  ASSERT_TRUE(out.good());
-}
-
-}  // namespace
+using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::WriteFile;
 
 TEST(PublishTests, DryRunPreparesArchiveForPublishablePackage)
 {
@@ -397,6 +379,36 @@ TEST(PublishCliTests, RejectsFilesystemRegistryPath)
           registry_root.string(),
       }),
       pafio::kExitUsage);
+}
+
+TEST(PublishCliTests, RejectsPlaintextHttpRegistryWithoutOptIn)
+{
+  const fs::path root = MakeTempDir("publish-plaintext-http");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n"
+      "publish = true\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+
+  EXPECT_EQ(
+      pafio::RunCli({
+          "publish",
+          "--manifest-path",
+          (root / "pafio.toml").string(),
+          "--registry",
+          "http://upload.example.test",
+      }),
+      pafio::kExitPublish);
 }
 
 TEST(PublishCliTests, RejectsFilesystemRegistryFileUrl)

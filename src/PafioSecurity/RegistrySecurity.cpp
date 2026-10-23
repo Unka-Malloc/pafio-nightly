@@ -1,5 +1,6 @@
 #include "PafioSecurity/RegistrySecurity.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cctype>
@@ -10,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "PafioCore/ContractLexicon.hpp"
 #include "PafioCore/Errors.hpp"
 
 namespace fs = std::filesystem;
@@ -23,14 +25,6 @@ enum class SecurityHandlerResult
   kResolved,
 };
 
-std::string
-NormalizeRegistryRoot(std::string value) {
-  while (!value.empty() && value.back() == '/') {
-    value.pop_back();
-  }
-  return value;
-}
-
 bool
 IsHttpRegistryRoot(const std::string &value) {
   return value.starts_with("http://") || value.starts_with("https://");
@@ -39,6 +33,58 @@ IsHttpRegistryRoot(const std::string &value) {
 bool
 IsFileRegistryRoot(const std::string &value) {
   return value.starts_with("file://");
+}
+
+bool
+IsLoopbackHttpRegistryRoot(const std::string &value) {
+  constexpr std::string_view kScheme = "http://";
+  if (!value.starts_with(kScheme)) {
+    return false;
+  }
+  const std::string authority = std::string(value).substr(
+      kScheme.size(), value.find('/', kScheme.size()) - kScheme.size());
+  std::string host = authority;
+  // Credentials in userinfo are rejected before this handler runs, so the
+  // authority splits cleanly into host and optional port.
+  if (host.starts_with("[")) {
+    const std::size_t close = host.find(']');
+    host = close == std::string::npos ? "" : host.substr(1, close - 1);
+    return host == "::1";
+  }
+  if (const std::size_t colon = host.rfind(':');
+      colon != std::string::npos) {
+    host = host.substr(0, colon);
+  }
+  for (char &ch : host) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  if (host == "localhost" || host == "localhost.") {
+    return true;
+  }
+  // Only a strict dotted IPv4 literal may claim loopback: a registered
+  // name that merely shares the 127. prefix resolves through DNS to a
+  // remote host. Shorthand or non-decimal inet_aton forms are rejected
+  // rather than reinterpreted.
+  if (std::count(host.begin(), host.end(), '.') != 3) {
+    return false;
+  }
+  std::stringstream stream(host);
+  std::string segment;
+  int octets = 0;
+  while (std::getline(stream, segment, '.')) {
+    if (octets >= 4 || segment.empty() || segment.size() > 3 ||
+        !std::all_of(segment.begin(), segment.end(), [](unsigned char ch) {
+          return std::isdigit(ch) != 0;
+        }) ||
+        std::stoi(segment) > 255) {
+      return false;
+    }
+    if (octets == 0 && std::stoi(segment) != 127) {
+      return false;
+    }
+    ++octets;
+  }
+  return octets == 4;
 }
 
 std::vector<std::string>
@@ -99,7 +145,7 @@ NormalizeReadRegistryRoot(
   const pafio::RegistryReadSecurityRequest &request,
   pafio::RegistryReadSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
@@ -110,6 +156,10 @@ ValidateReadRegistryRootScheme(
 ) {
   if (!IsFileRegistryRoot(decision.registry_root) && !IsHttpRegistryRoot(decision.registry_root)) {
     throw pafio::FetchError("registry root must use file://, http://, or https://: " + request.registry_root);
+  }
+  if (pafio::UrlHasUserinfo(decision.registry_root)) {
+    throw pafio::FetchError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
   }
   return SecurityHandlerResult::kContinue;
 }
@@ -130,7 +180,7 @@ NormalizeWriteRegistryRoot(
   const pafio::RegistryWriteSecurityRequest &request,
   pafio::RegistryWriteSecurityDecision &decision
 ) {
-  decision.registry_root = NormalizeRegistryRoot(request.registry_root);
+  decision.registry_root = pafio::NormalizeRegistryRoot(request.registry_root);
   return SecurityHandlerResult::kContinue;
 }
 
@@ -140,7 +190,24 @@ ValidateWriteRegistryRootScheme(
   pafio::RegistryWriteSecurityDecision &decision
 ) {
   if (!IsHttpRegistryRoot(decision.registry_root)) {
-    throw pafio::PublishError("remote registry publish requires an http:// or https:// registry root: " + request.registry_root);
+    throw pafio::PublishError("remote registry publish requires an https:// registry root: " + request.registry_root);
+  }
+  if (pafio::UrlHasUserinfo(decision.registry_root)) {
+    throw pafio::PublishError(
+        "registry root must not embed credentials in the URL userinfo; configure authentication separately");
+  }
+  // Plaintext publish exposes unpublished package contents and headers to
+  // network observers, so the opt-in stays bound to loopback registries;
+  // a remote http:// endpoint cannot be enabled by the flag.
+  if (decision.registry_root.starts_with("http://")) {
+    if (!request.allow_plaintext_http) {
+      throw pafio::PublishError(
+          "remote registry publish requires https://; use --allow-plaintext-http only for local development registries");
+    }
+    if (!IsLoopbackHttpRegistryRoot(decision.registry_root)) {
+      throw pafio::PublishError(
+          "--allow-plaintext-http is limited to loopback registries; use https:// for remote registries");
+    }
   }
   return SecurityHandlerResult::kContinue;
 }
@@ -294,15 +361,7 @@ NormalizeRegistryRelativePath(const std::string &relative_path, const std::strin
 
 bool
 IsRegistrySha256Digest(const std::string &value) {
-  if (value.size() != 64U) {
-    return false;
-  }
-  for (const unsigned char ch : value) {
-    if (!std::isdigit(ch) && (ch < 'a' || ch > 'f')) {
-      return false;
-    }
-  }
-  return true;
+  return IsSha256Digest(value);
 }
 
 }  // namespace pafio

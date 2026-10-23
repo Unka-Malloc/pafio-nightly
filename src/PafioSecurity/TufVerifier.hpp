@@ -39,12 +39,18 @@ struct TufVerifyResult
 
 // Pure verifier: metadata map + optional trusted root pin -> verdict.
 // Verification follows root -> timestamp -> snapshot -> namespace targets
-// (package-scoped).
+// (package-scoped). targets_relative_path is the registry-declared location
+// of the namespace targets document (config paths.targets_prefix + name).
+// timestamp_floor/snapshot_floor carry the client's persisted replay floors:
+// metadata versions below a previously accepted floor are refused.
 TufVerifyResult VerifyTufChainForPackage(
     const std::map<std::string, std::string> &objects_by_relative_path,
     const std::string &package_name,
     const std::string &package_namespace,
-    const std::optional<std::string> &trusted_root_sha256 = std::nullopt);
+    const std::optional<std::string> &trusted_root_sha256,
+    const std::string &targets_relative_path,
+    int timestamp_floor = 0,
+    int snapshot_floor = 0);
 
 // Full-registry verify matching verify_registry_root (used by parity fixtures).
 TufVerifyResult VerifyTufRegistryRoot(const std::map<std::string, std::string> &objects_by_relative_path);

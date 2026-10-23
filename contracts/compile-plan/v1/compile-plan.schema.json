@@ -226,7 +226,8 @@
   "$defs": {
     "absolutePath": {
       "type": "string",
-      "pattern": "^/"
+      "pattern": "^(/|[A-Za-z]:[/\\\\]|\\\\\\\\)",
+      "description": "Absolute filesystem path as emitted by the platform toolchain: POSIX root, a drive-rooted path, or a UNC share."
     },
     "observableStaticSnapshotRequest": {
       "type": "object",
