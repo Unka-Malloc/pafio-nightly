@@ -139,7 +139,7 @@ const std::vector<std::pair<std::string_view, std::regex>> &SecretContentPattern
       {"openai-key", std::regex(R"(sk-[A-Za-z0-9_-]{20,})")},
       {"slack-token", std::regex(R"(xox[baprs]-[A-Za-z0-9-]{10,})")},
       {"stripe-key", std::regex(R"((sk|rk)_(live|test)_[A-Za-z0-9]{20,})")},
-      {"json-web-token", std::regex(R"(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})")},
+      {"json-web-token", std::regex(R"(eyJ[A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,}[.][A-Za-z0-9_-]{10,})")},
   };
   return patterns;
 }

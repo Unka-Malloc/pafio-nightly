@@ -436,8 +436,8 @@ TEST(LockfileTests, CanonicalSerializerEscapesTomlControlCharacters) {
   };
 
   const std::string serialized = pafio::SerializeLockfileCanonical(lockfile);
-  EXPECT_NE(serialized.find("generated-by = \"pafio\\tdev\""), std::string::npos);
-  EXPECT_NE(serialized.find("git = \"https://example.test/a\\nline2.git\""), std::string::npos);
+  EXPECT_NE(serialized.find(R"(generated-by = "pafio\tdev")"), std::string::npos);
+  EXPECT_NE(serialized.find(R"(git = "https://example.test/a\nline2.git")"), std::string::npos);
 
   const fs::path path = WriteTempToml(serialized, "escaped-lockfile.toml");
   const pafio::LockfileDocument reparsed = pafio::LoadLockfile(path);
