@@ -8,7 +8,9 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -20,6 +22,11 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#if !defined(_WIN32)
+#include <cerrno>
+#include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -414,27 +421,91 @@ void WriteTarEntry(std::ostream &out, const std::string &archive_path, const std
   }
 }
 
+#if defined(_WIN32)
+fs::path UniqueArchiveTemporaryPath(const fs::path &archive_path)
+{
+  static std::atomic<uint64_t> sequence{0};
+  const uint64_t nonce = static_cast<uint64_t>(
+    std::chrono::steady_clock::now().time_since_epoch().count());
+  return archive_path.parent_path()
+      / (archive_path.filename().string() + ".tmp." + std::to_string(nonce)
+         + "." + std::to_string(sequence.fetch_add(1, std::memory_order_relaxed)));
+}
+#else
+// The temporary archive is created exclusively in the destination directory so
+// a pre-planted symlink at a predictable name cannot redirect the write into an
+// unrelated file, then atomically renamed over the final path.
+fs::path CreateArchiveTemporary(const fs::path &archive_path, int &fd)
+{
+  std::string pattern =
+      (archive_path.parent_path() / (archive_path.filename().string() + ".tmp.XXXXXX")).string();
+  std::vector<char> buffer(pattern.begin(), pattern.end());
+  buffer.push_back('\0');
+  fd = ::mkstemp(buffer.data());
+  if (fd < 0)
+  {
+    throw pafio::PackError(
+        "failed to create temporary package archive: " + std::string(std::strerror(errno)));
+  }
+  return fs::path(buffer.data());
+}
+
+void WriteArchiveFd(int fd, const char *data, size_t size, const fs::path &temp_path)
+{
+  size_t offset = 0;
+  while (offset < size)
+  {
+    const ssize_t written = ::write(fd, data + offset, size - offset);
+    if (written > 0)
+    {
+      offset += static_cast<size_t>(written);
+      continue;
+    }
+    if (written < 0 && errno == EINTR)
+    {
+      continue;
+    }
+    throw pafio::PackError("failed to write temporary package archive: " + temp_path.string());
+  }
+}
+#endif
+
 void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &archive_path, std::string_view archive_prefix)
 {
-  const fs::path temp_path = archive_path.string() + ".tmp";
   fs::create_directories(archive_path.parent_path());
+#if defined(_WIN32)
+  const fs::path temp_path = UniqueArchiveTemporaryPath(archive_path);
+#else
+  int temp_fd = -1;
+  const fs::path temp_path = CreateArchiveTemporary(archive_path, temp_fd);
+#endif
 
   try
   {
+#if defined(_WIN32)
     std::ofstream out(temp_path, std::ios::binary | std::ios::trunc);
     if (!out)
     {
       throw pafio::PackError("failed to create package archive: " + temp_path.string());
     }
+#endif
 
     for (const PackEntry &entry : entries)
     {
       const std::string archive_member = std::string(archive_prefix) + "/" + entry.archive_path;
       const std::string contents = entry.inline_contents.has_value() ? *entry.inline_contents : ReadBinaryFile(*entry.source_path);
+#if defined(_WIN32)
       WriteTarEntry(out, archive_member, contents);
+#else
+      std::ostringstream chunk;
+      WriteTarEntry(chunk, archive_member, contents);
+      const std::string bytes = chunk.str();
+      WriteArchiveFd(temp_fd, bytes.data(), bytes.size(), temp_path);
+#endif
     }
 
     const std::array<char, 1024> trailer{};
+#if defined(_WIN32)
     out.write(trailer.data(), static_cast<std::streamsize>(trailer.size()));
     if (!out.good())
     {
@@ -445,11 +516,30 @@ void WriteTarArchive(const std::vector<PackEntry> &entries, const fs::path &arch
     {
       throw pafio::PackError("failed to flush package archive: " + temp_path.string());
     }
+#else
+    WriteArchiveFd(temp_fd, trailer.data(), trailer.size(), temp_path);
+    if (::fsync(temp_fd) != 0)
+    {
+      throw pafio::PackError("failed to flush package archive: " + temp_path.string());
+    }
+    if (::close(temp_fd) != 0)
+    {
+      temp_fd = -1;
+      throw pafio::PackError("failed to close package archive: " + temp_path.string());
+    }
+    temp_fd = -1;
+#endif
 
     fs::rename(temp_path, archive_path);
   }
   catch (...)
   {
+#if !defined(_WIN32)
+    if (temp_fd >= 0)
+    {
+      ::close(temp_fd);
+    }
+#endif
     std::error_code ignored;
     fs::remove(temp_path, ignored);
     throw;

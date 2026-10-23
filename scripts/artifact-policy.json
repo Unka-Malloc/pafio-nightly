@@ -116,6 +116,7 @@
     "build-codex/",
     "/build-*/",
     ".pafio/",
+    "docs/plans/",
     "__pycache__/",
     ".pytest_cache/",
     ".cache/",

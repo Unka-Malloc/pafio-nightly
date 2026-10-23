@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio manifests, dependency transactions, metadata, and local workflows.
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-23
 
 ## Mission
 
@@ -116,3 +116,15 @@ add `emit.runtime_observation` with the fields the caller set. The request enter
 the cache key so an observed request has distinct cache identity; plans without the flag
 keep ordinary semantic inputs and cache identity. The same test suites cover each flag, its dependency on the
 emission flag, and the strict value parsing.
+
+2026-10-23: Hardened the registry publication lane and its regression
+coverage: role envelopes now require `expires` instead of accepting missing
+expiry (`TufVerifier`), source archives stream into a uniquely created
+same-directory temporary file instead of a predictable `.tmp` sibling
+(`PafioPack`), manifest lib/bin/test target paths reject `..` traversal while
+path dependencies keep their existing semantics (`PafioManifest`), registry
+reads only follow redirects when no provider headers are attached
+(`PafioRegistryClient`), and the publish help CTest matches the documented
+`--allow-plaintext-http` usage line. Focused coverage lives in
+`TufVerifierTests`, `PackTests`, `ManifestTests`, and the `pafio_cli_*_help`
+CTest entries.

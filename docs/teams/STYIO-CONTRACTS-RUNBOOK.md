@@ -2,7 +2,7 @@
 
 **Purpose:** Route maintenance for Pafio's external Styio and machine-contract handoffs.
 
-**Last updated:** 2026-10-11
+**Last updated:** 2026-10-23
 
 ## Mission
 
@@ -91,3 +91,9 @@ materializes outputs under the invocation's declared roots, and the
 `--task-resource` selection adds real Pafio check/build/test/run workflows
 covering compile-failure/repair transitions, concurrent invocations,
 snapshot/delta, and runtime observation.
+
+2026-10-23: Extended the `compile-plan v1` `absolutePath` definition to accept
+the absolute path forms the toolchain actually emits on every supported
+platform: POSIX root, drive-rooted paths, and UNC shares. Validation remains a
+pattern constraint on the emitted string; no field or producer/consumer
+behavior changed.

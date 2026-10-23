@@ -104,8 +104,16 @@ def delivery_steps(export_root: pathlib.Path) -> list[Step]:
             ],
             export_root,
         ),
-        Step("delivery_docs_governance", [sys.executable, str(DOCS_AUDIT)], export_root),
-        Step("delivery_native_check", [str(NATIVE_CHECK)], export_root),
+        Step(
+            "delivery_docs_governance",
+            [sys.executable, str(export_root / "scripts" / "docs-audit.py")],
+            export_root,
+        ),
+        Step(
+            "delivery_native_check",
+            [str(export_root / "scripts" / "native-check.sh")],
+            export_root,
+        ),
     ]
 
 

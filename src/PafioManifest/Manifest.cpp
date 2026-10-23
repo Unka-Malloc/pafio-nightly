@@ -36,6 +36,22 @@ IsNonEmptyRelativePath(const std::string &value) {
   return !path.is_absolute();
 }
 
+// Build target paths (lib/bin/test) must stay inside the package snapshot;
+// `..` components would let a manifest point the compiler outside it. Path
+// dependencies and workspace member lists deliberately keep `..` segments.
+bool
+IsContainedRelativePath(const std::string &value) {
+  if (!IsNonEmptyRelativePath(value)) {
+    return false;
+  }
+  for (const fs::path &component : fs::path(value)) {
+    if (component == "..") {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool
 IsRegistryRootUrl(const std::string &value) {
   return value.starts_with("file://") || value.starts_with("http://") || value.starts_with("https://");
@@ -116,6 +132,13 @@ void
 ValidateRelativePath(const std::string &path_value, std::string_view context) {
   if (!IsNonEmptyRelativePath(path_value)) {
     throw pafio::ValidationError(std::string(context) + " must be an explicit relative path");
+  }
+}
+
+void
+ValidateContainedRelativePath(const std::string &path_value, std::string_view context) {
+  if (!IsContainedRelativePath(path_value)) {
+    throw pafio::ValidationError(std::string(context) + " must be an explicit relative path inside the package");
   }
 }
 
@@ -214,7 +237,7 @@ ParseLib(const toml::table &doc) {
 
   pafio::LibTarget target;
   target.path = RequireValue<std::string>(*lib_table, "path", "[lib]");
-  ValidateRelativePath(target.path, "[lib].path");
+  ValidateContainedRelativePath(target.path, "[lib].path");
   return target;
 }
 
@@ -240,7 +263,7 @@ ParseBins(const toml::table &doc) {
     if (target.name.empty()) {
       throw pafio::ValidationError("[[bin]].name must be a non-empty string");
     }
-    ValidateRelativePath(target.path, "[[bin]].path");
+    ValidateContainedRelativePath(target.path, "[[bin]].path");
     if (!seen_names.insert(target.name).second) {
       throw pafio::ValidationError("duplicate [[bin]].name in package manifest: " + target.name);
     }
@@ -273,7 +296,7 @@ ParseTests(const toml::table &doc) {
     if (target.name.empty()) {
       throw pafio::ValidationError("[[test]].name must be a non-empty string");
     }
-    ValidateRelativePath(target.path, "[[test]].path");
+    ValidateContainedRelativePath(target.path, "[[test]].path");
     if (!seen_names.insert(target.name).second) {
       throw pafio::ValidationError("duplicate [[test]].name in package manifest: " + target.name);
     }

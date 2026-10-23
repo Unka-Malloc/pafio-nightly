@@ -144,9 +144,6 @@ ParseUtcTimestamp(const std::string &value) {
 
 void
 EnforceExpires(const json &signed_payload, const std::string &context, pafio::TufVerifyResult &result) {
-  if (!signed_payload.contains("expires")) {
-    return;
-  }
   const std::string expires = RequireStringField(signed_payload, "expires", context, result);
   const auto parsed = ParseUtcTimestamp(expires);
   if (!parsed.has_value()) {

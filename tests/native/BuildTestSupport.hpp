@@ -9,9 +9,11 @@
 #include <string>
 #include <vector>
 
+#if !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 #include <gtest/gtest.h>
 
@@ -94,6 +96,7 @@ inline std::string ReadFile(const fs::path &path)
   return buffer.str();
 }
 
+#if !defined(_WIN32)
 struct ChildProcessResult
 {
   int exit_code = 0;
@@ -237,6 +240,7 @@ inline std::string CreateWorkspaceGitRepo(const fs::path &repo_root, const std::
       {"-C", repo_root.string(), "-c", "user.email=pafio-tests@example.com", "-c", "user.name=pafio-tests", "commit", "--quiet", "-m", "initial"});
   return GitHeadRev(repo_root);
 }
+#endif  // !defined(_WIN32)
 
 inline void WriteExecutable(const fs::path &path, const std::string &content)
 {

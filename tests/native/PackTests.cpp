@@ -24,6 +24,7 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 using pafio::testsupport::ChildProcessResult;
 using pafio::testsupport::MakeTempDir;
+using pafio::testsupport::ReadFile;
 using pafio::testsupport::RunChildProcess;
 using pafio::testsupport::WriteFile;
 
@@ -341,6 +342,40 @@ TEST(PackTests, RejectsJwtShapedFileContents)
           .manifest_path = root / "pafio.toml",
       }),
       pafio::PackError);
+}
+
+TEST(PackTests, IgnoresPlantedSymlinkAtPredictableTempPath)
+{
+  const fs::path root = MakeTempDir("temp-symlink-ignored");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "victim.txt", "keep me\n");
+
+  const fs::path archive = root / "dist" / "app.tar";
+  fs::create_directories(archive.parent_path());
+  const fs::path planted = archive.string() + ".tmp";
+  fs::create_symlink(root / "victim.txt", planted);
+
+  EXPECT_NO_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+          .output_path = archive,
+      }));
+  EXPECT_TRUE(fs::is_symlink(planted));
+  EXPECT_EQ(ReadFile(root / "victim.txt"), "keep me\n");
+  EXPECT_TRUE(fs::exists(archive));
 }
 
 TEST(PackTests, RejectsSymlinkInsideIncludedTree)

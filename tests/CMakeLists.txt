@@ -156,5 +156,5 @@ add_test(
 
 add_test(
   NAME pafio_cli_publish_help
-  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" publish --help | grep -Fqx 'usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run]'"
+  COMMAND bash -c "\"$<TARGET_FILE:pafio>\" publish --help | grep -Fqx 'usage: pafio publish [--manifest-path <path>] [--package <package-name>] [--output <path>] [--registry <http(s)-url>] [--dry-run] [--allow-plaintext-http]'"
 )

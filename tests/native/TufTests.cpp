@@ -232,6 +232,33 @@ TamperedEnvelope(const std::string &bytes) {
   return envelope.dump(2) + '\n';
 }
 
+// Strips "expires" from one role's signed payload, re-signs it with the
+// fixture key, and repairs every parent meta hash so the missing expiry is the
+// only remaining defect in the chain.
+void
+StripExpiryResignAndRepair(std::map<std::string, std::string> &objects, const fs::path &work_dir, const TestKeyPair &key, const std::string &role) {
+  {
+    json envelope = json::parse(objects[role]);
+    envelope["signed"].erase("expires");
+    objects[role] = SignedEnvelope(envelope["signed"], key, work_dir).dump(2) + '\n';
+  }
+  if (role == "trust/root.json" || role == "trust/timestamp.json") {
+    return;
+  }
+  if (role != "trust/snapshot.json") {
+    json snapshot = json::parse(objects["trust/snapshot.json"]);
+    if (role == "log/checkpoint.json") {
+      snapshot["signed"]["log_meta"]["log/checkpoint.json"] = MetaFor(objects[role], false);
+    } else {
+      snapshot["signed"]["meta"][role] = MetaFor(objects[role], false);
+    }
+    objects["trust/snapshot.json"] = SignedEnvelope(snapshot["signed"], key, work_dir).dump(2) + '\n';
+  }
+  json timestamp = json::parse(objects["trust/timestamp.json"]);
+  timestamp["signed"]["meta"]["trust/snapshot.json"] = MetaFor(objects["trust/snapshot.json"], true);
+  objects["trust/timestamp.json"] = SignedEnvelope(timestamp["signed"], key, work_dir).dump(2) + '\n';
+}
+
 }  // namespace
 
 TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
@@ -248,6 +275,21 @@ TEST(TufVerifierTests, AcceptsValidFixtureAndRejectsTamperedRoles)
     const pafio::TufVerifyResult failed = pafio::VerifyTufChainForPackage(tampered, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
     EXPECT_FALSE(failed.ok) << relative;
     EXPECT_FALSE(failed.error_code.empty()) << relative;
+  }
+}
+
+TEST(TufVerifierTests, RejectsRolesWithoutExpiry)
+{
+  const fs::path work_dir = MakeTempDir("tuf-missing-expires");
+  const auto objects = BuildFixtureObjects(work_dir);
+  const TestKeyPair key{.private_key_path = work_dir / "fixture.key", .public_key_pem = ReadFile(work_dir / "fixture.pub")};
+  for (const char *role : {"trust/root.json", "trust/timestamp.json", "trust/snapshot.json", "trust/targets/acme.json", "log/checkpoint.json"})
+  {
+    auto mutated = objects;
+    StripExpiryResignAndRepair(mutated, work_dir, key, role);
+    const pafio::TufVerifyResult failed = pafio::VerifyTufChainForPackage(mutated, "acme/util", "acme", std::nullopt, "trust/targets/acme.json");
+    EXPECT_FALSE(failed.ok) << role;
+    EXPECT_FALSE(failed.error_code.empty()) << role;
   }
 }
 

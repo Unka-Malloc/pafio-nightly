@@ -2,7 +2,7 @@
 
 **Purpose:** Keep Pafio product contracts, generated indexes, planning state, and delivery evidence aligned.
 
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-23
 
 ## Mission
 
@@ -148,3 +148,11 @@ evidence tree; the milestone delivery state carries the join result and its
 boundaries. The registered close-out review executed as host, and the review
 items invalidated by baseline and repair result changes were resolved against
 the joined evidence.
+
+2026-10-23: Completed the `docs/plans/` internal-workspace split in the gate
+surface: `docs-audit.py` no longer requires the internal collection, the
+delivery export excludes `docs/plans/` via artifact policy, and the delivery
+gate now runs the exported copies of `docs-audit.py` and `native-check.sh`
+from `export_root` so each step validates the published tree rather than the
+source checkout. The public README reading order now links the published
+`docs/plan/` collection instead of the internal workspace path.

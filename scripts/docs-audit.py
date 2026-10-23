@@ -20,8 +20,6 @@ REQUIRED_COLLECTION_DIRS = [
     DOCS / "governance",
     DOCS / "operations",
     DOCS / "plan",
-    DOCS / "plans",
-    DOCS / "plans" / "task-resource-delivery",
     DOCS / "registry",
     DOCS / "security",
     DOCS / "specs",
@@ -81,7 +79,9 @@ def main() -> int:
     errors.extend(check_metadata())
     errors.extend(run_check([sys.executable, "scripts/docs-index.py", "--check"]))
     errors.extend(run_check([sys.executable, "scripts/docs-lifecycle.py", "validate"]))
-    if os.environ.get("STYIO_SKIP_TEAM_DOC_GATE") != "1":
+    # The team-docs gate tracks changed files through git, so it only applies
+    # inside a working checkout; an exported delivery tree has no history.
+    if (ROOT / ".git").exists() and os.environ.get("STYIO_SKIP_TEAM_DOC_GATE") != "1":
         errors.extend(run_check([sys.executable, "scripts/team-docs-gate.py"]))
 
     if errors:

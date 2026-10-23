@@ -11,7 +11,7 @@
 3. [Manifest and Lock Conventions](./governance/Pafio-Manifest-and-Lock-Conventions.md)
 4. [Local Offline Package Contract](./governance/Pafio-Local-Offline-Package-Contract.md)
 5. [Registry Client Contract](./registry/Pafio-Registry-Client-Contract.md)
-6. [Current Delivery Programme](./plans/README.md)
+6. [Delivery Workspace](./plan/README.md)
 7. [Build and Development Environment](./BUILD-AND-DEV-ENV.md)
 
 ## Ownership

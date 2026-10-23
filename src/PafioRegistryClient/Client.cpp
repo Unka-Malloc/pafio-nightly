@@ -331,7 +331,14 @@ FetchUrlToFile(
     fs::remove(headers_path, ignored);
   };
   try {
-    std::vector<std::string> args{"-fsSL", "-D", pafio::ProcessPathString(headers_path)};
+    // -q isolates the invocation from the ambient curl configuration. Redirect
+    // following is only allowed when no provider headers are attached: curl
+    // forwards custom -H values to redirect targets, so an authenticated
+    // request must not leave the original origin.
+    std::vector<std::string> args{"-q", "-fsS", "-D", pafio::ProcessPathString(headers_path)};
+    if (request_headers.empty()) {
+      args.push_back("-L");
+    }
     const std::vector<std::string> policy_args =
       CurlReadPolicyArgs(static_cast<size_t>(max_bytes), object_kind);
     args.insert(args.end(), policy_args.begin(), policy_args.end());

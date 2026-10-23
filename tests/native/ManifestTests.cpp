@@ -132,6 +132,22 @@ TEST(ManifestTests, LoadsRegistryDependencySource) {
   EXPECT_EQ(manifest.package->dependencies[0].source_kind, pafio::DependencySourceKind::kRegistry);
 }
 
+TEST(ManifestTests, RejectsParentTraversalInTargetPaths) {
+  const fs::path manifest_path = WriteTempToml(
+    "[pafio]\n"
+    "manifest-version = 1\n\n"
+    "[package]\n"
+    "name = \"acme/app\"\n"
+    "version = \"0.1.0\"\n"
+    "edition = \"2026\"\n\n"
+    "[lib]\n"
+    "path = \"../outside/lib.styio\"\n",
+    "traversal-target.toml"
+  );
+
+  EXPECT_THROW(pafio::LoadManifest(manifest_path), pafio::ValidationError);
+}
+
 TEST(ManifestTests, RejectsGitDependencyWithUrlUserinfo) {
   const fs::path manifest_path = WriteTempToml(
     "[pafio]\n"
