@@ -378,6 +378,49 @@ TEST(PackTests, IgnoresPlantedSymlinkAtPredictableTempPath)
   EXPECT_TRUE(fs::exists(archive));
 }
 
+TEST(PackTests, ExclusiveTempCreateLeavesPlantedDecoysUntouched)
+{
+  const fs::path root = MakeTempDir("temp-decoys-untouched");
+  WriteFile(
+      root / "pafio.toml",
+      "[pafio]\n"
+      "manifest-version = 1\n\n"
+      "[package]\n"
+      "name = \"acme/app\"\n"
+      "version = \"0.1.0\"\n"
+      "edition = \"2026\"\n\n"
+      "[build]\n"
+      "implicit-std = true\n\n"
+      "[[bin]]\n"
+      "name = \"app\"\n"
+      "path = \"src/main.styio\"\n");
+  WriteFile(root / "src/main.styio", ">_(\"hello\")\n");
+  WriteFile(root / "victim.txt", "keep me\n");
+
+  const fs::path archive = root / "dist" / "app.tar";
+  fs::create_directories(archive.parent_path());
+  const fs::path decoy_file = archive.parent_path() / "app.tar.tmp.1.1";
+  const fs::path decoy_link = archive.parent_path() / "app.tar.tmp.2.2";
+  WriteFile(decoy_file, "decoy\n");
+#if !defined(_WIN32)
+  fs::create_symlink(root / "victim.txt", decoy_link);
+#else
+  WriteFile(decoy_link, "decoy\n");
+#endif
+
+  EXPECT_NO_THROW(
+      pafio::WriteSourcePackage({
+          .manifest_path = root / "pafio.toml",
+          .output_path = archive,
+      }));
+  EXPECT_EQ(ReadFile(decoy_file), "decoy\n");
+#if !defined(_WIN32)
+  EXPECT_TRUE(fs::is_symlink(decoy_link));
+#endif
+  EXPECT_EQ(ReadFile(root / "victim.txt"), "keep me\n");
+  EXPECT_TRUE(fs::exists(archive));
+}
+
 TEST(PackTests, RejectsSymlinkInsideIncludedTree)
 {
   const fs::path root = MakeTempDir("symlink-rejected");
