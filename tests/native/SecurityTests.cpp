@@ -106,6 +106,17 @@ TEST(SecurityTests, DefaultWriteSecurityRequiresOptInForPlaintextHttp)
   const pafio::RegistryWriteSecurityDecision decision = pafio::ResolveDefaultRegistryWriteSecurity(
       {.registry_root = "http://localhost:8080", .allow_plaintext_http = true});
   EXPECT_EQ(decision.registry_root, "http://localhost:8080");
+
+  const pafio::RegistryWriteSecurityDecision loopback_ip = pafio::ResolveDefaultRegistryWriteSecurity(
+      {.registry_root = "http://127.0.0.1:8080", .allow_plaintext_http = true});
+  EXPECT_EQ(loopback_ip.registry_root, "http://127.0.0.1:8080");
+
+  // The plaintext opt-in is a loopback escape hatch, not a general
+  // insecure-transport override for remote registries.
+  EXPECT_THROW(
+      pafio::ResolveDefaultRegistryWriteSecurity(
+          {.registry_root = "http://upload.example.test", .allow_plaintext_http = true}),
+      pafio::PublishError);
 }
 
 TEST(SecurityTests, DefaultSecurityRejectsUrlUserinfo)

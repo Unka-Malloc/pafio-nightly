@@ -78,16 +78,25 @@ json RunRegistryV2ControlPlanePublish(
   const std::string control_plane_base = RegistryControlPlaneBaseUrl(registry_root);
   const std::string request_body = pafio::BuildRemotePublishRequestJson(candidate);
 
-  // Pin the transfer to the scheme the security decision already validated
-  // and bound both the connect and the total transfer time; no redirects are
-  // followed (no -L), so a server cannot steer the request elsewhere.
+  // -q must be the first curl argument: it disables the user's curl
+  // configuration, which could otherwise enable redirects and steer the
+  // request body and provider headers to a different host. --max-redirs 0
+  // keeps redirect following off even if another flag re-enables it.
+  // The transfer bound mirrors the external-process step budget, and the
+  // connect bound keeps a dead endpoint from consuming the whole transfer.
+  constexpr std::string_view kPublishConnectTimeoutSeconds{"10"};
+  const std::string publish_max_time_seconds = std::to_string(
+      std::chrono::duration_cast<std::chrono::seconds>(pafio::kExternalProcessStepTimeout).count());
   const std::string scheme = registry_root.substr(0, registry_root.find("://"));
   std::vector<std::string> args = {
+      "-q",
       "-fsS",
       "--connect-timeout",
-      "10",
+      std::string(kPublishConnectTimeoutSeconds),
       "--max-time",
-      "600",
+      publish_max_time_seconds,
+      "--max-redirs",
+      "0",
       "--proto",
       "=" + scheme,
       "-X",

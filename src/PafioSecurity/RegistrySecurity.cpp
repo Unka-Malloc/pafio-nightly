@@ -34,6 +34,27 @@ IsFileRegistryRoot(const std::string &value) {
   return value.starts_with("file://");
 }
 
+bool
+IsLoopbackHttpRegistryRoot(const std::string &value) {
+  constexpr std::string_view kScheme = "http://";
+  if (!value.starts_with(kScheme)) {
+    return false;
+  }
+  const std::string authority = std::string(value).substr(
+      kScheme.size(), value.find('/', kScheme.size()) - kScheme.size());
+  std::string host = authority;
+  // Credentials in userinfo are rejected before this handler runs, so the
+  // authority splits cleanly into host and optional port.
+  if (host.starts_with("[")) {
+    const std::size_t close = host.find(']');
+    host = close == std::string::npos ? "" : host.substr(1, close - 1);
+  } else if (const std::size_t colon = host.rfind(':');
+             colon != std::string::npos) {
+    host = host.substr(0, colon);
+  }
+  return host == "localhost" || host == "::1" || host.starts_with("127.");
+}
+
 std::vector<std::string>
 SplitPosixPath(const std::string &value) {
   std::vector<std::string> parts;
@@ -144,11 +165,17 @@ ValidateWriteRegistryRootScheme(
         "registry root must not embed credentials in the URL userinfo; configure authentication separately");
   }
   // Plaintext publish exposes unpublished package contents and headers to
-  // network observers; it is allowed only behind an explicit local-
-  // development opt-in.
-  if (decision.registry_root.starts_with("http://") && !request.allow_plaintext_http) {
-    throw pafio::PublishError(
-        "remote registry publish requires https://; use --allow-plaintext-http only for local development registries");
+  // network observers, so the opt-in stays bound to loopback registries;
+  // a remote http:// endpoint cannot be enabled by the flag.
+  if (decision.registry_root.starts_with("http://")) {
+    if (!request.allow_plaintext_http) {
+      throw pafio::PublishError(
+          "remote registry publish requires https://; use --allow-plaintext-http only for local development registries");
+    }
+    if (!IsLoopbackHttpRegistryRoot(decision.registry_root)) {
+      throw pafio::PublishError(
+          "--allow-plaintext-http is limited to loopback registries; use https:// for remote registries");
+    }
   }
   return SecurityHandlerResult::kContinue;
 }
