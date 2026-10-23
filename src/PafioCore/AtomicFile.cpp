@@ -83,13 +83,6 @@ OpenExclusiveTemporaryFile(const fs::path &target) {
     if (TryCreateExclusiveFile(candidate, temp)) {
       return temp;
     }
-    if (GetLastError() != ERROR_FILE_EXISTS) {
-      throw std::system_error(
-        static_cast<int>(GetLastError()),
-        std::system_category(),
-        "create exclusive temporary file " + candidate.string()
-      );
-    }
 #else
     // mkstemp needs the XXXXXX template tail and replaces it with the real
     // name; it already retries alternate names internally, so the outer loop
@@ -127,14 +120,26 @@ TryCreateExclusiveFile(const fs::path &candidate, ExclusiveTempFile &temp) {
     nullptr
   );
   if (handle == INVALID_HANDLE_VALUE) {
-    return false;
+    if (GetLastError() == ERROR_FILE_EXISTS) {
+      return false;
+    }
+    throw std::system_error(
+      static_cast<int>(GetLastError()),
+      std::system_category(),
+      "create exclusive temporary file " + candidate.string()
+    );
   }
   temp = ExclusiveTempFile{candidate, handle};
   return true;
 #else
   const int fd = ::open(candidate.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
   if (fd < 0) {
-    return false;
+    if (errno == EEXIST) {
+      return false;
+    }
+    throw std::system_error(
+      errno, std::system_category(), "create exclusive temporary file " + candidate.string()
+    );
   }
   temp = ExclusiveTempFile{candidate, fd};
   return true;

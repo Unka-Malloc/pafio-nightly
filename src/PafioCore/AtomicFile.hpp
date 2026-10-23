@@ -25,7 +25,8 @@ struct ExclusiveTempFile
 // std::system_error on failure.
 ExclusiveTempFile OpenExclusiveTemporaryFile(const std::filesystem::path &target);
 // Creates `candidate` only if it does not already exist; returns false when
-// the name is taken. The testable exclusive-create primitive behind
+// the name is taken and throws std::system_error for other creation
+// failures. The testable exclusive-create primitive behind
 // OpenExclusiveTemporaryFile.
 bool TryCreateExclusiveFile(const std::filesystem::path &candidate, ExclusiveTempFile &temp);
 void WriteTemporaryFileFully(ExclusiveTempFile &temp, const char *data, size_t size);

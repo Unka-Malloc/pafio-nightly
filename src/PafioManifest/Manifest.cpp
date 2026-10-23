@@ -39,12 +39,19 @@ IsNonEmptyRelativePath(const std::string &value) {
 // Build target paths (lib/bin/test) must stay inside the package snapshot;
 // `..` components would let a manifest point the compiler outside it. Path
 // dependencies and workspace member lists deliberately keep `..` segments.
+// Rejecting a root path (not only `is_absolute()`) also covers drive-relative
+// Windows targets like `D:src\main.styio`, which carry a root name but no
+// root directory and would escape the package root.
 bool
 IsContainedRelativePath(const std::string &value) {
-  if (!IsNonEmptyRelativePath(value)) {
+  if (value.empty()) {
     return false;
   }
-  for (const fs::path &component : fs::path(value)) {
+  const fs::path path(value);
+  if (path.has_root_path()) {
+    return false;
+  }
+  for (const fs::path &component : path) {
     if (component == "..") {
       return false;
     }
